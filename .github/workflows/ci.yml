@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    # Windows is the tested platform, and the vault tests need an OS credential store.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Test
+        run: |
+          git config --global user.name "CI"
+          git config --global user.email "ci@example.invalid"
+          npm test
+      - run: npm run build

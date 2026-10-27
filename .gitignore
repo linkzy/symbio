@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.symbio/
+*.log
+scripts/_*

@@ -1,0 +1,68 @@
+{
+  "name": "symbio",
+  "version": "0.1.0",
+  "description": "Run a team of OpenCode agents on a project from your browser",
+  "license": "MIT",
+  "author": "LinKzy",
+  "homepage": "https://github.com/linkzy/symbio#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/linkzy/symbio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/linkzy/symbio/issues"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "multi-agent",
+    "opencode",
+    "orchestration",
+    "llm"
+  ],
+  "type": "module",
+  "bin": {
+    "symbio": "bin/symbio.js",
+    "sym": "bin/symbio.js"
+  },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:server": "tsx watch src/server/index.ts",
+    "dev:web": "vite --config web/vite.config.ts",
+    "build": "vite build --config web/vite.config.ts && tsc -p tsconfig.build.json",
+    "start": "node bin/symbio.js",
+    "test": "tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p web/tsconfig.json"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.5",
+    "@napi-rs/keyring": "^2.1.2",
+    "hono": "^4.13.13",
+    "ssh2": "^1.17.0"
+  },
+  "devDependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/ssh2": "^1.15.6",
+    "@vitejs/plugin-react": "^6.1.2",
+    "lucide-react": "^1.61.0",
+    "motion": "^14.6.0",
+    "playwright-core": "^1.64.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
+  }
+}
