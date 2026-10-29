@@ -16,15 +16,25 @@ import { PlanStore, type TaskInput, type TaskStatus } from "./plan.js";
 import type { RemoteOps } from "./remote.js";
 import { coordinatorBrief, kickoffMessage, workerBrief } from "./prompts.js";
 import { git } from "./git.js";
-import { globalDir, newId, type Agent, type LoggedMessage, type MessageKind, type Project, type Store } from "./store.js";
+import { DEFAULT_MESSAGE_LIMIT, globalDir, newId, type Agent, type LoggedMessage, type MessageKind, type Project, type Store } from "./store.js";
+import { accountUsage } from "./costs.js";
 import { coordinatorTools, workerTools, type ToolContext } from "./tools.js";
 import { changedFiles, createWorkspace, mergeWorkspace, removeWorkspace, restoreWorkspace, syncWorkspace } from "./workspaces.js";
 
 const STUCK_AFTER_MS = Number(process.env.SYMBIO_STUCK_MINUTES ?? 10) * 60_000;
 const WATCHDOG_INTERVAL_MS = 30_000;
-// Loop guard: max agent-to-agent messages between the same pair in the window.
-const PAIR_LIMIT = 12;
+// Loop guard: max conversational messages between the same pair in the window (per
+// project, see Project.messageLimit). Protocol traffic — task assignments, asset
+// requests/grants/releases, review reports — comes from real progress and isn't counted.
 const PAIR_WINDOW_MS = 30 * 60_000;
+const PROTOCOL_KINDS = new Set<MessageKind>([
+  "asset-request",
+  "asset-granted",
+  "asset-denied",
+  "asset-released",
+  "task-review",
+  "task-blocked",
+]);
 // Model fallback: a failed model is skipped for this long; switch after this many provider retries.
 const FAILED_MODEL_COOLDOWN_MS = 30 * 60_000;
 const RETRIES_BEFORE_FALLBACK = 4;
@@ -71,6 +81,7 @@ export class Team {
   /** MCP URL token → which project/folder it serves. Valid for this run only. */
   private mcpTokens = new Map<string, { projectId: string; directory: string }>();
   private pairTraffic = new Map<string, number[]>();
+  private limitNoticed = new Map<string, number>(); // pair → when the human was last told
   private failedModels = new Map<string, Map<string, number>>(); // agentId → model → failedAt
   private fallbackBusy = new Set<string>();
   /** agentId → tool call id of an open interactive question. */
@@ -263,6 +274,7 @@ export class Team {
       `Task ${task.id}: ${task.title}\n\n${task.description}${assets}${extra ? `\n\n${extra}` : ""}\n\n` +
         `When it's done, commit your work and call update_task("${task.id}", "review", <summary>) — that is your report. ` +
         `If you get stuck, update_task("${task.id}", "blocked", <why>).`,
+      { protocol: true },
     );
     return `Assigned ${task.id} to ${helper.name}.`;
   }
@@ -408,7 +420,7 @@ export class Team {
     bus.publish({ type: "project.updated", projectId: project.id });
 
     if (opts.taskId) await this.assignTask(project, coordinator, opts.taskId, agent, opts.task);
-    else await this.deliver(project, coordinator, agent, "request", opts.task!);
+    else await this.deliver(project, coordinator, agent, "request", opts.task!, { protocol: true });
     const where = workspace.branch
       ? `It works in its own copy of the project on branch ${workspace.branch} (${workspace.directory}); merge its work with merge_work.`
       : "It works directly in the project folder (no git), so rely on shared-asset grants to avoid conflicts.";
@@ -525,9 +537,9 @@ export class Team {
    * Delivers a message to an agent: logs it, and prompts the agent's session.
    * Delivery wakes the agent; if it is busy, OpenCode queues it.
    */
-  async deliver(project: Project, from: Agent, to: Agent, kind: MessageKind, text: string) {
+  async deliver(project: Project, from: Agent, to: Agent, kind: MessageKind, text: string, opts: { protocol?: boolean } = {}) {
     if (to.status === "stopped") throw new Error(`${to.name} is stopped.`);
-    this.guardLoop(from, to);
+    if (!opts.protocol && !PROTOCOL_KINDS.has(kind)) await this.guardLoop(project, from, to);
     await this.log(project, { from: from.id, to: to.id, kind, text });
     await this.prepare(project, to);
     const body = `[from: ${from.name} · ${kind}]\n${text}`;
@@ -847,6 +859,7 @@ export class Team {
       cacheRead: s.tokens.cache?.read ?? 0,
       cacheWrite: s.tokens.cache?.write ?? 0,
     };
+    accountUsage(agent, agent.usage);
     await this.store.update(project);
     bus.publish({ type: "project.updated", projectId: project.id });
   }
@@ -915,6 +928,11 @@ export class Team {
 
   history(agent: Agent) {
     return this.client().messages(agent.sessionId);
+  }
+
+  /** One page of an agent's conversation (for long chats), oldest first. */
+  historyPage(agent: Agent, limit: number, before?: string) {
+    return this.client().messagePage(agent.sessionId, limit, before);
   }
 
   /** Open interactive questions (OpenCode forms) the agent is waiting on. */
@@ -1022,13 +1040,27 @@ export class Team {
   }
 
   /** Stops two agents from bouncing messages forever without the human noticing. */
-  private guardLoop(from: Agent, to: Agent) {
+  private async guardLoop(project: Project, from: Agent, to: Agent) {
+    const limit = project.messageLimit ?? DEFAULT_MESSAGE_LIMIT;
+    if (limit <= 0) return;
     const key = [from.id, to.id].sort().join("|");
     const now = Date.now();
     const times = (this.pairTraffic.get(key) ?? []).filter((t) => now - t < PAIR_WINDOW_MS);
-    if (times.length >= PAIR_LIMIT) {
+    if (times.length >= limit) {
+      // Tell the human once per window, so a blocked agent doesn't go unnoticed.
+      if (!this.limitNoticed.has(key) || now - this.limitNoticed.get(key)! > PAIR_WINDOW_MS) {
+        this.limitNoticed.set(key, now);
+        await this.log(project, {
+          from: "symbio",
+          to: "human",
+          kind: "system",
+          text:
+            `${from.name} and ${to.name} exchanged ${limit} messages in 30 minutes, so further messages between them are paused ` +
+            `until older ones age out. If they're doing real work, raise the limit in the project's Settings → Team.`,
+        });
+      }
       throw new Error(
-        `Too many messages between ${from.name} and ${to.name} in the last 30 minutes. ` +
+        `Too many messages between ${from.name} and ${to.name} in the last 30 minutes (limit ${limit}). ` +
           `Stop the back-and-forth and use ask_human to bring the human in.`,
       );
     }

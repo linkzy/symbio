@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowUp, Brain, Check, CircleAlert, CircleStop, GitBranch, Info, Loader2, Repeat, RotateCcw, Wrench, X } from "lucide-react";
 import Markdown from "react-markdown";
@@ -84,8 +84,30 @@ const KIND_TONE: Record<string, string> = {
   "asset-request": "accent",
 };
 
+// Long conversations (thousands of messages) made the page sluggish. Only a window is
+// loaded: the latest PAGE messages, earlier pages when scrolling up, and the oldest are
+// dropped again past MAX_KEPT while the reader follows the end of the conversation.
+const PAGE = 40;
+const MAX_KEPT = 120;
+
+/** Merges the latest page into what's loaded; a gap (many new messages) restarts the window. */
+function mergeLatest(prev: any[] | null, page: { messages: any[]; hasMore: boolean }, prevHasOlder: boolean) {
+  const fresh = page.messages;
+  if (!prev?.length || !fresh.length) return { messages: fresh, hasOlder: page.hasMore };
+  const freshIds = new Set(fresh.map((m) => m.id));
+  const connects = !page.hasMore || prev.some((m) => m.id === fresh[0].id);
+  if (!connects) return { messages: fresh, hasOlder: true };
+  const oldestFresh = fresh[0].time?.created ?? 0;
+  const kept = prev.filter((m) => !freshIds.has(m.id) && (m.time?.created ?? 0) < oldestFresh);
+  return { messages: [...kept, ...fresh], hasOlder: kept.length ? prevHasOlder : page.hasMore };
+}
+
 export function Chat({ project, agent }: { project: Project; agent: Agent }) {
   const [history, setHistory] = useState<any[] | null>(null);
+  const [hasOlder, setHasOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const historyRef = useRef<{ messages: any[] | null; hasOlder: boolean }>({ messages: null, hasOlder: false });
+  const keepOffset = useRef<number | null>(null); // scrollHeight before older messages were prepended
   const [live, setLive] = useState<Block[]>([]);
   const [failure, setFailure] = useState<string | null>(null);
   const [retry, setRetry] = useState<string | null>(null);
@@ -95,14 +117,52 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
   const scroller = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
 
+  const showHistory = (messages: any[], older: boolean) => {
+    historyRef.current = { messages, hasOlder: older };
+    setHistory(messages);
+    setHasOlder(older);
+  };
+
   const loadHistory = useCallback(
     () =>
       api
-        .history(project.id, agent.id)
-        .then(setHistory)
+        .historyPage(project.id, agent.id, PAGE)
+        .then((page) => {
+          const current = historyRef.current;
+          let { messages, hasOlder: older } = mergeLatest(current.messages, page, current.hasOlder);
+          if (stickToBottom.current && messages.length > MAX_KEPT) {
+            messages = messages.slice(-PAGE * 2);
+            older = true;
+          }
+          showHistory(messages, older);
+        })
         .catch((e) => setFailure(e.message)),
     [project.id, agent.id],
   );
+
+  const loadOlder = useCallback(async () => {
+    const { messages, hasOlder: older } = historyRef.current;
+    if (!older || !messages?.length || loadingOlder) return;
+    setLoadingOlder(true);
+    try {
+      const page = await api.historyPage(project.id, agent.id, PAGE, messages[0].id);
+      keepOffset.current = scroller.current?.scrollHeight ?? null;
+      showHistory([...page.messages, ...messages], page.hasMore);
+    } catch (e) {
+      setFailure((e as Error).message);
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [project.id, agent.id, loadingOlder]);
+
+  // After prepending older messages, keep the reader's place instead of jumping.
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (el && keepOffset.current !== null) {
+      el.scrollTop += el.scrollHeight - keepOffset.current;
+      keepOffset.current = null;
+    }
+  }, [history]);
 
   useEffect(() => {
     void loadHistory();
@@ -222,10 +282,16 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
         onScroll={(e) => {
           const el = e.currentTarget;
           stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+          if (el.scrollTop < 300) void loadOlder();
         }}
       >
         <div className="chat-col">
           {history === null && <div className="subtle center">Loading conversation…</div>}
+          {hasOlder && (
+            <button className="btn ghost sm load-older" onClick={() => void loadOlder()} disabled={loadingOlder}>
+              {loadingOlder ? "Loading earlier messages…" : "Load earlier messages"}
+            </button>
+          )}
           {history?.length === 0 && live.length === 0 && (
             <div className="chat-empty">
               <h2>Let's talk about the project</h2>

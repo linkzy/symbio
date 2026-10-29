@@ -5,7 +5,6 @@ import {
   ChevronDown,
   ChevronRight,
   CircleAlert,
-  Coins,
   KanbanSquare,
   Lock,
   LockOpen,
@@ -15,6 +14,7 @@ import {
   Play,
   Settings2,
 } from "lucide-react";
+import { UsageLine } from "./Usage";
 import { api, formatTokens, subscribe, usageTokens, type Agent, type Asset, type Plan, type Project } from "./api";
 import { Chat } from "./Chat";
 import { Docs } from "./Docs";
@@ -177,7 +177,13 @@ export function ProjectView({ projectId }: { projectId: string }) {
         </div>
 
         <div className="side-foot">
-          <UsageLine project={project} />
+          <UsageLine
+            project={project}
+            onOpen={() => {
+              setTab("settings");
+              setTimeout(() => document.getElementById("usage")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+            }}
+          />
           {project.agents.length > 0 && (
             <button
               className="btn sm block"
@@ -312,20 +318,5 @@ function AgentRow({ agent: a, active, onClick }: { agent: Agent; active: boolean
         </span>
       </span>
     </motion.button>
-  );
-}
-
-function UsageLine({ project }: { project: Project }) {
-  const withUsage = project.agents.filter((a) => a.usage);
-  const tokens = withUsage.reduce((s, a) => s + usageTokens(a.usage!), 0);
-  if (tokens === 0) return null;
-  const cost = withUsage.reduce((s, a) => s + a.usage!.cost, 0);
-  const detail = withUsage.map((a) => `${a.name}: ${formatTokens(usageTokens(a.usage!))}${a.usage!.cost > 0 ? ` · $${a.usage!.cost.toFixed(2)}` : ""}`).join("\n");
-  return (
-    <div className="usage-line" title={`${detail}\n\nCost only for models with pricing info.`}>
-      <Coins size={13} />
-      <span className="tnum">{formatTokens(tokens)} tokens</span>
-      {cost > 0 && <span className="subtle tnum">· ${cost.toFixed(2)}</span>}
-    </div>
   );
 }

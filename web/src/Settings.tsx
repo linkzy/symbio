@@ -4,6 +4,7 @@ import { ArrowLeft, Check, Pencil, Plug, Plus, ShieldCheck, Trash2, X } from "lu
 import { api, type ConnectionView } from "./api";
 import { ConnIcon } from "./ConnectionsPicker";
 import { ProvidersSection } from "./Providers";
+import { PricesSection } from "./Usage";
 import { Dialog, EmptyState } from "./ui";
 
 /** Back to the page the user came from (a project, the project list…), or the project list. */
@@ -128,6 +129,8 @@ export function Settings() {
       </section>
 
       <ProvidersSection />
+
+      <PricesSection />
 
       <AnimatePresence>
         {editing && (

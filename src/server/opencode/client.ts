@@ -139,6 +139,19 @@ export class OpencodeClient {
   }
 
   /**
+   * The `limit` messages before `before` (a message id), or the latest ones; oldest first.
+   * OpenCode's cursor is base64url JSON {id, order, direction}: "next" in "desc" order means
+   * "older than id" (verified against 2.1.4, see docs/opencode-api.md).
+   */
+  async messagePage(sessionId: string, limit: number, before?: string): Promise<{ messages: any[]; hasMore: boolean }> {
+    const params = new URLSearchParams({ limit: String(limit + 1) }); // one extra tells whether more exist
+    if (before) params.set("cursor", Buffer.from(JSON.stringify({ id: before, order: "desc", direction: "next" })).toString("base64url"));
+    const res = await this.request("GET", `/api/session/${sessionId}/message?${params}`);
+    const data: any[] = res?.data ?? [];
+    return { messages: data.slice(0, limit).reverse(), hasMore: data.length > limit };
+  }
+
+  /**
    * Streams server events until the signal aborts or the connection drops.
    * Resolves when the stream ends; callers decide whether to reconnect.
    */

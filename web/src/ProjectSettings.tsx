@@ -5,6 +5,7 @@ import { api, type Project, type ProjectConnection } from "./api";
 import { ConnectionsPicker } from "./ConnectionsPicker";
 import { ModelPicker } from "./ModelPicker";
 import { RemoveDialog } from "./ProjectMenu";
+import { UsageSection } from "./Usage";
 
 /** Project configuration: name, connections, models, remembered permissions, removal. */
 export function ProjectSettings({ project, onChanged }: { project: Project; onChanged: (p: Project) => void }) {
@@ -15,6 +16,8 @@ export function ProjectSettings({ project, onChanged }: { project: Project; onCh
         <General project={project} onChanged={onChanged} />
         <Connections project={project} onChanged={onChanged} />
         <Models project={project} onChanged={onChanged} />
+        <Team project={project} onChanged={onChanged} />
+        <UsageSection project={project} />
         <AlwaysAllowed project={project} onChanged={onChanged} />
         <section className="section danger-zone">
           <div className="section-head">
@@ -96,6 +99,52 @@ function General({ project, onChanged }: { project: Project; onChanged: (p: Proj
         </div>
       </div>
       <SaveBar dirty={dirty} saving={saving} onSave={save} onReset={() => setName(project.name)} />
+    </section>
+  );
+}
+
+const DEFAULT_MESSAGE_LIMIT = 20;
+
+function Team({ project, onChanged }: { project: Project; onChanged: (p: Project) => void }) {
+  const current = project.messageLimit ?? DEFAULT_MESSAGE_LIMIT;
+  const [value, setValue] = useState(String(current));
+  const [saving, setSaving] = useState(false);
+  const parsed = Number(value);
+  const valid = value.trim() !== "" && Number.isInteger(parsed) && parsed >= 0 && parsed <= 1000;
+  const dirty = valid && parsed !== current;
+  async function save() {
+    setSaving(true);
+    try {
+      onChanged(await api.updateProject(project.id, { messageLimit: parsed }));
+    } catch (e) {
+      alert((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+  return (
+    <section className="section">
+      <div className="section-head">
+        <div>
+          <h2>Team</h2>
+          <p>
+            Guards against two agents going back and forth without progress. Task assignments, shared-asset requests and review reports
+            don't count, only conversation.
+          </p>
+        </div>
+      </div>
+      <div className="stack" style={{ padding: 16, gap: 14 }}>
+        <label className="field">
+          <span>Messages two agents may exchange in 30 minutes</span>
+          <input type="number" min={0} max={1000} value={value} onChange={(e) => setValue(e.target.value)} style={{ maxWidth: 140 }} />
+          <span className="hint">
+            {valid && parsed === 0
+              ? "No limit: agents can message each other freely."
+              : `When two agents reach it, further messages between them wait until older ones are 30 minutes old, and you're told. 0 removes the limit. Default ${DEFAULT_MESSAGE_LIMIT}.`}
+          </span>
+        </label>
+      </div>
+      <SaveBar dirty={dirty} saving={saving} onSave={save} onReset={() => setValue(String(current))} />
     </section>
   );
 }

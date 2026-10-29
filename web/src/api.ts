@@ -24,7 +24,7 @@ export function formatTokens(n: number): string {
 
 /** Tokens the model actually processed (cache reads are cheap and listed separately). */
 export function usageTokens(u: NonNullable<Agent["usage"]>) {
-  return u.input + u.output + u.reasoning + u.cacheWrite;
+  return u.input + u.output + u.reasoning + u.cacheRead + u.cacheWrite;
 }
 
 export interface Asset {
@@ -128,6 +128,8 @@ export interface Project {
   connections: ProjectConnection[];
   allowedPatterns: { action: string; pattern: string }[];
   paused?: boolean;
+  /** Conversational messages two agents may exchange in 30 minutes; 0 = no limit; unset = default (20). */
+  messageLimit?: number;
   heldMessages?: { agentId: string; text: string }[];
   agents: Agent[];
   createdAt: number;
@@ -174,6 +176,7 @@ export interface RuntimeInfo {
 export type UiEvent =
   | ({ type: "runtime" } & RuntimeInfo)
   | { type: "project.updated"; projectId: string }
+  | { type: "prices.updated" }
   | { type: "assets.updated"; projectId: string }
   | { type: "plan.updated"; projectId: string }
   | { type: "approvals.updated"; projectId: string }
@@ -234,6 +237,32 @@ const token = (() => {
 /** Fired when the server rejects our key; the app shows how to get back in. */
 export const LOCKED_EVENT = "symbio:locked";
 
+export interface Usage {
+  cost: number;
+  input: number;
+  output: number;
+  reasoning: number;
+  cacheRead: number;
+  cacheWrite: number;
+}
+
+export interface Price {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+}
+
+export type PriceInfo = { price: Price | null; source: "yours" | "opencode" | "suggested" | "none"; from?: string };
+
+export interface ProjectUsage {
+  agents: { id: string; name: string; status: string; sessions: number; tokens: number; cost: number; byModel: { model: string; usage: Usage; tokens: number; cost: number | null }[] }[];
+  total: Usage;
+  tokens: number;
+  cost: number;
+  unpriced: string[];
+}
+
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {
     method,
@@ -288,7 +317,7 @@ export const api = {
     call<{ path: string; content: string }>("GET", `/projects/${id}/docs/file?path=${encodeURIComponent(path)}`),
   writeDoc: (id: string, path: string, content: string) =>
     call<{ ok: true }>("PUT", `/projects/${id}/docs/file`, { path, content }),
-  updateProject: (id: string, patch: Partial<Pick<Project, "name" | "allowedModels" | "coordinatorModel" | "connections" | "allowedPatterns">>) =>
+  updateProject: (id: string, patch: Partial<Pick<Project, "name" | "allowedModels" | "coordinatorModel" | "connections" | "allowedPatterns" | "messageLimit">>) =>
     call<Project>("PATCH", `/projects/${id}`, patch),
   connections: () => call<ConnectionView[]>("GET", "/connections"),
   createConnection: (body: Record<string, unknown>) => call<ConnectionView>("POST", "/connections", body),
@@ -299,6 +328,14 @@ export const api = {
     call<{ ok: true }>("DELETE", `/projects/${id}?deleteData=${deleteData}`),
   start: (id: string) => call<{ project: Project; coordinator: Agent }>("POST", `/projects/${id}/start`),
   history: (projectId: string, agentId: string) => call<any[]>("GET", `/projects/${projectId}/agents/${agentId}/history`),
+  projectUsage: (projectId: string) => call<ProjectUsage>("GET", `/projects/${projectId}/usage`),
+  prices: () => call<Record<string, PriceInfo>>("GET", "/prices"),
+  setPrice: (model: string, price: Price | null) => call<{ ok: true }>("PUT", "/prices", { model, price }),
+  historyPage: (projectId: string, agentId: string, limit: number, before?: string) =>
+    call<{ messages: any[]; hasMore: boolean }>(
+      "GET",
+      `/projects/${projectId}/agents/${agentId}/history?limit=${limit}${before ? `&before=${encodeURIComponent(before)}` : ""}`,
+    ),
   send: (projectId: string, agentId: string, text: string, urgent = false) =>
     call<{ ok: true }>("POST", `/projects/${projectId}/agents/${agentId}/messages`, { text, urgent }),
   interrupt: (projectId: string, agentId: string) =>

@@ -14,12 +14,53 @@ import { beginOauth, cancelOauth, completeOauth, connectWithKey, listProviders, 
 import { docsRoot, listDocs, readDoc, writeDoc } from "./docs.js";
 import type { Team } from "./team.js";
 import type { Connections } from "./connections.js";
+import { PriceBook, projectUsage, resolvePrices, type Price } from "./costs.js";
+import { globalDir } from "./store.js";
 
 // Debug routes pass OpenCode responses through, which can contain provider keys.
 const DEBUG = process.env.SYMBIO_DEBUG === "1";
 
 export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, connections: Connections) {
   const api = new Hono();
+
+  // ---- usage and prices (estimated cost = tokens × the price per model)
+  const priceBook = PriceBook.at(globalDir);
+  const priceBookLoaded = priceBook.load();
+  let catalog: { at: number; models: any[] } | null = null;
+  const catalogModels = async () => {
+    if (!runtime.client) return catalog?.models ?? [];
+    if (!catalog || Date.now() - catalog.at > 10 * 60_000) catalog = { at: Date.now(), models: await runtime.client.listModels() };
+    return catalog.models;
+  };
+  const pricesFor = async (refs: string[]) => {
+    await priceBookLoaded;
+    return resolvePrices([...new Set(refs)], priceBook.prices, await catalogModels().catch(() => []));
+  };
+  const modelsUsed = (projects: Project[]) =>
+    projects.flatMap((p) => [...p.allowedModels, ...p.agents.flatMap((a) => [a.model, ...Object.keys(a.usageByModel ?? {})])]);
+
+  api.get("/prices", async (c) => {
+    await priceBookLoaded;
+    return c.json(await pricesFor([...modelsUsed(store.list()), ...Object.keys(priceBook.prices)]));
+  });
+
+  api.put("/prices", async (c) => {
+    const body = await c.req.json<{ model?: string; price?: Price | null }>();
+    if (!body.model || !/^[\w.-]+\/[\w./:-]+$/.test(body.model)) return c.json({ error: "model is required (provider/model)" }, 400);
+    const p = body.price;
+    if (p && ![p.input, p.output, p.cacheRead, p.cacheWrite].every((v) => typeof v === "number" && v >= 0 && v < 10_000)) {
+      return c.json({ error: "Prices must be numbers (USD per million tokens)." }, 400);
+    }
+    await priceBookLoaded;
+    await priceBook.set(body.model, p ?? null);
+    bus.publish({ type: "prices.updated" });
+    return c.json({ ok: true });
+  });
+
+  api.get("/projects/:id/usage", async (c) => {
+    const project = withProject(c.req.param("id"));
+    return c.json(projectUsage(project, await pricesFor(modelsUsed([project]))));
+  });
 
   // ---- global connections (secrets are write-only: never returned)
   api.get("/connections", async (c) => c.json(await connections.views()));
@@ -257,8 +298,14 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       coordinatorModel?: string;
       connections?: ProjectConnection[];
       allowedPatterns?: { action: string; pattern: string }[];
+      messageLimit?: number;
     }>();
     if (body.name?.trim()) project.name = body.name.trim();
+    if (body.messageLimit !== undefined) {
+      const limit = Number(body.messageLimit);
+      if (!Number.isInteger(limit) || limit < 0 || limit > 1000) return c.json({ error: "The message limit must be a whole number from 0 to 1000." }, 400);
+      project.messageLimit = limit;
+    }
     // Only removals make sense from the UI ("always" answers add entries).
     if (body.allowedPatterns) {
       project.allowedPatterns = project.allowedPatterns.filter((a) =>
@@ -480,6 +527,14 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
   api.get("/projects/:id/agents/:agentId/history", async (c) => {
     const project = withProject(c.req.param("id"));
     const agent = withAgent(project, c.req.param("agentId"));
+    // With ?limit: one page ({messages, hasMore}), older pages via ?before=<message id>.
+    // Without: the whole conversation as an array (kept for compatibility).
+    const limit = Number(c.req.query("limit"));
+    if (limit > 0) {
+      const before = c.req.query("before");
+      if (before && !/^msg_[A-Za-z0-9]+$/.test(before)) return c.json({ error: "invalid message id" }, 400);
+      return c.json(await team.historyPage(agent, Math.min(limit, 200), before));
+    }
     return c.json(await team.history(agent));
   });
 

@@ -28,8 +28,18 @@ export interface Agent {
   status: AgentStatus;
   /** Why the agent can't continue on its own (e.g. every allowed model failed); null when fine. */
   problem?: string | null;
-  /** Cumulative usage of the agent's session. Cost is 0 when the model has no pricing info. */
+  /** Cumulative usage of the agent's current session. Cost is 0 when the model has no pricing info. */
   usage?: { cost: number; input: number; output: number; reasoning: number; cacheRead: number; cacheWrite: number };
+  /** Everything used across sessions, split by model (see costs.ts). */
+  usageByModel?: Record<string, NonNullable<Agent["usage"]>>;
+  /** The current session's totals already counted in usageByModel. */
+  usageSeen?: NonNullable<Agent["usage"]>;
+  /** Usage of earlier sessions, for agents that predate usageByModel. */
+  pastUsage?: NonNullable<Agent["usage"]>;
+  /** Sessions this agent used before its session was renewed, oldest first. */
+  previousSessions?: { sessionId: string; endedAt: number }[];
+  /** Earlier names (after a rename), still accepted when other agents address it. */
+  aliases?: string[];
   lastActivity: number;
   createdAt: number;
 }
@@ -60,9 +70,16 @@ export interface Project {
   heldMessages?: { agentId: string; text: string }[];
   /** Agents that were working when the team was paused (told to continue on resume). */
   pausedAgents?: string[];
+  /**
+   * Loop guard: how many conversational messages two agents may exchange in 30 minutes
+   * before further ones are refused. 0 turns the guard off. Unset = DEFAULT_MESSAGE_LIMIT.
+   */
+  messageLimit?: number;
   agents: Agent[];
   createdAt: number;
 }
+
+export const DEFAULT_MESSAGE_LIMIT = 20;
 
 export interface ProjectConnection {
   id: string;
