@@ -5,6 +5,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.1]
+
+- Releases are published from GitHub Actions with npm trusted publishing (no tokens), with
+  provenance.
+
 ## [0.2.0]
 
 - Installable with `npm install -g symbio`; brings its own OpenCode (pinned to 2.1.x).

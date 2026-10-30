@@ -1,0 +1,46 @@
+name: Release
+
+# Publishes to npm when a version tag (v1.2.3) is pushed, using npm trusted publishing:
+# GitHub proves to npm which repository and workflow is publishing (OIDC), so no npm token is
+# stored anywhere. Configured on npmjs.com → symbio → Settings → Trusted Publisher.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write # lets npm verify this workflow (and adds provenance to the package)
+
+jobs:
+  publish:
+    # Windows is the tested platform, and the vault tests need an OS credential store.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - name: Trusted publishing needs npm 11.5.1 or later
+        run: npm install -g npm@^11.5.1
+      - name: The tag must match package.json
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME doesn't match package.json version $version" >&2
+            exit 1
+          fi
+      - run: npm ci
+      - name: Check
+        shell: bash
+        run: |
+          git config --global user.name "CI"
+          git config --global user.email "ci@example.invalid"
+          npm run typecheck
+          npm test
+          npm run build
+      - name: Publish
+        run: npm publish --access public --ignore-scripts # checks already ran above

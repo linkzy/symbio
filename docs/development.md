@@ -99,8 +99,12 @@ docs/                  This documentation
    npm i -g --prefix /tmp/symbio-pkg/prefix /tmp/symbio-pkg/symbio-<version>.tgz
    SYMBIO_HOME=/tmp/symbio-pkg/home SYMBIO_PORT=4330 /tmp/symbio-pkg/prefix/sym doctor
    ```
-4. `npm publish` (it runs the type-check, tests and build first), then tag the commit
-   (`git tag v<version>`) and push the tag.
+4. Commit, tag the commit with the version (`git tag v<version>`) and push the tag. The **Release**
+   workflow (`.github/workflows/release.yml`) checks that the tag matches `package.json`, runs the
+   type-check, tests and build, and publishes to npm through trusted publishing: no npm token is
+   stored anywhere, and the package gets provenance. It's authorized on npmjs.com → symbio →
+   Settings → Trusted Publisher (GitHub Actions, user `linkzy`, repo `symbio`, workflow
+   `release.yml`).
 
 OpenCode is a pinned dependency (`@opencode/cli`, patch updates only). Moving to a newer minor
 version means re-verifying the APIs in [opencode-api.md](opencode-api.md) first.
