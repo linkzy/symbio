@@ -42,3 +42,5 @@ Before you finish: `npm run typecheck`, `npm test` and `npm run build` must pass
   without a reason.
 - **Look at UI changes** (screenshot with `scripts/screenshot.mjs`) instead of assuming they render.
 - **Keep docs true.** If your change makes a doc wrong, fix the doc in the same change.
+- **Tell the agents.** If a change affects how agents work (tools, rules, what Symbio does for them),
+  add an entry to `src/server/updates.ts`: running projects' coordinators get it after the update.

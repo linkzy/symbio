@@ -101,3 +101,21 @@ test("rename: new name, old name still reaches the agent, and can't be reused", 
   await assert.rejects(team.renameAgent(project, project.agents[2], "writer"), /taken/);
   await assert.rejects(team.renameAgent(project, project.agents[0], "boss"), /core keeps its name/);
 });
+
+test("after an update, core gets the agent-facing changes once, as a note; new projects start up to date", async () => {
+  const { AGENT_UPDATES } = await import("../src/server/updates.js");
+  const { project, team, calls, store } = await setup();
+  // An existing project from before the mechanism: nothing seen yet.
+  delete project.updatesSeen;
+  await (team as any).tellAboutUpdates(project);
+  const told = notes(calls, "ses_core");
+  assert.equal(told.length, 1, "one note");
+  assert.match(told[0].body, /^Symbio update/);
+  assert.equal(prompts(calls, "ses_core").length, 0, "core not woken");
+  assert.deepEqual(project.updatesSeen, AGENT_UPDATES.map((u) => u.id));
+  const log = await store.readMessages(project);
+  assert.ok(log.some((m: any) => /^Symbio update/.test(m.text)), "visible in Messages");
+
+  await (team as any).tellAboutUpdates(project);
+  assert.equal(notes(calls, "ses_core").length, 1, "not repeated");
+});

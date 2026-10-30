@@ -64,6 +64,10 @@ docs/                  This documentation
   140 characters. Comments explain *why*, not what. The UI uses the existing tokens and components
   in `styles.css` and `ui.tsx` (Dialog, Drawer, EmptyState, Avatar) and lucide icons; avoid adding
   new UI libraries.
+- **Tell the agents about changes.** When a change affects how agents work (tools, rules, messages
+  they receive, what Symbio does on their behalf), add an entry to `src/server/updates.ts`. On the
+  next start, each project's coordinator gets the entries it hasn't seen as a note (without being
+  woken up), and the human sees them in Messages. New projects start with them marked as seen.
 - **Keep state in plain files.** JSON/JSONL under `.symbio/` or `~/.symbio/`, written through `store.ts`.
 
 ## Testing

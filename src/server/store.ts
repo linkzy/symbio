@@ -77,6 +77,8 @@ export interface Project {
   messageLimit?: number;
   /** "after-task": helpers get a fresh session when their task is merged. Unset/"manual": only on request. */
   renewSessions?: "manual" | "after-task";
+  /** Agent-facing Symbio updates (updates.ts) the coordinator has been told about. */
+  updatesSeen?: string[];
   agents: Agent[];
   createdAt: number;
 }

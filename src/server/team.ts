@@ -18,6 +18,7 @@ import { coordinatorBrief, kickoffMessage, workerBrief } from "./prompts.js";
 import { git } from "./git.js";
 import { DEFAULT_MESSAGE_LIMIT, globalDir, newId, type Agent, type LoggedMessage, type MessageKind, type Project, type Store } from "./store.js";
 import { accountUsage, emptyUsage } from "./costs.js";
+import { AGENT_UPDATES, unseenUpdates, updatesNote } from "./updates.js";
 import { coordinatorTools, workerTools, type ToolContext } from "./tools.js";
 import { changedFiles, createWorkspace, mergeWorkspace, removeWorkspace, restoreWorkspace, syncWorkspace } from "./workspaces.js";
 
@@ -385,6 +386,8 @@ export class Team {
     };
     await this.refreshInstructions(project, agent);
     project.agents.push(agent);
+    // A new coordinator starts with today's rules in its brief; earlier changes aren't news to it.
+    project.updatesSeen = AGENT_UPDATES.map((u) => u.id);
     await this.store.update(project);
     bus.publish({ type: "project.updated", projectId: project.id });
 
@@ -1166,7 +1169,20 @@ export class Team {
       for (const agent of project.agents.filter((a) => !a.usage || active(a))) {
         await this.refreshUsage(project, agent).catch(() => {});
       }
+      await this.tellAboutUpdates(project).catch((err) => console.error(`[updates] ${project.name}:`, err.message));
     }
+  }
+
+  /** After Symbio is updated, the coordinator learns what changed (a note; it isn't woken up). */
+  private async tellAboutUpdates(project: Project) {
+    const coordinator = this.coordinator(project);
+    const updates = unseenUpdates(project.updatesSeen);
+    if (!coordinator || updates.length === 0) return;
+    const note = updatesNote(updates);
+    await this.note(project, coordinator, note);
+    await this.log(project, { from: "symbio", to: coordinator.id, kind: "system", text: note });
+    project.updatesSeen = [...(project.updatesSeen ?? []), ...updates.map((u) => u.id)];
+    await this.store.update(project);
   }
 
   /** Private docs aren't visible to OpenCode on its own; inject them, but only when they changed. */

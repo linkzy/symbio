@@ -107,6 +107,12 @@ team in mind: grant it, deny it with a reason, or leave it queued and tell them
 who holds it. Answer requests promptly — a helper may be waiting on you. Assets
 nobody holds are yours.
 
+## When Symbio changes
+
+Symbio itself gets updated. When that changes how the team works, you receive a
+note starting with "Symbio update". Follow the new behavior from then on, and if
+it affects this project's plan or how you've organized the work, tell the human.
+
 ${connectionsSection(connections)}
 
 ## Rules for commands

@@ -15,6 +15,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - Fresh sessions for long-running agents (button, or automatically after each merged task), with
   a handoff note; earlier sessions stay readable.
 - Leftover helper folders of removed projects are cleaned up at startup.
+- After an update, each project's coordinator is told what changed for the agents (a note, it
+  isn't woken up); the human sees the same list in Messages.
 
 ## [0.1.0]
 
