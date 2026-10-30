@@ -5,8 +5,9 @@ import { streamSSE } from "hono/streaming";
 import { bus, type UiEvent } from "./bus.js";
 import type { OpencodeRuntime } from "./opencode/runtime.js";
 import type { Store, Project, DocsLocation, ProjectConnection } from "./store.js";
-import { promises as fs } from "node:fs";
+import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { describeInspection, inspectFolder } from "./inspect.js";
 import { gitAvailable, initRepository } from "./git.js";
 import { pickFolder } from "./folder-picker.js";
@@ -227,6 +228,29 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     const [inspection, hasGit] = await Promise.all([inspectFolder(dir), gitAvailable()]);
     const existing = store.list().find((p) => path.resolve(p.directory).toLowerCase() === inspection.directory.toLowerCase());
     return c.json({ ...inspection, gitAvailable: hasGit, existingProject: existing ? { id: existing.id, name: existing.name } : null });
+  });
+
+  // Folder browser inside the page (works through remote access, where the native dialog
+  // would open on this computer's screen). Lists subfolder names only, never files.
+  api.get("/fs/dirs", async (c) => {
+    const requested = c.req.query("path")?.trim();
+    const dir = requested && path.isAbsolute(requested) ? path.resolve(requested) : os.homedir();
+    const roots =
+      process.platform === "win32"
+        ? "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((d) => `${d}:\\`).filter((d) => existsSync(d))
+        : ["/"];
+    try {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      const dirs = entries
+        .filter((e) => e.isDirectory() && !e.name.startsWith("$") && e.name !== "System Volume Information")
+        .map((e) => e.name)
+        .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }))
+        .slice(0, 1000);
+      const parent = path.dirname(dir);
+      return c.json({ path: dir, parent: parent === dir ? null : parent, dirs, roots, home: os.homedir(), sep: path.sep });
+    } catch (err) {
+      return c.json({ error: `Can't open ${dir}: ${(err as NodeJS.ErrnoException).code ?? (err as Error).message}` }, 400);
+    }
   });
 
   // Opens the native folder dialog on this machine; path is null when cancelled.
@@ -618,6 +642,39 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       }
     }),
   );
+
+  // The same events by long polling, for connections that can't hold a stream open (e.g. remote
+  // access through a Cloudflare quick tunnel). Waits up to 25 s for something new.
+  api.get("/events/poll", async (c) => {
+    const after = Number(c.req.query("after"));
+    if (!c.req.query("after") || !Number.isFinite(after)) {
+      return c.json({ seq: bus.lastSeq, events: [{ type: "runtime", ...runtimeInfo() }], gap: false });
+    }
+    let runtimeChanged = false;
+    if (bus.since(after).events.length === 0) {
+      await new Promise<void>((resolve) => {
+        const done = () => {
+          clearTimeout(timer);
+          bus.off("ui", onEvent);
+          runtime.off("state", onState);
+          c.req.raw.signal.removeEventListener("abort", done);
+          resolve();
+        };
+        const onEvent = () => setTimeout(done, 50); // let a burst of events arrive together
+        const onState = () => {
+          runtimeChanged = true;
+          done();
+        };
+        const timer = setTimeout(done, 25_000);
+        bus.on("ui", onEvent);
+        runtime.on("state", onState);
+        c.req.raw.signal.addEventListener("abort", done);
+      });
+    }
+    const r = bus.since(after);
+    if (runtimeChanged) r.events.push({ type: "runtime", ...runtimeInfo() });
+    return c.json(r);
+  });
 
   const app = new Hono();
   app.onError((err, c) => {

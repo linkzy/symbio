@@ -307,6 +307,11 @@ export const api = {
   project: (id: string) => call<Project>("GET", `/projects/${id}`),
   inspect: (dir: string) => call<Inspection>("GET", `/inspect?dir=${encodeURIComponent(dir)}`),
   pickFolder: (initial?: string) => call<{ path: string | null }>("POST", "/pick-folder", { initial }),
+  listDirs: (path?: string) =>
+    call<{ path: string; parent: string | null; dirs: string[]; roots: string[]; home: string; sep: string }>(
+      "GET",
+      `/fs/dirs${path ? `?path=${encodeURIComponent(path)}` : ""}`,
+    ),
   providers: () => call<{ connected: ConnectedProvider[]; catalog: ProviderCatalogEntry[] }>("GET", "/providers"),
   connectProviderKey: (id: string, key: string, answer: Record<string, string>) =>
     call<{ ok: true }>("POST", `/providers/${encodeURIComponent(id)}/key`, { key, answer }),
@@ -395,18 +400,48 @@ export const api = {
 
 type Listener = (e: UiEvent) => void;
 const listeners = new Set<Listener>();
-let source: EventSource | null = null;
+let started = false;
+const dispatch = (event: UiEvent) => {
+  for (const l of listeners) l(event);
+};
 
-/** One shared SSE connection for the whole app; EventSource reconnects on its own. */
+/**
+ * One shared event connection for the whole app. Server-Sent Events first (EventSource
+ * reconnects on its own); the server sends an event as soon as the stream opens, so if
+ * nothing arrives within a few seconds the stream is being held up by something in between
+ * (Cloudflare quick tunnels, for remote access, don't pass SSE) and we poll instead.
+ */
 export function subscribe(listener: Listener): () => void {
   listeners.add(listener);
-  if (!source) {
-    source = new EventSource(`/api/events?token=${encodeURIComponent(token)}`);
+  if (!started) {
+    started = true;
+    let alive = false;
+    const source = new EventSource(`/api/events?token=${encodeURIComponent(token)}`);
     source.onmessage = (msg) => {
-      if (!msg.data) return;
-      const event = JSON.parse(msg.data) as UiEvent;
-      for (const l of listeners) l(event);
+      alive = true;
+      if (msg.data) dispatch(JSON.parse(msg.data) as UiEvent);
     };
+    source.addEventListener("ping", () => (alive = true));
+    setTimeout(() => {
+      if (alive) return;
+      source.close();
+      void poll();
+    }, 6000);
   }
   return () => listeners.delete(listener);
+}
+
+async function poll() {
+  let after: number | null = null;
+  for (;;) {
+    try {
+      const path: string = after === null ? "/events/poll" : `/events/poll?after=${after}`;
+      const r: { seq: number; events: UiEvent[]; gap: boolean } = await call("GET", path);
+      if (r.gap) location.reload(); // missed too much to patch up
+      after = r.seq;
+      r.events.forEach(dispatch);
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
+  }
 }

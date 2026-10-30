@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, FolderOpen, FolderPlus, Plus } from "lucide-reac
 import { api, subscribe, type DocsLocation, type Inspection, type Project, type ProjectConnection, type RuntimeInfo } from "./api";
 import { ConnectionsPicker } from "./ConnectionsPicker";
 import { FolderSummary } from "./FolderSummary";
+import { FolderBrowser } from "./FolderBrowser";
 import { ModelPicker } from "./ModelPicker";
 import { ProjectMenu } from "./ProjectMenu";
 import { Avatar, Dialog, EmptyState, timeAgo } from "./ui";
@@ -145,6 +146,15 @@ function NewProjectDialog({ onClose }: { onClose: () => void }) {
   const [coordinator, setCoordinator] = useState("");
   const [busy, setBusy] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [browsing, setBrowsing] = useState(false);
+  // Through remote access the native dialog would open on the other computer: use the in-page browser.
+  const [remoteSession, setRemoteSession] = useState(false);
+  useEffect(() => {
+    api
+      .remote()
+      .then((r) => setRemoteSession(r.active && r.code === undefined))
+      .catch(() => {});
+  }, []);
   const [error, setError] = useState<string | null>(null);
 
   // Inspect the folder as the user types (debounced).
@@ -171,6 +181,7 @@ function NewProjectDialog({ onClose }: { onClose: () => void }) {
 
   // The dialog opens on the machine running Symbio (browsers can't reveal full paths).
   async function browse() {
+    if (remoteSession) return setBrowsing(true);
     setPicking(true);
     setInspectError(null);
     try {
@@ -262,6 +273,16 @@ function NewProjectDialog({ onClose }: { onClose: () => void }) {
             </span>
             <span className="hint">An empty folder starts a new project; an existing one is studied first. Created if it doesn't exist.</span>
           </label>
+          {browsing && (
+            <FolderBrowser
+              start={directory.trim() || undefined}
+              onCancel={() => setBrowsing(false)}
+              onPick={(p) => {
+                setDirectory(p);
+                setBrowsing(false);
+              }}
+            />
+          )}
           <label className="field">
             <span>Name</span>
             <input

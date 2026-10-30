@@ -10,6 +10,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 - Remote access: `sym remote` (or Settings → Remote access) opens a temporary Cloudflare link with an
   8-character access code; remote sessions need the code, 10 wrong codes shut it down, the agents'
   tools and shutdown are never reachable through it, and a banner with a Turn off button shows it's on.
+- Live updates work through proxies that hold event streams back (such as Cloudflare quick tunnels):
+  the page falls back to polling when the stream stays silent.
+- Through remote access, Browse opens a folder browser inside the page instead of the native dialog.
 
 ## [0.2.1]
 

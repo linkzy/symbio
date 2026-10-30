@@ -37,6 +37,8 @@ agents that run commands on your computer, so:
 - **Never through the tunnel:** the agents' tool endpoint (`/mcp`), debug routes, shutting Symbio
   down, opening a tunnel, and the native folder dialog.
 - **Requests from other sites** (a different `Origin`) are refused, as locally.
+- The in-page folder browser (used remotely instead of the native dialog) lists folder names only,
+  never files or their contents.
 - **Visible and easy to stop.** A banner shows that remote access is on, with a Turn off button
   (also for the remote visitor). Turning it off ends every remote session at once.
 - Requests are recognized as remote by Cloudflare's headers or the tunnel's host name. If neither
