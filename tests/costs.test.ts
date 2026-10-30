@@ -60,9 +60,9 @@ test("project usage sums every agent, including stopped ones, and lists unpriced
   };
   const report = projectUsage(project, {
     "p/a": { price: { input: 0, output: 10, cacheRead: 0, cacheWrite: 0 }, source: "yours" },
-    "p/b": { price: null, source: "none" },
+    "p/b": { price: { input: 1, output: 1, cacheRead: 1, cacheWrite: 1 }, source: "suggested", from: "x/b" },
   });
   assert.equal(report.tokens, 3_000_000);
   assert.equal(report.cost, 10);
-  assert.deepEqual(report.unpriced, ["p/b"]);
+  assert.deepEqual(report.unpriced, ["p/b"], "a suggestion isn't a price until the user accepts it");
 });

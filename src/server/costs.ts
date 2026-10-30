@@ -146,7 +146,10 @@ export function projectUsage(project: Project, prices: ReturnType<typeof resolve
   const unpriced = new Set<string>();
   const agents = project.agents.map((agent) => {
     const byModel = Object.entries(agentUsageByModel(agent)).map(([model, usage]) => {
-      const cost = costOf(usage, prices[model]?.price ?? undefined);
+      // A suggestion only counts once the user accepts it: the same model can cost something else (or
+      // nothing) at another provider.
+      const info = prices[model];
+      const cost = costOf(usage, info && (info.source === "yours" || info.source === "opencode") ? (info.price ?? undefined) : undefined);
       if (cost === null && tokensOf(usage) > 0) unpriced.add(model);
       total = addUsage(total, usage);
       totalCost += cost ?? 0;
