@@ -38,6 +38,8 @@ export interface Agent {
   pastUsage?: NonNullable<Agent["usage"]>;
   /** Sessions this agent used before its session was renewed, oldest first. */
   previousSessions?: { sessionId: string; endedAt: number }[];
+  /** Sub-agent sessions it started, with the totals already counted (see costs.ts). */
+  childSessions?: Record<string, { model: string; seen: NonNullable<Agent["usage"]> }>;
   /** Earlier names (after a rename), still accepted when other agents address it. */
   aliases?: string[];
   lastActivity: number;
@@ -79,6 +81,8 @@ export interface Project {
   renewSessions?: "manual" | "after-task";
   /** Agent-facing Symbio updates (updates.ts) the coordinator has been told about. */
   updatesSeen?: string[];
+  /** When the daily housekeeping check last ran (and told the human/coordinator). */
+  housekeptAt?: number;
   agents: Agent[];
   createdAt: number;
 }

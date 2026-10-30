@@ -44,3 +44,13 @@ test("process tree memory", () => {
   assert.equal(sumProcessTree(listing, 12), 3, "a leaf (no children) terminates");
   assert.equal(sumProcessTree("5 6 1\n6 5 2", 5), 3, "cycles from pid reuse terminate");
 });
+
+test("agents can't read Symbio's backups", () => {
+  const effect = (action: string, resource: string) => {
+    const matches = AGENT_PERMISSIONS.filter((r) => r.action === action && wildcardMatch(r.resource, resource));
+    return matches.some((r) => r.effect === "deny") ? "deny" : "default";
+  };
+  assert.equal(effect("read", String.raw`C:\Users\me\.symbio\backups\2026-10-30\symbio\secrets.enc`), "deny");
+  assert.equal(effect("read", "/home/me/.symbio/backups/2026-10-30/projects/x/project.json"), "deny");
+  assert.equal(effect("shell", "ls ~/.symbio/backups"), "deny");
+});

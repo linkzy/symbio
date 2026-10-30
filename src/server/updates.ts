@@ -43,6 +43,15 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "Costs are visible: the human now sees tokens and estimated cost per agent and model. Prefer cheaper allowed models for simple " +
       "work (spawn_agent's model parameter) and keep the most capable ones for hard tasks.",
   },
+  {
+    id: "2026-10-30-housekeeping",
+    text:
+      "Daily housekeeping: once a day Symbio checks for work that exists only on this machine (commits on the project's branch or " +
+      "helpers' branches that no remote has) and for build outputs piling up in helpers' folders. If it finds either, you get a " +
+      "'Symbio housekeeping' message: push work that's ready to share, tell the human if a branch shouldn't go to the remote, and " +
+      "free disk space in idle helpers' folders with the new clean_build_outputs tool (it only deletes git-ignored build folders " +
+      "like bin, obj and node_modules; work is never touched). Symbio also backs up its own state every day.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */

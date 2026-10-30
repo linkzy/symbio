@@ -17,8 +17,9 @@ import type { RemoteOps } from "./remote.js";
 import { coordinatorBrief, kickoffMessage, workerBrief } from "./prompts.js";
 import { git } from "./git.js";
 import { DEFAULT_MESSAGE_LIMIT, globalDir, newId, type Agent, type LoggedMessage, type MessageKind, type Project, type Store } from "./store.js";
-import { accountUsage, emptyUsage } from "./costs.js";
+import { accountChildUsage, accountUsage, emptyUsage, sessionUsage } from "./costs.js";
 import { AGENT_UPDATES, unseenUpdates, updatesNote } from "./updates.js";
+import { cleanBuildOutputs, dailyBackup, gb, helperFolders, lastBackup, unpushedWork, type FolderUsage, type UnpushedBranch } from "./housekeeping.js";
 import { coordinatorTools, workerTools, type ToolContext } from "./tools.js";
 import { changedFiles, createWorkspace, mergeWorkspace, removeWorkspace, restoreWorkspace, syncWorkspace } from "./workspaces.js";
 
@@ -28,6 +29,16 @@ const WATCHDOG_INTERVAL_MS = 30_000;
 // project, see Project.messageLimit). Protocol traffic — task assignments, asset
 // requests/grants/releases, review reports — comes from real progress and isn't counted.
 const PAIR_WINDOW_MS = 30 * 60_000;
+// Daily check: warn when helpers' build outputs pass this size.
+const BUILD_ALERT_BYTES = Number(process.env.SYMBIO_BUILD_ALERT_GB ?? 2) * 1024 ** 3;
+
+export interface HousekeepingReport {
+  checkedAt: number;
+  remote: string | null;
+  unpushed: UnpushedBranch[];
+  folders: FolderUsage[];
+  lastBackup: string | null;
+}
 const PROTOCOL_KINDS = new Set<MessageKind>([
   "asset-request",
   "asset-granted",
@@ -82,6 +93,9 @@ export class Team {
   /** MCP URL token → which project/folder it serves. Valid for this run only. */
   private mcpTokens = new Map<string, { projectId: string; directory: string }>();
   private pairTraffic = new Map<string, number[]>();
+  private housekeeper: ReturnType<typeof setInterval> | null = null;
+  private reports = new Map<string, HousekeepingReport>();
+  private childUsageCheckedAt = new Map<string, number>(); // agent → last sub-agent usage check
   private limitNoticed = new Map<string, number>(); // pair → when the human was last told
   private failedModels = new Map<string, Map<string, number>>(); // agentId → model → failedAt
   private fallbackBusy = new Set<string>();
@@ -119,6 +133,73 @@ export class Team {
   startWatchdog() {
     this.watchdog ??= setInterval(() => void this.checkStuck(), WATCHDOG_INTERVAL_MS);
     this.recycler ??= setInterval(() => void this.checkMemory(), MEMORY_CHECK_MS);
+    if (!this.housekeeper) {
+      setTimeout(() => void this.housekeeping(), 5 * 60_000);
+      this.housekeeper = setInterval(() => void this.housekeeping(), 60 * 60_000);
+    }
+  }
+
+  // ---------------------------------------------------------------- housekeeping
+
+  /** Hourly: today's backup, and (once a day per project) work-not-pushed and disk checks. */
+  async housekeeping() {
+    const backup = await dailyBackup(this.store.list()).catch((err) => console.error("[backup]", err.message));
+    if (backup) console.log(`[backup] ${backup}`);
+    for (const project of this.store.list()) {
+      if (Date.now() - (project.housekeptAt ?? 0) < 24 * 3600_000) continue;
+      await this.checkProject(project, true).catch((err) => console.error(`[housekeeping] ${project.name}:`, err.message));
+    }
+  }
+
+  /** Measures the project's unpushed work and helper folders; with notify, tells the human and core. */
+  async checkProject(project: Project, notify: boolean): Promise<HousekeepingReport> {
+    const [{ remote, branches }, folders] = await Promise.all([unpushedWork(project), helperFolders(project)]);
+    const report: HousekeepingReport = { checkedAt: Date.now(), remote, unpushed: branches, folders, lastBackup: await lastBackup() };
+    this.reports.set(project.id, report);
+    if (!notify) return report;
+
+    project.housekeptAt = Date.now();
+    await this.store.update(project);
+    const buildBytes = folders.reduce((s, f) => s + f.buildBytes, 0);
+    const parts: string[] = [];
+    if (branches.length) {
+      parts.push(
+        `Work that exists only on this machine (not on the remote "${remote}"):\n` +
+          branches.map((b) => `- ${b.branch}: ${b.commits} commit(s), latest "${b.latest}"`).join("\n") +
+          `\nIf it's ready to share, push it (git push ${remote} <branch>); if a branch shouldn't go to the remote, tell the human.`,
+      );
+    }
+    if (buildBytes > BUILD_ALERT_BYTES) {
+      parts.push(
+        `Helpers' folders hold ${gb(buildBytes)} of build outputs:\n` +
+          folders.filter((f) => f.buildBytes > 0).map((f) => `- ${f.name} (${f.status}): ${gb(f.buildBytes)} of ${gb(f.bytes)}`).join("\n") +
+          `\nFor idle helpers that don't need them right now, free the space with clean_build_outputs (work is never touched).`,
+      );
+    }
+    if (!parts.length) return report;
+    const text = `Symbio housekeeping (daily check):\n\n${parts.join("\n\n")}`;
+    await this.log(project, { from: "symbio", to: "human", kind: "system", text });
+    const coordinator = this.coordinator(project);
+    if (coordinator) await this.system(project, coordinator, text).catch(() => {});
+    bus.publish({ type: "project.updated", projectId: project.id });
+    return report;
+  }
+
+  housekeepingReport(project: Project): HousekeepingReport | undefined {
+    return this.reports.get(project.id);
+  }
+
+  async cleanHelperFolder(project: Project, agent: Agent): Promise<string> {
+    const freed = await cleanBuildOutputs(project, agent);
+    const report = this.reports.get(project.id);
+    const folder = report?.folders.find((f) => f.agentId === agent.id);
+    if (folder) {
+      folder.bytes = Math.max(0, folder.bytes - freed);
+      folder.buildBytes = 0;
+    }
+    await this.log(project, { from: "symbio", to: "human", kind: "system", text: `Cleaned ${agent.name}'s build outputs: ${gb(freed)} freed.` });
+    bus.publish({ type: "project.updated", projectId: project.id });
+    return `Freed ${gb(freed)} in ${agent.name}'s folder (build outputs only).`;
   }
 
   /**
@@ -990,19 +1071,34 @@ export class Team {
     const res = await this.client()
       .request("GET", `/api/session/${agent.sessionId}`)
       .catch(() => null);
-    const s = res?.data ?? res;
-    if (!s?.tokens) return;
-    agent.usage = {
-      cost: Number(s.cost) || 0,
-      input: s.tokens.input ?? 0,
-      output: s.tokens.output ?? 0,
-      reasoning: s.tokens.reasoning ?? 0,
-      cacheRead: s.tokens.cache?.read ?? 0,
-      cacheWrite: s.tokens.cache?.write ?? 0,
-    };
+    const usage = sessionUsage(res?.data ?? res);
+    if (!usage) return;
+    agent.usage = usage;
     accountUsage(agent, agent.usage);
+    await this.refreshChildUsage(agent).catch(() => {});
     await this.store.update(project);
     bus.publish({ type: "project.updated", projectId: project.id });
+  }
+
+  /** Sub-agent sessions (and theirs), under the agent's current and earlier sessions. */
+  private async refreshChildUsage(agent: Agent) {
+    const now = Date.now();
+    if (now - (this.childUsageCheckedAt.get(agent.id) ?? 0) < 60_000) return; // at most once a minute
+    this.childUsageCheckedAt.set(agent.id, now);
+    const queue = [agent.sessionId, ...(agent.previousSessions ?? []).map((s) => s.sessionId)];
+    const visited = new Set<string>();
+    while (queue.length) {
+      const parent = queue.shift()!;
+      if (visited.has(parent) || visited.size > 200) continue;
+      visited.add(parent);
+      const res = await this.client().request("GET", `/api/session?parentID=${encodeURIComponent(parent)}&limit=100`);
+      for (const child of res?.data ?? []) {
+        const usage = sessionUsage(child);
+        const model = child.model?.providerID && child.model?.id ? `${child.model.providerID}/${child.model.id}` : agent.model;
+        if (usage) accountChildUsage(agent, child.id, model, usage);
+        queue.push(child.id);
+      }
+    }
   }
 
   /** Usage events come in bursts; read the totals at most every few seconds per agent. */

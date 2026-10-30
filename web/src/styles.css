@@ -353,6 +353,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); margi
 .chat-scroll { flex: 1; overflow: auto; padding: 24px 24px 12px; }
 .chat-col { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
 .chat-col > .load-older { align-self: center; }
+.list-compact { display: flex; flex-direction: column; gap: 4px; }
 .msg-user { align-self: flex-end; max-width: 82%; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px 12px 4px 12px; padding: 9px 13px; white-space: pre-wrap; line-height: 1.55; font-size: 14px; }
 .msg-assistant { display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.65; }
 .msg-note { display: flex; justify-content: center; color: var(--text-3); font-size: 12px; text-align: center; line-height: 1.5; }

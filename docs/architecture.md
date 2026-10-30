@@ -124,6 +124,11 @@ live session, `Kanban.tsx` the plan, and `Settings.tsx`/`Providers.tsx` the glob
   folder, tasks and assets, and starts from a handoff note Symbio builds from the plan, the asset
   register and the message log. Old sessions stay readable. This keeps each step cheaper (every
   step re-reads the conversation), avoids repeated compactions, and keeps OpenCode's memory down.
+- **Housekeeping.** Every day Symbio backs up each project's `.symbio` folder and its own small files
+  to `~/.symbio/backups/<date>` (the last 7 days; `SYMBIO_BACKUP_DAYS`), and checks each project for
+  commits that no remote has (the project's branch and helpers' `symbio/*` branches) and for build
+  outputs piling up in helpers' folders (`SYMBIO_BUILD_ALERT_GB`, default 2). Findings go to the
+  human (Messages) and to core, which can push and use `clean_build_outputs`.
 - **Pause.** Pausing a team interrupts working agents and holds messages; resuming delivers them
   and tells interrupted agents to continue.
 

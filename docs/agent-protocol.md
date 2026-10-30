@@ -109,6 +109,7 @@ core only:
 | `assign_task` | Give a task to an existing helper |
 | `spawn_agent` | Create a helper with a name, purpose, first task and optionally a model |
 | `stop_agent` | Stop a helper; its assets are released |
+| `clean_build_outputs` | Delete an idle helper's git-ignored build folders (bin, obj, node_modules…) to free disk space |
 | `merge_work` | Merge a helper's committed work; refuses ungranted asset changes unless forced |
 | `declare_asset` | Declare or update a shared asset |
 | `grant_asset` / `deny_asset` | Answer an asset request |

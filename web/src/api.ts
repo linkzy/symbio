@@ -259,6 +259,14 @@ export interface Price {
 
 export type PriceInfo = { price: Price | null; source: "yours" | "opencode" | "suggested" | "none"; from?: string };
 
+export interface HousekeepingReport {
+  checkedAt: number;
+  remote: string | null;
+  unpushed: { branch: string; commits: number; latest: string }[];
+  folders: { agentId: string; name: string; status: string; bytes: number; buildBytes: number }[];
+  lastBackup: string | null;
+}
+
 export interface ProjectUsage {
   agents: { id: string; name: string; status: string; sessions: number; tokens: number; cost: number; byModel: { model: string; usage: Usage; tokens: number; cost: number | null }[] }[];
   total: Usage;
@@ -334,6 +342,9 @@ export const api = {
   history: (projectId: string, agentId: string) => call<any[]>("GET", `/projects/${projectId}/agents/${agentId}/history`),
   projectUsage: (projectId: string) => call<ProjectUsage>("GET", `/projects/${projectId}/usage`),
   prices: () => call<Record<string, PriceInfo>>("GET", "/prices"),
+  housekeeping: (projectId: string) => call<HousekeepingReport>("GET", `/projects/${projectId}/housekeeping`),
+  checkHousekeeping: (projectId: string) => call<HousekeepingReport>("POST", `/projects/${projectId}/housekeeping/check`),
+  cleanHelper: (projectId: string, agentId: string) => call<{ result: string }>("POST", `/projects/${projectId}/agents/${agentId}/clean`),
   setPrice: (model: string, price: Price | null) => call<{ ok: true }>("PUT", "/prices", { model, price }),
   historyPage: (projectId: string, agentId: string, limit: number, before?: string, session?: string) =>
     call<{ messages: any[]; hasMore: boolean }>(

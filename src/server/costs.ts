@@ -62,6 +62,33 @@ export function accountUsage(agent: Agent, sessionTotals: Usage): void {
   agent.usageSeen = { ...sessionTotals };
 }
 
+/**
+ * Sub-agents (e.g. OpenCode's "explore") run in child sessions Symbio doesn't otherwise see.
+ * Their usage is added to the agent that started them, under the child's own model.
+ */
+export function accountChildUsage(agent: Agent, childId: string, model: string, totals: Usage): void {
+  agent.childSessions ??= {};
+  const seen = agent.childSessions[childId]?.seen ?? ZERO;
+  const delta = emptyUsage();
+  for (const k of KEYS) delta[k] = Math.max(0, (totals[k] ?? 0) - (seen[k] ?? 0));
+  agent.usageByModel ??= {};
+  agent.usageByModel[model] = addUsage(agent.usageByModel[model] ?? ZERO, delta);
+  agent.childSessions[childId] = { model, seen: { ...totals } };
+}
+
+/** OpenCode session totals as a Usage. */
+export function sessionUsage(s: any): Usage | null {
+  if (!s?.tokens) return null;
+  return {
+    cost: Number(s.cost) || 0,
+    input: s.tokens.input ?? 0,
+    output: s.tokens.output ?? 0,
+    reasoning: s.tokens.reasoning ?? 0,
+    cacheRead: s.tokens.cache?.read ?? 0,
+    cacheWrite: s.tokens.cache?.write ?? 0,
+  };
+}
+
 /** Everything the agent has used, across sessions and models. */
 export function agentUsageByModel(agent: Agent): Record<string, Usage> {
   if (agent.usageByModel) return agent.usageByModel;

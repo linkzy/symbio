@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { accountUsage, costOf, projectUsage, resolvePrices, type Usage } from "../src/server/costs.js";
+import { accountChildUsage, accountUsage, costOf, projectUsage, resolvePrices, type Usage } from "../src/server/costs.js";
 
 const u = (input: number, output: number, cacheRead: number, cacheWrite: number): Usage => ({ cost: 0, input, output, reasoning: 0, cacheRead, cacheWrite });
 
@@ -65,4 +65,16 @@ test("project usage sums every agent, including stopped ones, and lists unpriced
   assert.equal(report.tokens, 3_000_000);
   assert.equal(report.cost, 10);
   assert.deepEqual(report.unpriced, ["p/b"], "a suggestion isn't a price until the user accepts it");
+});
+
+test("sub-agent sessions count for the agent that started them, under their own model, once", () => {
+  const agent: any = { id: "a", name: "core", model: "foundry/opus", status: "idle" };
+  accountUsage(agent, u(0, 100, 1000, 10));
+  accountChildUsage(agent, "ses_child", "foundry/sonnet", u(0, 50, 500, 5));
+  accountChildUsage(agent, "ses_child", "foundry/sonnet", u(0, 60, 700, 5)); // the child kept working
+  assert.deepEqual(agent.usageByModel["foundry/sonnet"], u(0, 60, 700, 5), "only the increase is added");
+  assert.deepEqual(agent.usageByModel["foundry/opus"], u(0, 100, 1000, 10), "the agent's own usage is untouched");
+  // Read again later with the same totals: nothing new.
+  accountChildUsage(agent, "ses_child", "foundry/sonnet", u(0, 60, 700, 5));
+  assert.deepEqual(agent.usageByModel["foundry/sonnet"], u(0, 60, 700, 5));
 });

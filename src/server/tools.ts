@@ -237,6 +237,19 @@ const stopAgent: Tool = {
   },
 };
 
+const cleanBuildOutputs: Tool = {
+  name: "clean_build_outputs",
+  description:
+    "Free disk space in an idle helper's folder by deleting its build outputs (git-ignored folders such as bin, obj, node_modules). " +
+    "Committed and uncommitted work is never touched; the outputs are rebuilt when needed.",
+  inputSchema: obj({ agent: str("Helper name") }, ["agent"]),
+  async run({ agent: name }, { team, project }) {
+    const target = team.findAgent(project, name);
+    if (!target || target.role === "coordinator") throw new Error(`No helper agent named "${name}".`);
+    return team.cleanHelperFolder(project, target);
+  },
+};
+
 const mergeWork: Tool = {
   name: "merge_work",
   description:
@@ -454,6 +467,7 @@ const COORDINATOR_ONLY = [
   spawnAgent,
   stopAgent,
   mergeWork,
+  cleanBuildOutputs,
   declareAsset,
   grantAsset,
   denyAsset,

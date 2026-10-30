@@ -145,6 +145,7 @@ folder. After that, `sym` starts Symbio from anywhere.
 | `~/.symbio/connections.json` | Connection settings (no secrets) |
 | `~/.symbio/secrets.enc` | Connection secrets, encrypted with a key kept in your OS credential store |
 | `~/.symbio/worktrees/` | Helpers' working copies |
+| `~/.symbio/backups/` | Daily backups of Symbio's state (the last 7 days) |
 | `<project>/.symbio/` | Project state: agents, plan, message log, shared assets (git-ignored automatically) |
 | `<project>/AGENTS.md`, `<project>/docs/` | Project documentation for agents (unless you chose *private*) |
 | OpenCode's database | The conversations themselves. Every agent is an OpenCode session, so you can also open one with `opencode -s <session-id>`. |

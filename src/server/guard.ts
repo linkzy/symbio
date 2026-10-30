@@ -90,6 +90,8 @@ const SECRET_PATHS = [
   "*/.symbio/ui-token*",
   "*\\.symbio\\approvals*",
   "*/.symbio/approvals*",
+  "*\\.symbio\\backups*",
+  "*/.symbio/backups*",
   "*\\opencode\\auth.json",
   "*/opencode/auth.json",
 ];
@@ -103,6 +105,7 @@ const SECRET_SHELL = [
   "*.symbio*secrets*",
   "*ui-token*",
   "*.symbio*approvals*",
+  "*.symbio*backups*",
   "*opencode*auth.json*",
 ];
 

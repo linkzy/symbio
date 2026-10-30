@@ -492,6 +492,27 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     return c.json({ ok: true });
   });
 
+  // Housekeeping: backups, work not on the remote, helpers' disk use.
+  api.get("/projects/:id/housekeeping", async (c) => {
+    const project = withProject(c.req.param("id"));
+    return c.json(team.housekeepingReport(project) ?? (await team.checkProject(project, false)));
+  });
+
+  api.post("/projects/:id/housekeeping/check", async (c) => {
+    const project = withProject(c.req.param("id"));
+    return c.json(await team.checkProject(project, false));
+  });
+
+  api.post("/projects/:id/agents/:agentId/clean", async (c) => {
+    const project = withProject(c.req.param("id"));
+    const agent = withAgent(project, c.req.param("agentId"));
+    try {
+      return c.json({ result: await team.cleanHelperFolder(project, agent) });
+    } catch (err) {
+      return c.json({ error: (err as Error).message }, 400);
+    }
+  });
+
   // A fresh session for a long-running agent (keeps its identity; the old session stays readable).
   api.post("/projects/:id/agents/:agentId/renew", async (c) => {
     const project = withProject(c.req.param("id"));

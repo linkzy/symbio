@@ -5,6 +5,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Costs include sub-agents (OpenCode's own subagents such as "explore"), under their own model.
+- Daily housekeeping: backups of Symbio's state (last 7 days), a check for work that exists only on
+  this machine and for helpers' build outputs; the human and core are told, core can push and clean
+  with the new `clean_build_outputs` tool, and Project settings → Storage & backups shows it all.
+
 - Long chats load in pages: the latest messages first, earlier ones when scrolling up.
 - The loop guard only counts conversation (not task or asset traffic), is configurable per project
   (Settings → Team) and tells the human when it blocks.

@@ -35,7 +35,7 @@ Every agent session gets permission rules from `src/server/guard.ts`:
 | Rule | Why |
 |---|---|
 | **Deny** killing processes by name or PID (`taskkill`, `Stop-Process`, `kill`, `pkill`, `killall`, `wmic … process`…) | Your terminals, editors and Symbio itself run the same executables. An agent once ran `taskkill /F /IM node.exe /T` and closed all of them. Agents stop what they started with `stop_process`. |
-| **Deny** reading or editing `~/.ssh`, Symbio's secret store, the UI key, the approvals store and OpenCode's provider logins (`auth.json`), and shell commands that mention them or private key files | Servers and GitHub are reached through Symbio's connection tools instead |
+| **Deny** reading or editing `~/.ssh`, Symbio's secret store, the UI key, the approvals store, Symbio's backups and OpenCode's provider logins (`auth.json`), and shell commands that mention them or private key files | Servers and GitHub are reached through Symbio's connection tools instead |
 | **Ask** before installing software (`winget`, `choco`, `npm -g`, `pip install`…) and "download and run" commands (`… \| sh`, `… \| bash -s`, `… \| sudo bash`, `… \| iex`) | You approve installs from the *Needs you* inbox |
 
 These are pattern rules, not a sandbox: an agent can still do damage with commands the patterns
