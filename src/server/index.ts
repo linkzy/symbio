@@ -87,6 +87,12 @@ async function main() {
     }
     await next();
   });
+  // `sym stop`: a clean shutdown (agents are left as they are and resumed on the next start).
+  let shutdown: (() => Promise<void>) | null = null;
+  app.post("/api/shutdown", (c) => {
+    setTimeout(() => void shutdown?.(), 200);
+    return c.json({ ok: true });
+  });
   app.route("/api", createApi(store, runtime, team, connections));
   // Agents' tool server. Only reachable from this machine (we bind to 127.0.0.1) and only with a per-run token.
   app.all("/mcp/:token", (c) => handleMcp(c, team.mcpResolver));
@@ -117,14 +123,14 @@ async function main() {
     .catch((err) => console.error("OpenCode failed to start:", err.message));
   team.startWatchdog();
 
-  const shutdown = async () => {
+  shutdown = async () => {
     team.shuttingDown = true;
     team.stopWatchdog();
     await runtime.stop();
     process.exit(0);
   };
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", () => void shutdown?.());
+  process.on("SIGTERM", () => void shutdown?.());
 }
 
 function openBrowser(url: string) {

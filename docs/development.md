@@ -88,6 +88,23 @@ docs/                  This documentation
   starts a local SSH server (127.0.0.1:2222, user `deploy`, password `s3cret`).
 - Files matching `scripts/_*` are git-ignored, which is handy for throwaway scripts.
 
+## Releasing
+
+1. Move the entries under `[Unreleased]` in `CHANGELOG.md` to a new version and set the same
+   version in `package.json`.
+2. If agents work differently, make sure `src/server/updates.ts` has entries for it.
+3. `npm pack` and try the package from a temporary prefix before publishing:
+   ```sh
+   npm pack --pack-destination /tmp/symbio-pkg
+   npm i -g --prefix /tmp/symbio-pkg/prefix /tmp/symbio-pkg/symbio-<version>.tgz
+   SYMBIO_HOME=/tmp/symbio-pkg/home SYMBIO_PORT=4330 /tmp/symbio-pkg/prefix/sym doctor
+   ```
+4. `npm publish` (it runs the type-check, tests and build first), then tag the commit
+   (`git tag v<version>`) and push the tag.
+
+OpenCode is a pinned dependency (`@opencode/cli`, patch updates only). Moving to a newer minor
+version means re-verifying the APIs in [opencode-api.md](opencode-api.md) first.
+
 ## Debugging
 
 - **Calling the API yourself** (curl, scripts): every `/api` request needs the UI key, from

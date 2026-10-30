@@ -28,7 +28,8 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
                     git worktrees, SSH, GitHub API
 ```
 
-- **OpenCode is the agent runtime.** Symbio starts its *own* private `opencode serve`: a random port,
+- **OpenCode is the agent runtime.** Symbio ships with a pinned OpenCode (the `@opencode/cli`
+  dependency; `SYMBIO_OPENCODE_BIN` overrides it) and starts its *own* private `opencode serve`: a random port,
   a random `OPENCODE_SERVER_PASSWORD`, Basic auth user `opencode`, in `--stdio` mode so the password
   doesn't reach agents' shells and the server exits with Symbio. It doesn't touch any other
   OpenCode instance you run.

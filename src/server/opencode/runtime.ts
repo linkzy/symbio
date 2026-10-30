@@ -8,6 +8,7 @@ import { randomBytes } from "node:crypto";
 import { createServer } from "node:net";
 import path from "node:path";
 import { EventEmitter } from "node:events";
+import { createRequire } from "node:module";
 import { OpencodeClient, type OpencodeEvent } from "./client.js";
 
 const execFileAsync = promisify(execFile);
@@ -215,12 +216,33 @@ export class OpencodeRuntime extends EventEmitter<RuntimeEvents> {
 }
 
 /**
- * Finds a way to launch opencode. Prefers the real executable so we can
+ * The OpenCode executable that ships with Symbio (the @opencode/cli dependency, pinned to a
+ * version Symbio was verified against). Its postinstall puts the platform binary at the
+ * path its package.json declares.
+ */
+export function bundledOpencode(): string | null {
+  try {
+    const require = createRequire(import.meta.url);
+    const pkgPath = require.resolve("@opencode/cli/package.json");
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
+    const rel = typeof pkg.bin === "string" ? pkg.bin : pkg.bin?.opencode;
+    const exe = rel ? path.resolve(path.dirname(pkgPath), rel) : null;
+    return exe && existsSync(exe) ? exe : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Finds a way to launch opencode: an explicit SYMBIO_OPENCODE_BIN, the bundled copy, a global
+ * install, then whatever `opencode` is on the PATH. Prefers the real executable so we can
  * kill/monitor it directly instead of a .cmd shim.
  */
-function resolveOpencode(): { command: string; args: string[]; shell: boolean } {
+export function resolveOpencode(): { command: string; args: string[]; shell: boolean } {
   const override = process.env.SYMBIO_OPENCODE_BIN;
   if (override) return { command: override, args: [], shell: false };
+  const bundled = bundledOpencode();
+  if (bundled) return { command: bundled, args: [], shell: false };
   if (process.platform === "win32") {
     try {
       const root = execFileSync("npm.cmd", ["root", "-g"], { encoding: "utf8", windowsHide: true, shell: true }).trim();

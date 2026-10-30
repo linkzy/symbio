@@ -30,6 +30,16 @@ export function Home({ runtime }: { runtime: RuntimeInfo | null }) {
 
   const canCreate = runtime?.state === "running";
 
+  // First run on a new machine: nothing to run agents on until a provider is connected.
+  const [noProviders, setNoProviders] = useState(false);
+  useEffect(() => {
+    if (runtime?.state !== "running") return;
+    api
+      .providers()
+      .then((p) => setNoProviders(p.connected.every((c) => c.models === 0)))
+      .catch(() => {});
+  }, [runtime?.state]);
+
   return (
     <div className="page-inner">
       <div className="page-head">
@@ -42,6 +52,15 @@ export function Home({ runtime }: { runtime: RuntimeInfo | null }) {
           New project
         </button>
       </div>
+
+      {noProviders && (
+        <div className="notice row" style={{ justifyContent: "space-between", gap: 12 }}>
+          <span>No model provider is connected yet, so agents have no models to run on.</span>
+          <a className="btn sm" href="#/settings">
+            Connect a provider
+          </a>
+        </div>
+      )}
 
       {projects && projects.length === 0 && (
         <div className="section">

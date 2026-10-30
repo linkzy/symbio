@@ -80,33 +80,41 @@ place. Here Symbio was restarted mid-task, and it told the helper to pick up whe
 ## Requirements
 
 - **Node.js 22+**
-- **OpenCode 2.x:** `npm i -g @opencode/cli`. Symbio starts its own private OpenCode server, using
-  your normal OpenCode configuration and provider logins.
 - **Git** (recommended): it isolates helpers from each other. Without git, helpers share the folder
   and rely on shared-asset grants alone.
-- At least one model provider connected in OpenCode. You can add providers from Symbio's Settings.
+- A model provider: OpenCode's own, or any you connect in Symbio's **Settings → Model providers**
+  (API key or browser sign-in).
+
+Symbio brings its own copy of [OpenCode](https://opencode.ai), pinned to a version it's tested
+with, and runs it privately. It shares your OpenCode configuration and provider logins, so
+providers you already use in OpenCode show up in Symbio too.
 
 Symbio has been developed and used on **Windows 11**. It's written to be cross-platform (macOS and
 Linux are expected to work), but those haven't been tested yet. Reports are welcome.
 
 ## Getting started
 
-Symbio isn't published to npm yet; run it from a clone:
-
 ```sh
-git clone https://github.com/linkzy/symbio.git
-cd symbio
-npm install
-npm run build
-npm start            # opens Symbio in your browser
+npm install -g symbio
+sym                  # starts Symbio in the background and opens it in your browser
 ```
 
 Symbio opens its page with a private key in the link (it also prints the link). The browser
 remembers the key, so after that `http://127.0.0.1:4310` is enough. The key stops other programs
 on your computer, including the agents, from using Symbio's API behind your back.
 
-To get the `symbio` command (and its short alias `sym`) on your PATH, run `npm link` once in the
-folder. After that, `sym` starts Symbio from anywhere.
+| Command | |
+|---|---|
+| `sym` | Start Symbio in the background and open it (or just open it, if it's running). Closing the terminal doesn't stop it. |
+| `sym stop` | Stop Symbio. Agents that were working pick up where they left off on the next start. |
+| `sym status` | Whether it's running, OpenCode's state, and each project's agents. |
+| `sym open` | Open Symbio in the browser. |
+| `sym logs` | The last lines of the log (`~/.symbio/logs/symbio.log`). |
+| `sym doctor` | Check Node.js, git, OpenCode, the port and model providers. |
+| `sym run` | Run in the foreground, with the log in the terminal. |
+
+`symbio` works too, as the long name of `sym`. To run from a clone instead: `npm install`,
+`npm run build`, then `npm link` once to get the commands.
 
 ## How to use it
 
@@ -163,7 +171,7 @@ All optional, set as environment variables:
 | `SYMBIO_HOME` | `~/.symbio` | Where Symbio keeps its global data |
 | `SYMBIO_NO_OPEN` | | Set to `1` to not open the browser on start (use the link Symbio prints) |
 | `SYMBIO_DEBUG` | | Set to `1` to enable the read-only OpenCode debug routes (for development) |
-| `SYMBIO_OPENCODE_BIN` | auto | Path to the `opencode` executable |
+| `SYMBIO_OPENCODE_BIN` | bundled | Path to an `opencode` executable to use instead of the bundled one |
 | `SYMBIO_STUCK_MINUTES` | `10` | Silence before the watchdog interrupts a working agent |
 | `SYMBIO_RECYCLE_MB` | `1500` | Restart OpenCode above this memory use once every agent is idle |
 | `SYMBIO_RECYCLE_HARD_MB` | `3000` | Restart OpenCode above this memory use regardless (agents resume) |

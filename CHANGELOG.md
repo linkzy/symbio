@@ -5,6 +5,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0]
+
+- Installable with `npm install -g symbio`; brings its own OpenCode (pinned to 2.1.x).
+- Commands: `sym` (start in the background and open), `sym stop`, `sym status`, `sym open`,
+  `sym logs`, `sym doctor`, `sym run`.
+- The projects page points to Settings → Model providers when no provider is connected.
+
 - Costs include sub-agents (OpenCode's own subagents such as "explore"), under their own model.
 - Daily housekeeping: backups of Symbio's state (last 7 days), a check for work that exists only on
   this machine and for helpers' build outputs; the human and core are told, core can push and clean
