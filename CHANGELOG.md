@@ -5,6 +5,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0]
+
+- Remote access: `sym remote` (or Settings → Remote access) opens a temporary Cloudflare link with an
+  8-character access code; remote sessions need the code, 10 wrong codes shut it down, the agents'
+  tools and shutdown are never reachable through it, and a banner with a Turn off button shows it's on.
+
 ## [0.2.1]
 
 - Releases are published from GitHub Actions with npm trusted publishing (no tokens), with

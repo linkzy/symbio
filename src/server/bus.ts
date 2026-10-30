@@ -6,6 +6,7 @@ export type UiEvent =
   | { type: "runtime"; state: string; version: string | null; error: string | null }
   | { type: "project.updated"; projectId: string }
   | { type: "prices.updated" }
+  | { type: "remote.updated" }
   | { type: "assets.updated"; projectId: string }
   | { type: "plan.updated"; projectId: string }
   | { type: "approvals.updated"; projectId: string }

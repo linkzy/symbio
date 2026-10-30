@@ -112,6 +112,13 @@ on your computer, including the agents, from using Symbio's API behind your back
 | `sym logs` | The last lines of the log (`~/.symbio/logs/symbio.log`). |
 | `sym doctor` | Check Node.js, git, OpenCode, the port and model providers. |
 | `sym run` | Run in the foreground, with the log in the terminal. |
+| `sym remote` | Open a temporary link and access code to use Symbio from another device (see below). `sym remote off` closes it. |
+
+**From another device.** `sym remote` opens a temporary Cloudflare link to your Symbio and prints it
+with an access code. Open the link anywhere (phone, another computer), enter the code, and you're
+in. A banner shows it's on, with a button to turn it off; after 10 wrong codes it turns off by
+itself. Whoever gets in controls your agents, so keep the link and code to yourself. Details in
+[docs/security.md](docs/security.md#remote-access-optional).
 
 `symbio` works too, as the long name of `sym`. To run from a clone instead: `npm install`,
 `npm run build`, then `npm link` once to get the commands.
@@ -172,6 +179,7 @@ All optional, set as environment variables:
 | `SYMBIO_NO_OPEN` | | Set to `1` to not open the browser on start (use the link Symbio prints) |
 | `SYMBIO_DEBUG` | | Set to `1` to enable the read-only OpenCode debug routes (for development) |
 | `SYMBIO_OPENCODE_BIN` | bundled | Path to an `opencode` executable to use instead of the bundled one |
+| `SYMBIO_CLOUDFLARED_BIN` | auto | Path to `cloudflared` for remote access (otherwise the PATH, or a copy downloaded once) |
 | `SYMBIO_STUCK_MINUTES` | `10` | Silence before the watchdog interrupts a working agent |
 | `SYMBIO_RECYCLE_MB` | `1500` | Restart OpenCode above this memory use once every agent is idle |
 | `SYMBIO_RECYCLE_HARD_MB` | `3000` | Restart OpenCode above this memory use regardless (agents resume) |

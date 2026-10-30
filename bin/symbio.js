@@ -8,6 +8,7 @@
 //   sym logs       the last lines of its log
 //   sym doctor     check that everything Symbio needs is in place
 //   sym run        run in the foreground (for debugging)
+//   sym remote     open a temporary link to use Symbio from another device (sym remote off to close it)
 
 import { execFileSync, exec, spawn } from "node:child_process";
 import { existsSync, mkdirSync, openSync, readFileSync } from "node:fs";
@@ -113,10 +114,41 @@ async function status() {
   const runtime = (await api("GET", "/api/runtime")).body;
   const projects = (await api("GET", "/api/projects")).body ?? [];
   console.log(`OpenCode ${runtime?.version ?? "?"} (${runtime?.state ?? "?"}${runtime?.memoryMB ? `, ${runtime.memoryMB} MB` : ""})`);
+  const remote = (await api("GET", "/api/remote")).body;
+  if (remote?.active) console.log(`Remote access ON: ${remote.url} (${remote.sessions} session(s)) — sym remote off`);
   for (const p of projects) {
     const working = p.agents.filter((a) => a.status === "busy").length;
     console.log(`- ${p.name}: ${p.agents.filter((a) => a.status !== "stopped").length} agents${working ? `, ${working} working` : ""}${p.paused ? " (paused)" : ""}`);
   }
+}
+
+async function remoteOn() {
+  if ((await state()) !== "running") {
+    process.env.SYMBIO_NO_OPEN = "1";
+    await start();
+  }
+  console.log("Opening a temporary link (the first time, cloudflared is downloaded)…");
+  const res = await fetch(BASE + "/api/remote/start", { method: "POST", headers: { "x-symbio-token": token() }, signal: AbortSignal.timeout(180_000) });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    console.error(`Couldn't open remote access: ${body.error ?? res.status}`);
+    process.exit(1);
+  }
+  const code = body.code ? `${body.code.slice(0, 4)}-${body.code.slice(4)}` : "?";
+  console.log(`
+Remote access is on.
+
+  Link: ${body.url}
+  Code: ${code}
+
+Whoever has both controls your agents, which run commands on this computer.
+Turn it off with "sym remote off" (or the button in Symbio). After 10 wrong codes it turns off by itself.`);
+}
+
+async function remoteOff() {
+  if ((await state()) !== "running") return console.log("Symbio isn't running.");
+  await api("POST", "/api/remote/stop");
+  console.log("Remote access is off.");
 }
 
 function logs() {
@@ -169,6 +201,8 @@ Usage: sym [command]
   logs            show the last lines of the log
   doctor          check that everything Symbio needs is in place
   run             run in the foreground (logs in this terminal)
+  remote          open a temporary link + access code to use Symbio from another device
+  remote off      close that link
   --version       print the version
 
 Environment: SYMBIO_PORT (default 4310), SYMBIO_HOME (default ~/.symbio), SYMBIO_NO_OPEN=1.`);
@@ -190,6 +224,11 @@ switch (cmd) {
       console.log(link());
       openBrowser(link());
     } else console.log('Symbio isn\'t running. Start it with "sym".');
+    break;
+  case "remote":
+  case "--remote":
+    if (process.argv[3] === "off") await remoteOff();
+    else await remoteOn();
     break;
   case "logs":
     logs();

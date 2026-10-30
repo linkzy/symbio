@@ -10,6 +10,8 @@ import { RemoteOps } from "./remote.js";
 import { handleMcp } from "./mcp.js";
 import { isAllowedRequest } from "./origin.js";
 import { loadUiToken, tokenMatches } from "./ui-token.js";
+import { isTunnelRequest, loginPage, RemoteAccess, remoteDecision, SESSION_COOKIE } from "./remote-access.js";
+import { bus } from "./bus.js";
 import { OpencodeRuntime } from "./opencode/runtime.js";
 import { Store, globalDir } from "./store.js";
 import { Team } from "./team.js";
@@ -73,10 +75,40 @@ async function main() {
   team.markInterrupted("Symbio was stopped and has been restarted");
 
   const uiToken = loadUiToken(globalDir);
+  const remote = new RemoteAccess(path.join(globalDir, "bin"));
+  remote.onChange = () => bus.publish({ type: "remote.updated" });
+  const remoteRequests = new WeakSet<Request>(); // requests that came through the tunnel
   const app = new Hono();
   app.use("*", async (c, next) => {
-    const ok = isAllowedRequest({ method: c.req.method, host: c.req.header("host"), origin: c.req.header("origin") }, PORT);
-    if (!ok) return c.json({ error: "Requests must come from Symbio's own page on this computer." }, 403);
+    const viaTunnel = isTunnelRequest(
+      { host: c.req.header("host"), cfRay: c.req.header("cf-ray"), cfIp: c.req.header("cf-connecting-ip") },
+      remote.host,
+    );
+    if (!viaTunnel) {
+      const ok = isAllowedRequest({ method: c.req.method, host: c.req.header("host"), origin: c.req.header("origin") }, PORT);
+      if (!ok) return c.json({ error: "Requests must come from Symbio's own page on this computer." }, 403);
+      return next();
+    }
+    // Through the tunnel: only Symbio's own remote page may change things.
+    const origin = c.req.header("origin");
+    if (c.req.method !== "GET" && c.req.method !== "HEAD" && origin && origin !== `https://${remote.host}`) {
+      return c.json({ error: "Not allowed." }, 403);
+    }
+    const decision = remoteDecision({ method: c.req.method, path: c.req.path, hasSession: remote.hasSession(c.req.header("cookie")), active: remote.active });
+    if (decision === "deny") return c.text("Not available through remote access.", 403);
+    if (decision === "login-page") return c.html(loginPage());
+    if (decision === "need-login") return c.json({ error: "Log in with the access code.", code: "remote-login" }, 401);
+    if (decision === "login-submit") {
+      const body = await c.req.json<{ code?: string }>().catch(() => ({}) as { code?: string });
+      const result = await remote.login(String(body.code ?? ""));
+      if (result.ok) {
+        c.header("Set-Cookie", `${SESSION_COOKIE}=${result.session}; Path=/; Max-Age=${result.maxAge}; HttpOnly; Secure; SameSite=Strict`);
+        return c.json({ token: uiToken });
+      }
+      if (!remote.active) return c.json({ error: "Too many wrong codes: remote access was turned off." }, 423);
+      return c.json({ error: `Wrong code. ${result.left} attempt${result.left === 1 ? "" : "s"} left.` }, 401);
+    }
+    remoteRequests.add(c.req.raw);
     await next();
   });
   // The UI's key: a header, or a query parameter for the event stream (EventSource can't set headers).
@@ -92,6 +124,19 @@ async function main() {
   app.post("/api/shutdown", (c) => {
     setTimeout(() => void shutdown?.(), 200);
     return c.json({ ok: true });
+  });
+  // Remote access: status for everyone (the code only locally), start locally, stop from anywhere.
+  app.get("/api/remote", (c) => c.json(remote.status(!remoteRequests.has(c.req.raw))));
+  app.post("/api/remote/start", async (c) => {
+    try {
+      return c.json(await remote.start(PORT));
+    } catch (err) {
+      return c.json({ error: (err as Error).message }, 500);
+    }
+  });
+  app.post("/api/remote/stop", (c) => {
+    remote.stop(remoteRequests.has(c.req.raw) ? "turned off from a remote session" : "turned off on this computer");
+    return c.json(remote.status(!remoteRequests.has(c.req.raw)));
   });
   app.route("/api", createApi(store, runtime, team, connections));
   // Agents' tool server. Only reachable from this machine (we bind to 127.0.0.1) and only with a per-run token.
@@ -124,6 +169,7 @@ async function main() {
   team.startWatchdog();
 
   shutdown = async () => {
+    remote.stop("Symbio stopped");
     team.shuttingDown = true;
     team.stopWatchdog();
     await runtime.stop();

@@ -181,6 +181,7 @@ export type UiEvent =
   | ({ type: "runtime" } & RuntimeInfo)
   | { type: "project.updated"; projectId: string }
   | { type: "prices.updated" }
+  | { type: "remote.updated" }
   | { type: "assets.updated"; projectId: string }
   | { type: "plan.updated"; projectId: string }
   | { type: "approvals.updated"; projectId: string }
@@ -259,6 +260,16 @@ export interface Price {
 
 export type PriceInfo = { price: Price | null; source: "yours" | "opencode" | "suggested" | "none"; from?: string };
 
+export interface RemoteStatus {
+  active: boolean;
+  url: string | null;
+  startedAt: number | null;
+  sessions: number;
+  /** Only present on this computer, never through the tunnel. */
+  code?: string | null;
+  lastStop?: { at: number; reason: string } | null;
+}
+
 export interface HousekeepingReport {
   checkedAt: number;
   remote: string | null;
@@ -283,6 +294,8 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
   });
   const data = await res.json().catch(() => ({}));
   if (res.status === 401 && data.code === "locked") dispatchEvent(new Event(LOCKED_EVENT));
+  // Through remote access, without a session (or after it ended): back to the code page.
+  if (res.status === 401 && data.code === "remote-login") location.href = "/remote-login";
   if (!res.ok) throw new Error(data.error ?? res.statusText);
   return data as T;
 }
@@ -342,6 +355,9 @@ export const api = {
   history: (projectId: string, agentId: string) => call<any[]>("GET", `/projects/${projectId}/agents/${agentId}/history`),
   projectUsage: (projectId: string) => call<ProjectUsage>("GET", `/projects/${projectId}/usage`),
   prices: () => call<Record<string, PriceInfo>>("GET", "/prices"),
+  remote: () => call<RemoteStatus>("GET", "/remote"),
+  startRemote: () => call<RemoteStatus>("POST", "/remote/start"),
+  stopRemote: () => call<RemoteStatus>("POST", "/remote/stop"),
   housekeeping: (projectId: string) => call<HousekeepingReport>("GET", `/projects/${projectId}/housekeeping`),
   checkHousekeeping: (projectId: string) => call<HousekeepingReport>("POST", `/projects/${projectId}/housekeeping/check`),
   cleanHelper: (projectId: string, agentId: string) => call<{ result: string }>("POST", `/projects/${projectId}/agents/${agentId}/clean`),

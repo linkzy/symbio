@@ -1,6 +1,6 @@
 # Roadmap
 
-## Done (0.2)
+## Done (0.3)
 
 1. **Core runtime.** Private OpenCode server, projects, core's session, streaming chat, watchdog,
    crash recovery, memory recycling.
@@ -16,11 +16,11 @@
 7. **Providers.** Add and remove OpenCode model providers from Settings; per-agent model switching.
 8. **Packaging.** `npm i -g symbio` with a bundled, pinned OpenCode; `sym` start/stop/status/logs/doctor;
    first-run guidance.
+9. **Remote access.** `sym remote`: a temporary Cloudflare link with an access code, lockout, a banner
+   and a button to turn it off.
 
 ## Next
 
-- **Remote access.** `sym --remote`: a temporary Cloudflare URL plus an access code, with a banner and
-  a button to turn it off.
 - **Moving projects between machines.** Docs and plan travel with the folder, but agent sessions
   live in the local OpenCode database; reopening a project elsewhere should re-create its agents
   cleanly.

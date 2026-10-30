@@ -171,6 +171,11 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); margi
 /* ---------- App shell ---------- */
 .app { height: 100vh; display: flex; flex-direction: column; }
 .topbar { height: 48px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 14px 0 16px; border-bottom: 1px solid var(--border); background: var(--panel); }
+.remote-banner { flex: none; display: flex; align-items: center; gap: 10px; padding: 7px 14px 7px 16px; background: var(--amber-soft); border-bottom: 1px solid rgba(212, 160, 58, 0.35); color: var(--amber); font-size: 13px; }
+.remote-banner a { color: inherit; text-decoration: underline; }
+.remote-banner .spacer { flex: 1; }
+.remote-code { font-family: ui-monospace, monospace; font-weight: 600; letter-spacing: 0.08em; }
+.remote-code.big { font-size: 22px; color: var(--text); }
 .brand { display: flex; align-items: center; gap: 9px; font-weight: 600; font-size: 14px; letter-spacing: -0.01em; }
 .brand-logo { width: 22px; height: 22px; flex: none; }
 .crumbs { display: flex; align-items: center; gap: 6px; color: var(--text-3); font-size: 13px; min-width: 0; }

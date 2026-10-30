@@ -6,6 +6,7 @@ import { Home } from "./Home";
 import { ProjectView } from "./ProjectView";
 import { Settings } from "./Settings";
 import { EmptyState, Logo } from "./ui";
+import { RemoteBanner } from "./Remote";
 
 function useHashRoute() {
   const [hash, setHash] = useState(location.hash);
@@ -115,6 +116,7 @@ export function App() {
           <RuntimeBadge runtime={runtime} />
         </div>
       </header>
+      <RemoteBanner />
       <AnimatePresence mode="wait">
         <motion.main
           key={route.page === "project" ? route.id : route.page}

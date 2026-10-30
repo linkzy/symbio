@@ -70,6 +70,7 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 | `connections.ts`, `secrets.ts` | GitHub/SSH connections and the encrypted secret vault |
 | `remote.ts`, `ssh.ts` | Running remote actions for agents (SSH exec/upload, git push/pull, GitHub API) with approvals |
 | `providers.ts` | Listing, adding and removing OpenCode model providers |
+| `remote-access.ts` | Optional remote access: Cloudflare quick tunnel, access code, remote sessions, the remote login page |
 | `folder-picker.ts` | Native "choose a folder" dialog on the machine running Symbio |
 | `opencode/runtime.ts` | Starts, supervises and restarts `opencode serve`; measures its memory |
 | `opencode/client.ts` | Typed wrapper over the OpenCode HTTP API |

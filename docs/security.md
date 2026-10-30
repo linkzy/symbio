@@ -21,6 +21,32 @@ working around the human's control, and web pages in your browser reaching the l
   off unless Symbio is started with `SYMBIO_DEBUG=1`, because those responses can contain provider
   keys.
 
+## Remote access (optional)
+
+`sym remote` (or Settings → Remote access) opens a temporary Cloudflare quick tunnel, a
+`https://….trycloudflare.com` link to this Symbio, so you can use it from another device. It's off
+unless you turn it on, and it ends when you turn it off or Symbio stops. Through it, someone controls
+agents that run commands on your computer, so:
+
+- **Access code.** A new 8-character code (no look-alike characters) is made each time and shown
+  only on this computer, never through the tunnel. Entering it gives the browser a session cookie
+  (HttpOnly, Secure, SameSite=Strict, 12 hours).
+- **Lockout.** Every wrong code waits 1.5 seconds; after 10 wrong codes the tunnel is shut down.
+- **Two factors per request.** Remote API calls need both the session and the UI key; the key
+  alone (say, leaked from this computer) isn't enough from outside.
+- **Never through the tunnel:** the agents' tool endpoint (`/mcp`), debug routes, shutting Symbio
+  down, opening a tunnel, and the native folder dialog.
+- **Requests from other sites** (a different `Origin`) are refused, as locally.
+- **Visible and easy to stop.** A banner shows that remote access is on, with a Turn off button
+  (also for the remote visitor). Turning it off ends every remote session at once.
+- Requests are recognized as remote by Cloudflare's headers or the tunnel's host name. If neither
+  were present, a request would be treated as local, where it still needs the UI key.
+- `cloudflared` is used from the PATH, or downloaded once from Cloudflare's official GitHub releases
+  into `~/.symbio/bin`.
+
+Use it on machines and networks where that's acceptable, and only share the link and code with
+yourself.
+
 ## The OpenCode server
 
 Symbio's private OpenCode server listens on `127.0.0.1` with a random port and password. It runs in

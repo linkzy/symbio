@@ -122,6 +122,12 @@ version means re-verifying the APIs in [opencode-api.md](opencode-api.md) first.
 - Every agent is an OpenCode session; `opencode -s <session-id>` opens one in the terminal.
 - The message log of a project is `<project>/.symbio/messages.jsonl`.
 
+## Testing remote access
+
+Set `SYMBIO_CLOUDFLARED_BIN` to a `.js` stand-in that prints a `https://….trycloudflare.com` line
+and keeps running: Symbio runs it with Node instead of opening a real tunnel. Requests carrying a
+`cf-ray` header (or the tunnel's host name) are then treated exactly as tunnel traffic.
+
 ## Platform notes
 
 - **Windows** is where Symbio is developed. In Git Bash, prefix commands that pass `/api/...` paths
