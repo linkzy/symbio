@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowUp, Brain, Check, CircleAlert, CircleStop, GitBranch, Info, Loader2, Repeat, RotateCcw, Wrench, X } from "lucide-react";
+import { ArrowUp, Brain, Check, CircleAlert, CircleStop, GitBranch, Info, Loader2, Pencil, RefreshCw, Repeat, RotateCcw, Wrench, X } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { api, subscribe, type Agent, type Project } from "./api";
@@ -84,6 +84,62 @@ const KIND_TONE: Record<string, string> = {
   "asset-request": "accent",
 };
 
+/** The agent's name; helpers can be renamed in place (the old name keeps working for other agents). */
+function AgentName({ project, agent }: { project: Project; agent: Agent }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(agent.name);
+  const [saving, setSaving] = useState(false);
+  async function save() {
+    const name = value.trim();
+    if (!name || name === agent.name) return setEditing(false);
+    setSaving(true);
+    try {
+      await api.renameAgent(project.id, agent.id, name);
+      setEditing(false);
+    } catch (e) {
+      alert((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+  if (editing) {
+    return (
+      <input
+        className="title-input"
+        autoFocus
+        value={value}
+        disabled={saving}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={() => void save()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") void save();
+          if (e.key === "Escape") {
+            setValue(agent.name);
+            setEditing(false);
+          }
+        }}
+      />
+    );
+  }
+  return (
+    <div className="title row" style={{ gap: 6 }}>
+      {agent.name}
+      {agent.role !== "coordinator" && (
+        <button
+          className="btn ghost icon xs"
+          title="Rename"
+          onClick={() => {
+            setValue(agent.name);
+            setEditing(true);
+          }}
+        >
+          <Pencil size={12} />
+        </button>
+      )}
+    </div>
+  );
+}
+
 // Long conversations (thousands of messages) made the page sluggish. Only a window is
 // loaded: the latest PAGE messages, earlier pages when scrolling up, and the oldest are
 // dropped again past MAX_KEPT while the reader follows the end of the conversation.
@@ -114,6 +170,9 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [restarting, setRestarting] = useState(false);
+  const [renewing, setRenewing] = useState(false);
+  // null = the current session; otherwise an earlier one (read-only), after a renewal.
+  const [viewSession, setViewSession] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
 
@@ -126,7 +185,7 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
   const loadHistory = useCallback(
     () =>
       api
-        .historyPage(project.id, agent.id, PAGE)
+        .historyPage(project.id, agent.id, PAGE, undefined, viewSession ?? undefined)
         .then((page) => {
           const current = historyRef.current;
           let { messages, hasOlder: older } = mergeLatest(current.messages, page, current.hasOlder);
@@ -137,7 +196,7 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
           showHistory(messages, older);
         })
         .catch((e) => setFailure(e.message)),
-    [project.id, agent.id],
+    [project.id, agent.id, viewSession],
   );
 
   const loadOlder = useCallback(async () => {
@@ -145,7 +204,7 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
     if (!older || !messages?.length || loadingOlder) return;
     setLoadingOlder(true);
     try {
-      const page = await api.historyPage(project.id, agent.id, PAGE, messages[0].id);
+      const page = await api.historyPage(project.id, agent.id, PAGE, messages[0].id, viewSession ?? undefined);
       keepOffset.current = scroller.current?.scrollHeight ?? null;
       showHistory([...page.messages, ...messages], page.hasMore);
     } catch (e) {
@@ -153,7 +212,7 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
     } finally {
       setLoadingOlder(false);
     }
-  }, [project.id, agent.id, loadingOlder]);
+  }, [project.id, agent.id, loadingOlder, viewSession]);
 
   // After prepending older messages, keep the reader's place instead of jumping.
   useLayoutEffect(() => {
@@ -165,7 +224,14 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
   }, [history]);
 
   useEffect(() => {
+    // A different session (renewed, or picked to read): start the window over.
+    historyRef.current = { messages: null, hasOlder: false };
+    setHistory(null);
+    setHasOlder(false);
+    setLive([]);
+    stickToBottom.current = true;
     void loadHistory();
+    if (viewSession) return; // earlier sessions don't change
     return subscribe((e) => {
       if (e.type !== "agent.stream" || e.agentId !== agent.id) return;
       const { type, data } = e.event;
@@ -187,7 +253,7 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
       }
       setLive((blocks) => applyStreamEvent(blocks, type, data));
     });
-  }, [agent.id, loadHistory]);
+  }, [agent.id, agent.sessionId, viewSession, loadHistory]);
 
   useEffect(() => {
     const el = scroller.current;
@@ -218,7 +284,7 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
       <div className="chat-head">
         <Avatar name={agent.name} status={agent.status} size="lg" />
         <div className="grow">
-          <div className="title">{agent.name}</div>
+          <AgentName project={project} agent={agent} />
           <div className="sub ellipsis">
             {statusText(agent.status)} ·{" "}
             {agent.status === "stopped" ? (
@@ -243,8 +309,45 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
                 <GitBranch size={11} style={{ verticalAlign: -1 }} /> {agent.branch}
               </>
             )}
+            {(agent.previousSessions?.length ?? 0) > 0 && (
+              <>
+                {" · "}
+                <select
+                  className="inline-select"
+                  value={viewSession ?? ""}
+                  title="Earlier sessions stay readable after the agent got a fresh one"
+                  onChange={(e) => setViewSession(e.target.value || null)}
+                >
+                  <option value="">current session</option>
+                  {[...agent.previousSessions!].reverse().map((s, i) => (
+                    <option key={s.sessionId} value={s.sessionId}>
+                      earlier session {agent.previousSessions!.length - i} (until {new Date(s.endedAt).toLocaleString()})
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
           </div>
         </div>
+        {agent.status !== "stopped" && (
+          <button
+            className="btn ghost sm"
+            disabled={renewing || busy || agent.status === "waiting"}
+            title={busy ? "Available when the agent is idle" : "Continue in a fresh session: lighter and cheaper; a handoff note carries the essentials over"}
+            onClick={() => {
+              if (!confirm(`Give ${agent.name} a fresh session? It keeps its name, folder, tasks and assets, and starts from a handoff note. The current conversation stays readable.`)) return;
+              setRenewing(true);
+              setViewSession(null);
+              api
+                .renewSession(project.id, agent.id)
+                .catch((e) => alert(e.message))
+                .finally(() => setRenewing(false));
+            }}
+          >
+            <RefreshCw size={14} />
+            {renewing ? "Renewing…" : "New session"}
+          </button>
+        )}
         {agent.role !== "coordinator" && agent.status !== "stopped" && (
           <button
             className="btn ghost sm"
@@ -319,6 +422,16 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
         </div>
       </div>
 
+      {viewSession ? (
+        <div className="composer-wrap">
+          <div className="session-note">
+            You're reading an earlier session of {agent.name} (read-only).
+            <button className="btn sm" onClick={() => setViewSession(null)}>
+              Back to the current session
+            </button>
+          </div>
+        </div>
+      ) : (
       <div className="composer-wrap">
         <div className="composer">
           <textarea
@@ -350,6 +463,7 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

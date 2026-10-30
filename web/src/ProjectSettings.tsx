@@ -107,15 +107,17 @@ const DEFAULT_MESSAGE_LIMIT = 20;
 
 function Team({ project, onChanged }: { project: Project; onChanged: (p: Project) => void }) {
   const current = project.messageLimit ?? DEFAULT_MESSAGE_LIMIT;
+  const currentRenew = project.renewSessions ?? "manual";
   const [value, setValue] = useState(String(current));
+  const [renew, setRenew] = useState(currentRenew);
   const [saving, setSaving] = useState(false);
   const parsed = Number(value);
   const valid = value.trim() !== "" && Number.isInteger(parsed) && parsed >= 0 && parsed <= 1000;
-  const dirty = valid && parsed !== current;
+  const dirty = valid && (parsed !== current || renew !== currentRenew);
   async function save() {
     setSaving(true);
     try {
-      onChanged(await api.updateProject(project.id, { messageLimit: parsed }));
+      onChanged(await api.updateProject(project.id, { messageLimit: parsed, renewSessions: renew }));
     } catch (e) {
       alert((e as Error).message);
     } finally {
@@ -127,24 +129,45 @@ function Team({ project, onChanged }: { project: Project; onChanged: (p: Project
       <div className="section-head">
         <div>
           <h2>Team</h2>
-          <p>
-            Guards against two agents going back and forth without progress. Task assignments, shared-asset requests and review reports
-            don't count, only conversation.
-          </p>
+          <p>How the agents of this project work together.</p>
         </div>
       </div>
       <div className="stack" style={{ padding: 16, gap: 14 }}>
+        <div className="field">
+          <span>Fresh sessions for helpers</span>
+          <div className="seg">
+            <button className={renew === "manual" ? "on" : ""} onClick={() => setRenew("manual")}>
+              When I ask
+            </button>
+            <button className={renew === "after-task" ? "on" : ""} onClick={() => setRenew("after-task")}>
+              After each merged task
+            </button>
+          </div>
+          <span className="hint">
+            Long conversations get slow and costly, since every step re-reads them. A fresh session keeps the helper's name, folder, tasks
+            and assets and starts from a handoff note; the old conversation stays readable. "When I ask": use New session in the agent's
+            chat.
+          </span>
+        </div>
         <label className="field">
           <span>Messages two agents may exchange in 30 minutes</span>
           <input type="number" min={0} max={1000} value={value} onChange={(e) => setValue(e.target.value)} style={{ maxWidth: 140 }} />
           <span className="hint">
             {valid && parsed === 0
               ? "No limit: agents can message each other freely."
-              : `When two agents reach it, further messages between them wait until older ones are 30 minutes old, and you're told. 0 removes the limit. Default ${DEFAULT_MESSAGE_LIMIT}.`}
+              : `Guards against two agents going back and forth without progress; task assignments, shared-asset requests and review reports don't count. When two agents reach it, further messages between them wait until older ones are 30 minutes old, and you're told. 0 removes the limit. Default ${DEFAULT_MESSAGE_LIMIT}.`}
           </span>
         </label>
       </div>
-      <SaveBar dirty={dirty} saving={saving} onSave={save} onReset={() => setValue(String(current))} />
+      <SaveBar
+        dirty={dirty}
+        saving={saving}
+        onSave={save}
+        onReset={() => {
+          setValue(String(current));
+          setRenew(currentRenew);
+        }}
+      />
     </section>
   );
 }

@@ -299,8 +299,10 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       connections?: ProjectConnection[];
       allowedPatterns?: { action: string; pattern: string }[];
       messageLimit?: number;
+      renewSessions?: "manual" | "after-task";
     }>();
     if (body.name?.trim()) project.name = body.name.trim();
+    if (body.renewSessions === "manual" || body.renewSessions === "after-task") project.renewSessions = body.renewSessions;
     if (body.messageLimit !== undefined) {
       const limit = Number(body.messageLimit);
       if (!Number.isInteger(limit) || limit < 0 || limit > 1000) return c.json({ error: "The message limit must be a whole number from 0 to 1000." }, 400);
@@ -490,6 +492,30 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     return c.json({ ok: true });
   });
 
+  // A fresh session for a long-running agent (keeps its identity; the old session stays readable).
+  api.post("/projects/:id/agents/:agentId/renew", async (c) => {
+    const project = withProject(c.req.param("id"));
+    const agent = withAgent(project, c.req.param("agentId"));
+    try {
+      await team.renewSession(project, agent, "renewed by the human");
+      return c.json(project);
+    } catch (err) {
+      return c.json({ error: (err as Error).message }, 400);
+    }
+  });
+
+  api.post("/projects/:id/agents/:agentId/rename", async (c) => {
+    const project = withProject(c.req.param("id"));
+    const agent = withAgent(project, c.req.param("agentId"));
+    const { name } = await c.req.json<{ name?: string }>();
+    try {
+      await team.renameAgent(project, agent, name ?? "");
+      return c.json(project);
+    } catch (err) {
+      return c.json({ error: (err as Error).message }, 400);
+    }
+  });
+
   // Switch one agent's model (takes effect from its next turn).
   api.post("/projects/:id/agents/:agentId/model", async (c) => {
     const project = withProject(c.req.param("id"));
@@ -533,7 +559,7 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     if (limit > 0) {
       const before = c.req.query("before");
       if (before && !/^msg_[A-Za-z0-9]+$/.test(before)) return c.json({ error: "invalid message id" }, 400);
-      return c.json(await team.historyPage(agent, Math.min(limit, 200), before));
+      return c.json(await team.historyPage(agent, Math.min(limit, 200), before, c.req.query("session") || undefined));
     }
     return c.json(await team.history(agent));
   });

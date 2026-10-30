@@ -75,6 +75,8 @@ export interface Project {
    * before further ones are refused. 0 turns the guard off. Unset = DEFAULT_MESSAGE_LIMIT.
    */
   messageLimit?: number;
+  /** "after-task": helpers get a fresh session when their task is merged. Unset/"manual": only on request. */
+  renewSessions?: "manual" | "after-task";
   agents: Agent[];
   createdAt: number;
 }

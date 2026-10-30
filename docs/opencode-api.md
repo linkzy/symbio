@@ -30,7 +30,7 @@ Symbio stops a server left behind by a previous run, if it's still running.
 |---|---|
 | Server version | `GET /api/info` |
 | Create an agent | `POST /api/session` `{title, location: {directory}, model: {providerID, id}, permissions}` |
-| Read a session / its messages | `GET /api/session/{id}`, `GET /api/session/{id}/message` |
+| Read a session / its messages | `GET /api/session/{id}`, `GET /api/session/{id}/message?limit=&cursor=` (newest first) |
 | Update permissions | `PATCH /api/session/{id}` |
 | Deliver a message (wakes the agent) | `POST /api/session/{id}/prompt` `{text, delivery: "queue" \| "steer"}` |
 | Add to the conversation without a turn | `POST /api/session/{id}/synthetic` `{text, delivery, resume}` |
@@ -75,6 +75,10 @@ and idle), `session.text.*`, `session.reasoning.*`, `session.tool.*` (live outpu
   catalog providers (OpenRouter, Anthropic…) return 404 "Integration not found", and saving a
   credential with `POST /api/credential {integrationID, value: {type: "key", key, metadata}}` is
   how they're connected. Extra form answers (like Azure's `resourceName`) go in `metadata`.
+- **Message pages.** `GET /api/session/{id}/message` returns newest first, with `cursor.next` for
+  older pages. The cursor is base64url JSON `{"id": <message id>, "order": "desc", "direction":
+  "next"}`, meaning "older than that message", so Symbio builds it itself to fetch "the N messages
+  before X" (verified: identical to OpenCode's own cursor). An invalid cursor returns 400.
 - **Secrets in responses.** `GET /api/credential` and `GET /api/provider` can return API keys in
   full. Never forward them to the browser; `providers.ts` copies whitelisted fields only.
 - **Quota errors.** OpenCode's own free tier limit is per account, not per model, so falling back to

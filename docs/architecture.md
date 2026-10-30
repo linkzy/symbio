@@ -59,6 +59,7 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 | `mcp.ts` | Minimal MCP server (Streamable HTTP, JSON responses) |
 | `prompts.ts` | The briefs given to core and helpers |
 | `plan.ts` | The plan and its tasks (`plan.json`) |
+| `costs.ts` | Token usage per agent and model, model prices (`~/.symbio/prices.json`) and estimated cost |
 | `assets.ts` | Shared-asset register: holders, queues, history, merge-time checks (`assets.json`) |
 | `workspaces.ts` | Git worktrees for helpers: create, merge, sync, remove, restore |
 | `git.ts` | Thin git wrapper |
@@ -113,8 +114,16 @@ live session, `Kanban.tsx` the plan, and `Settings.tsx`/`Providers.tsx` the glob
 - **Memory recycling.** OpenCode's memory is measured (the whole process tree). Above
   `SYMBIO_RECYCLE_MB` it is restarted once every agent is idle; above `SYMBIO_RECYCLE_HARD_MB` it
   is restarted anyway and agents resume.
-- **Loop guard.** After 12 messages between the same two agents within 30 minutes, further messages
-  are refused and the agents are told to bring the human in with `ask_human`.
+- **Loop guard.** Conversational messages between the same two agents are limited per 30 minutes
+  (20 by default, set per project in Settings → Team, 0 = off). Protocol traffic (task
+  assignments, shared-asset requests and grants, review reports) doesn't count. Past the limit,
+  further messages are refused, the agents are told to bring the human in, and the human gets a
+  notice.
+- **Fresh sessions.** A long-running agent can continue in a new OpenCode session (New session in
+  its chat, or automatically after each merged task if the project says so). It keeps its identity,
+  folder, tasks and assets, and starts from a handoff note Symbio builds from the plan, the asset
+  register and the message log. Old sessions stay readable. This keeps each step cheaper (every
+  step re-reads the conversation), avoids repeated compactions, and keeps OpenCode's memory down.
 - **Pause.** Pausing a team interrupts working agents and holds messages; resuming delivers them
   and tells interrupted agents to continue.
 

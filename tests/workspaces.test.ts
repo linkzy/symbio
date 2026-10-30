@@ -6,7 +6,7 @@ import { test } from "node:test";
 
 process.env.SYMBIO_HOME = mkdtempSync(path.join(os.tmpdir(), "orq-ws-home-"));
 const { git, initRepository } = await import("../src/server/git.js");
-const { createWorkspace, mergeWorkspace, syncWorkspace, changedFiles, removeWorkspace, restoreWorkspace } = await import("../src/server/workspaces.js");
+const { createWorkspace, mergeWorkspace, syncWorkspace, changedFiles, removeWorkspace, restoreWorkspace, removeOrphanWorkspaces } = await import("../src/server/workspaces.js");
 
 // git on Windows may convert line endings on checkout/merge.
 const read = (file: string) => readFileSync(file, "utf8").replace(/\r\n/g, "\n");
@@ -93,4 +93,18 @@ test("a restarted helper gets its workspace back", async () => {
   const again = await restoreWorkspace(project, agent);
   assert.equal(again.reset, false, "existing workspace reused");
   assert.equal(read(path.join(agent.directory, "b.txt")), "draft\n", "unmerged work kept");
+});
+
+test("leftover folders of removed projects are cleaned up; live projects are left alone", async () => {
+  const { mkdirSync, existsSync } = await import("node:fs");
+  const root = path.join(process.env.SYMBIO_HOME!, "worktrees");
+  mkdirSync(path.join(root, "prj_gone123", "builder"), { recursive: true });
+  writeFileSync(path.join(root, "prj_gone123", "builder", "leftover.txt"), "x");
+  mkdirSync(path.join(root, "prj_live456", "helper"), { recursive: true });
+  mkdirSync(path.join(root, "not-a-project"), { recursive: true });
+  const removed = await removeOrphanWorkspaces(new Set(["prj_live456"]));
+  assert.equal(removed.length >= 1, true);
+  assert.equal(existsSync(path.join(root, "prj_gone123")), false, "removed project's folder deleted");
+  assert.equal(existsSync(path.join(root, "prj_live456")), true, "live project untouched");
+  assert.equal(existsSync(path.join(root, "not-a-project")), true, "unknown folders untouched");
 });

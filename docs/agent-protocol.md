@@ -35,8 +35,13 @@ pause, a restart, results of approved remote actions. Messages that arrive while
 working are handed over with its next Symbio tool call, so it doesn't have to finish its turn to
 see them.
 
-**Loop guard:** after 12 messages between the same two agents within 30 minutes, further messages
-are refused and the agents are told to use `ask_human`.
+**Loop guard:** conversational messages between the same two agents are limited per 30 minutes
+(20 by default; Settings → Team, 0 = off). Task assignments, shared-asset traffic and review
+reports don't count. Past the limit, further messages are refused, the agents are told to use
+`ask_human`, and the human is notified.
+
+**Renaming:** the human can rename a helper. Its branch and folder keep their names, the old name
+keeps reaching it, and every agent is told (without being woken up).
 
 ## Shared assets
 
@@ -48,12 +53,15 @@ what the asset is.
 core is the gatekeeper:
 
 1. core declares the assets (`declare_asset`, or in the plan) and holds any asset nobody else holds.
-2. A helper that needs one calls `request_asset(asset, reason)`; the request goes to core.
+2. A helper that needs one calls `request_asset(asset, reason)`. If nobody holds it and nobody else
+   is waiting, Symbio grants it immediately (the answer comes back in the tool result) and leaves
+   core a note without waking it. Otherwise the request goes to core.
 3. The helper does **not** touch the asset until granted. It continues with other work or ends its
    turn.
-4. core answers with `grant_asset` or `deny_asset` (with a reason), or leaves the request queued.
-   The decision is delivered as a message and wakes the helper.
-5. When done, the helper calls `release_asset(asset, summary)`, and core can grant the next request.
+4. core answers contended requests with `grant_asset` or `deny_asset` (with a reason), or leaves
+   them queued. The decision is delivered as a message and wakes the helper.
+5. When done, the helper calls `release_asset(asset, summary)`. core is woken only if someone is
+   waiting for the asset; otherwise it just gets a note.
 
 At merge, changes to path-pattern assets the helper wasn't granted are reported to core instead of
 being merged (unless core forces the merge).

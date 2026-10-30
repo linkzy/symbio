@@ -131,3 +131,23 @@ export async function removeWorkspace(project: Project, agent: Agent): Promise<v
   if (!agent.branch) return;
   await git(project.directory, "worktree", "remove", "--force", agent.directory).catch(() => {});
 }
+
+/**
+ * Deletes helper folders left behind by projects that no longer exist (removing a project
+ * deletes them, but on Windows an open file can make that fail halfway). Only Symbio's own
+ * worktrees folder is touched. Returns the folders removed.
+ */
+export async function removeOrphanWorkspaces(knownProjectIds: Set<string>): Promise<string[]> {
+  const root = path.join(globalDir, "worktrees");
+  const entries = await fs.readdir(root, { withFileTypes: true }).catch(() => []);
+  const removed: string[] = [];
+  for (const e of entries) {
+    if (!e.isDirectory() || !/^prj_[a-z0-9]+$/i.test(e.name) || knownProjectIds.has(e.name)) continue;
+    const dir = path.join(root, e.name);
+    await fs.rm(dir, { recursive: true, force: true, maxRetries: 3 }).then(
+      () => removed.push(dir),
+      (err) => console.warn(`[cleanup] could not remove ${dir}: ${err.message}`),
+    );
+  }
+  return removed;
+}

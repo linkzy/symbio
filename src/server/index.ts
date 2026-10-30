@@ -13,6 +13,7 @@ import { loadUiToken, tokenMatches } from "./ui-token.js";
 import { OpencodeRuntime } from "./opencode/runtime.js";
 import { Store, globalDir } from "./store.js";
 import { Team } from "./team.js";
+import { removeOrphanWorkspaces } from "./workspaces.js";
 
 const PORT = Number(process.env.SYMBIO_PORT ?? 4310);
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -54,6 +55,9 @@ async function main() {
 
   const store = new Store();
   await store.load();
+  // Folders of removed projects that couldn't be deleted at the time (e.g. a file was open).
+  const orphans = await removeOrphanWorkspaces(new Set(store.list().map((p) => p.id)));
+  if (orphans.length) console.log(`Removed ${orphans.length} leftover helper folder(s) of removed projects`);
 
   const connections = new Connections();
   await connections.load();

@@ -17,7 +17,7 @@ import type { RemoteOps } from "./remote.js";
 import { coordinatorBrief, kickoffMessage, workerBrief } from "./prompts.js";
 import { git } from "./git.js";
 import { DEFAULT_MESSAGE_LIMIT, globalDir, newId, type Agent, type LoggedMessage, type MessageKind, type Project, type Store } from "./store.js";
-import { accountUsage } from "./costs.js";
+import { accountUsage, emptyUsage } from "./costs.js";
 import { coordinatorTools, workerTools, type ToolContext } from "./tools.js";
 import { changedFiles, createWorkspace, mergeWorkspace, removeWorkspace, restoreWorkspace, syncWorkspace } from "./workspaces.js";
 
@@ -174,7 +174,41 @@ export class Team {
     const key = name.trim().toLowerCase();
     // "coordinator" (and "core") always reach the lead agent, whatever it is called.
     if (key === "coordinator" || key === "core") return this.coordinator(project);
-    return project.agents.find((a) => a.name.toLowerCase() === key && active(a));
+    return (
+      project.agents.find((a) => a.name.toLowerCase() === key && active(a)) ??
+      // After a rename, others may still use the old name.
+      project.agents.find((a) => a.aliases?.includes(key) && active(a))
+    );
+  }
+
+  /** Names in use (current and earlier names, stopped agents included) can't be reused. */
+  private nameTaken(project: Project, name: string, except?: Agent): boolean {
+    if (name === "core" || name === "coordinator" || name === "human" || name === "symbio") return true;
+    return project.agents.some((a) => a !== except && (a.name === name || a.aliases?.includes(name)));
+  }
+
+  /** Renames a helper. Its branch and folder keep their names; the old name keeps working. */
+  async renameAgent(project: Project, agent: Agent, newName: string): Promise<void> {
+    if (agent.role === "coordinator") throw new Error("core keeps its name.");
+    const name = newName.trim().toLowerCase().replace(/\s+/g, "-");
+    if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(name)) throw new Error("Use a short name with letters, digits and dashes (e.g. 'catalogo-web').");
+    if (name === agent.name) return;
+    if (this.nameTaken(project, name, agent)) throw new Error(`The name "${name}" is taken.`);
+    const old = agent.name;
+    agent.aliases = [...new Set([...(agent.aliases ?? []), old])].filter((a) => a !== name);
+    agent.name = name;
+    await this.store.update(project);
+    bus.publish({ type: "project.updated", projectId: project.id });
+    await this.log(project, { from: "symbio", to: "human", kind: "system", text: `${old} was renamed to ${name}.` });
+    // Everyone learns the new name without being woken up; briefs mention names too.
+    for (const other of project.agents.filter(active)) {
+      await this.refreshInstructions(project, other).catch(() => {});
+      const text =
+        other === agent
+          ? `Symbio: the human renamed you from "${old}" to "${name}". Your branch and folder are unchanged.`
+          : `Symbio: the human renamed the agent "${old}" to "${name}". Use "${name}" from now on (the old name still reaches it).`;
+      await this.system(project, other, text, false).catch(() => {});
+    }
   }
 
   agentName(project: Project, agentId: string): string | undefined {
@@ -382,7 +416,7 @@ export class Team {
     if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(name)) {
       throw new Error("Use a short name with letters, digits and dashes (e.g. 'researcher').");
     }
-    if (name === "core" || name === "coordinator" || name === "human" || project.agents.some((a) => a.name === name)) {
+    if (this.nameTaken(project, name)) {
       throw new Error(`The name "${name}" is taken. Choose another.`);
     }
     const model = opts.model?.trim() || coordinator.model;
@@ -496,6 +530,91 @@ export class Team {
     }
   }
 
+  /**
+   * Gives an agent a fresh OpenCode session, keeping its identity (name, folder, branch,
+   * tasks, assets). Long sessions get slow, costly (every step re-reads the context) and
+   * lossy (compactions), and they inflate OpenCode's memory. The new session starts from
+   * a handoff note built from what Symbio knows; the old one stays readable.
+   */
+  async renewSession(project: Project, agent: Agent, reason: string): Promise<void> {
+    if (agent.status === "busy" || agent.status === "waiting" || agent.status === "stuck") {
+      throw new Error(`${agent.name} is working; renew its session when it's idle.`);
+    }
+    if (agent.status === "stopped") throw new Error(`${agent.name} is stopped.`);
+    const client = this.client();
+    const oldSession = agent.sessionId;
+
+    // Count everything the old session used before leaving it.
+    await this.refreshUsage(project, agent).catch(() => {});
+    const handoff = await this.handoffNote(project, agent, oldSession);
+
+    await this.registerTools(project, agent.directory);
+    const session = await client.createSession({
+      title: `${project.name} · ${agent.name}`,
+      directory: agent.directory,
+      model: parseModel(agent.model),
+      permissions: AGENT_PERMISSIONS,
+    });
+    agent.previousSessions = [...(agent.previousSessions ?? []), { sessionId: oldSession, endedAt: Date.now() }];
+    agent.sessionId = session.id;
+    accountUsage(agent, agent.usage ?? emptyUsage());
+    agent.usage = emptyUsage();
+    agent.usageSeen = emptyUsage();
+    agent.status = "idle";
+    agent.lastActivity = Date.now();
+    this.inbox.delete(agent.id);
+    this.pendingQuestion.delete(agent.id);
+    await this.store.update(project);
+    await this.refreshInstructions(project, agent);
+    await client.setInstruction(agent.sessionId, "symbio-handoff", handoff);
+    await this.log(project, {
+      from: "symbio",
+      to: "human",
+      kind: "system",
+      text: `${agent.name} continues in a fresh session (${reason}). Its earlier conversation is still readable in its chat.`,
+    });
+    bus.publish({ type: "project.updated", projectId: project.id });
+  }
+
+  /** What an agent needs to carry on in a fresh session, from Symbio's own records. */
+  private async handoffNote(project: Project, agent: Agent, oldSession: string): Promise<string> {
+    const plan = (await this.plan(project)).plan;
+    const reg = await this.assets(project);
+    const mine = plan.tasks.filter((t) => t.assignee === agent.id);
+    const open = mine.filter((t) => t.status !== "done");
+    const done = mine.filter((t) => t.status === "done").slice(-8);
+    const lastNote = (t: (typeof mine)[number]) => t.notes?.filter((n) => n.by === agent.name).at(-1)?.text;
+    const held = reg.list().filter((a) => a.holder === agent.id).map((a) => a.name);
+    const log = (await this.store.readMessages(project)).filter((m) => m.from === agent.id || m.to === agent.id).slice(-8);
+    const nameOf = (id: string) => (id === "human" ? "human" : id === "symbio" ? "Symbio" : this.agentName(project, id) ?? id);
+    const lastText = await this.client()
+      .messagePage(oldSession, 30)
+      .then(({ messages }) => {
+        const last = messages.filter((m) => m.type === "assistant" && (m.content ?? []).some((c: any) => c.type === "text" && c.text)).at(-1);
+        return (last?.content ?? []).filter((c: any) => c.type === "text").map((c: any) => c.text).join("\n");
+      })
+      .catch(() => "");
+    const cut = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}…` : s);
+
+    const parts = [
+      `# Handoff: you are continuing as ${agent.name} in a fresh session`,
+      `Your previous session had grown long, so Symbio started a new one. Nothing about your role changed. ` +
+        `This note is what carries over; the project's docs (AGENTS.md, docs/) hold the durable knowledge, ` +
+        `and your committed work is in your folder.`,
+      agent.purpose ? `**Your purpose:** ${agent.purpose}` : "",
+      agent.role === "coordinator"
+        ? `**Plan:** ${plan.status}${plan.goal ? ` — ${plan.goal}` : ""}\n${plan.tasks.map((t) => `- ${t.id} [${t.status}] ${t.title}${t.assignee ? ` (${nameOf(t.assignee)})` : ""}`).join("\n")}`
+        : "",
+      agent.role !== "coordinator" && agent.branch ? `**Your folder:** ${agent.directory} (branch ${agent.branch}).` : "",
+      open.length ? `**Your open tasks:**\n${open.map((t) => `- ${t.id} [${t.status}] ${t.title}\n  ${cut(t.description, 600)}`).join("\n")}` : "**Open tasks:** none right now; wait for the next one.",
+      done.length ? `**Recently finished:**\n${done.map((t) => `- ${t.id} ${t.title}${lastNote(t) ? ` — ${cut(lastNote(t)!, 300)}` : ""}`).join("\n")}` : "",
+      held.length ? `**Shared assets you hold:** ${held.join(", ")} (release them when done).` : "",
+      log.length ? `**Latest messages:**\n${log.map((m) => `- ${nameOf(m.from)} → ${nameOf(m.to)} (${m.kind}): ${cut(m.text.replace(/\s+/g, " "), 400)}`).join("\n")}` : "",
+      lastText ? `**Your last answer in the previous session:**\n${cut(lastText, 2500)}` : "",
+    ];
+    return parts.filter(Boolean).join("\n\n");
+  }
+
   async mergeWork(project: Project, agent: Agent, force: boolean): Promise<string> {
     const { committed, uncommitted } = await changedFiles(agent);
     const reg = await this.assets(project);
@@ -519,12 +638,21 @@ export class Team {
       completed.push(task.id);
     }
     if (completed.length) this.planChanged(project);
-    await this.system(
-      project,
-      agent,
-      "Symbio: your committed work was merged into the project, and your workspace now includes the latest project state.",
-      false,
-    );
+    const renew =
+      completed.length > 0 &&
+      project.renewSessions === "after-task" &&
+      agent.status === "idle" &&
+      !plan.plan.tasks.some((t) => t.assignee === agent.id && t.status !== "done" && t.status !== "todo");
+    if (renew) {
+      await this.renewSession(project, agent, "its task was merged").catch((err) => console.error(`[renew] ${agent.name}:`, err.message));
+    } else {
+      await this.system(
+        project,
+        agent,
+        "Symbio: your committed work was merged into the project, and your workspace now includes the latest project state.",
+        false,
+      );
+    }
     return (
       `${result.summary}\n${result.files.map((f) => `- ${f}`).join("\n")}` +
       (completed.length ? `\nMarked done: ${completed.join(", ")}.` : "")
@@ -605,6 +733,16 @@ export class Team {
     this.assetsChanged(project);
     const coordinator = this.coordinator(project);
     if (!coordinator) throw new Error("This project has no coordinator.");
+
+    // Free and nobody else waiting: grant now, without spending a coordinator turn.
+    // The coordinator only decides when there is contention.
+    if (!asset.holder && asset.queue.length === 1 && asset.queue[0].agentId === agent.id && agent.id !== coordinator.id) {
+      await reg.grant(asset.name, agent.id, "granted automatically (it was free)");
+      this.assetsChanged(project);
+      await this.log(project, { from: coordinator.id, to: agent.id, kind: "asset-granted", text: `"${asset.name}" granted automatically — it was free. Reason given: ${reason}` });
+      await this.note(project, coordinator, `Symbio: granted the shared asset "${asset.name}" to ${agent.name} automatically (it was free). Reason: ${reason}`);
+      return `Granted: "${asset.name}" was free, so it's yours now. Change it, then call release_asset with a summary when you're done.`;
+    }
     const holder = asset.holder ? this.agentName(project, asset.holder) : null;
     const waiting = asset.queue.map((q) => this.agentName(project, q.agentId)).join(", ");
     await this.deliver(
@@ -654,13 +792,13 @@ export class Team {
     const coordinator = this.coordinator(project);
     if (coordinator && coordinator.id !== agent.id) {
       const waiting = asset.queue.map((q) => this.agentName(project, q.agentId)).join(", ");
-      await this.deliver(
-        project,
-        agent,
-        coordinator,
-        "asset-released",
-        `${agent.name} released "${asset.name}": ${summary}${waiting ? `\nStill waiting for it: ${waiting}.` : ""}`,
-      );
+      const text = `${agent.name} released "${asset.name}": ${summary}${waiting ? `\nStill waiting for it: ${waiting}.` : ""}`;
+      // Only wake the coordinator when someone is waiting for it to decide; otherwise a note.
+      if (waiting) await this.deliver(project, agent, coordinator, "asset-released", text);
+      else {
+        await this.log(project, { from: agent.id, to: coordinator.id, kind: "asset-released", text });
+        await this.note(project, coordinator, `Symbio: ${text}`);
+      }
     }
     return `Released "${asset.name}".`;
   }
@@ -931,8 +1069,10 @@ export class Team {
   }
 
   /** One page of an agent's conversation (for long chats), oldest first. */
-  historyPage(agent: Agent, limit: number, before?: string) {
-    return this.client().messagePage(agent.sessionId, limit, before);
+  historyPage(agent: Agent, limit: number, before?: string, sessionId?: string) {
+    // Earlier sessions (after a renewal) stay readable, but only the agent's own.
+    const session = sessionId && agent.previousSessions?.some((s) => s.sessionId === sessionId) ? sessionId : agent.sessionId;
+    return this.client().messagePage(session, limit, before);
   }
 
   /** Open interactive questions (OpenCode forms) the agent is waiting on. */
@@ -1280,6 +1420,12 @@ export class Team {
     } else {
       await this.client().synthetic(agent.sessionId, text, false);
     }
+  }
+
+  /** Adds a line to an agent's conversation without starting a turn or logging it (the caller logs). */
+  private async note(project: Project, agent: Agent, text: string) {
+    await this.prepare(project, agent).catch(() => {});
+    await this.client().synthetic(agent.sessionId, text, false).catch(() => {});
   }
 
   /** Delivers a message from Symbio to an agent and wakes it (used by connection approvals). */

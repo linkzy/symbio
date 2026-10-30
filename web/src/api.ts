@@ -12,6 +12,9 @@ export interface Agent {
   status: AgentStatus;
   problem?: string | null;
   usage?: { cost: number; input: number; output: number; reasoning: number; cacheRead: number; cacheWrite: number };
+  /** Sessions used before the agent got a fresh one, oldest first. */
+  previousSessions?: { sessionId: string; endedAt: number }[];
+  aliases?: string[];
   lastActivity: number;
 }
 
@@ -130,6 +133,7 @@ export interface Project {
   paused?: boolean;
   /** Conversational messages two agents may exchange in 30 minutes; 0 = no limit; unset = default (20). */
   messageLimit?: number;
+  renewSessions?: "manual" | "after-task";
   heldMessages?: { agentId: string; text: string }[];
   agents: Agent[];
   createdAt: number;
@@ -317,7 +321,7 @@ export const api = {
     call<{ path: string; content: string }>("GET", `/projects/${id}/docs/file?path=${encodeURIComponent(path)}`),
   writeDoc: (id: string, path: string, content: string) =>
     call<{ ok: true }>("PUT", `/projects/${id}/docs/file`, { path, content }),
-  updateProject: (id: string, patch: Partial<Pick<Project, "name" | "allowedModels" | "coordinatorModel" | "connections" | "allowedPatterns" | "messageLimit">>) =>
+  updateProject: (id: string, patch: Partial<Pick<Project, "name" | "allowedModels" | "coordinatorModel" | "connections" | "allowedPatterns" | "messageLimit" | "renewSessions">>) =>
     call<Project>("PATCH", `/projects/${id}`, patch),
   connections: () => call<ConnectionView[]>("GET", "/connections"),
   createConnection: (body: Record<string, unknown>) => call<ConnectionView>("POST", "/connections", body),
@@ -331,15 +335,18 @@ export const api = {
   projectUsage: (projectId: string) => call<ProjectUsage>("GET", `/projects/${projectId}/usage`),
   prices: () => call<Record<string, PriceInfo>>("GET", "/prices"),
   setPrice: (model: string, price: Price | null) => call<{ ok: true }>("PUT", "/prices", { model, price }),
-  historyPage: (projectId: string, agentId: string, limit: number, before?: string) =>
+  historyPage: (projectId: string, agentId: string, limit: number, before?: string, session?: string) =>
     call<{ messages: any[]; hasMore: boolean }>(
       "GET",
-      `/projects/${projectId}/agents/${agentId}/history?limit=${limit}${before ? `&before=${encodeURIComponent(before)}` : ""}`,
+      `/projects/${projectId}/agents/${agentId}/history?limit=${limit}${before ? `&before=${encodeURIComponent(before)}` : ""}${session ? `&session=${encodeURIComponent(session)}` : ""}`,
     ),
+  renewSession: (projectId: string, agentId: string) => call<Project>("POST", `/projects/${projectId}/agents/${agentId}/renew`),
   send: (projectId: string, agentId: string, text: string, urgent = false) =>
     call<{ ok: true }>("POST", `/projects/${projectId}/agents/${agentId}/messages`, { text, urgent }),
   interrupt: (projectId: string, agentId: string) =>
     call<{ ok: true }>("POST", `/projects/${projectId}/agents/${agentId}/interrupt`),
+  renameAgent: (projectId: string, agentId: string, name: string) =>
+    call<Project>("POST", `/projects/${projectId}/agents/${agentId}/rename`, { name }),
   setAgentModel: (projectId: string, agentId: string, model: string) =>
     call<Project>("POST", `/projects/${projectId}/agents/${agentId}/model`, { model }),
   restartAgent: (projectId: string, agentId: string) => call<Project>("POST", `/projects/${projectId}/agents/${agentId}/restart`),

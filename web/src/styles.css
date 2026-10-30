@@ -99,6 +99,9 @@ code, pre, .mono { font-family: var(--mono); font-size: 12px; }
 .btn.sm { height: 26px; padding: 0 9px; font-size: 12px; }
 .btn.icon { width: 30px; padding: 0; }
 .btn.icon.sm { width: 26px; }
+.btn.icon.xs { width: 20px; height: 20px; color: var(--text-3); }
+.btn.icon.xs:hover { color: var(--text); }
+.title-input { height: 24px; padding: 0 6px; font-weight: 600; max-width: 260px; }
 .btn.block { width: 100%; }
 .link { background: none; border: none; padding: 0; color: var(--accent-text); font: inherit; cursor: pointer; }
 .link:hover { text-decoration: underline; }
@@ -334,6 +337,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); margi
 .inbox-reason { font-size: 12px; color: var(--text-2); }
 .inbox-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .inbox-empty { padding: 40px 10px; text-align: center; color: var(--text-3); }
+.session-note { max-width: 760px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px dashed var(--border-strong); border-radius: var(--r); color: var(--text-2); font-size: 13px; }
 
 /* ---------- Chat ---------- */
 .chat { display: flex; flex-direction: column; height: 100%; min-height: 0; }

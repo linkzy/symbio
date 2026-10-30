@@ -5,6 +5,17 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Long chats load in pages: the latest messages first, earlier ones when scrolling up.
+- The loop guard only counts conversation (not task or asset traffic), is configurable per project
+  (Settings → Team) and tells the human when it blocks.
+- Usage per agent and model, including cache reads, earlier sessions and stopped agents, with an
+  estimated cost from editable model prices (Settings → Model prices).
+- Rename helpers; the old name keeps working.
+- Free shared assets are granted automatically; core only decides on contention.
+- Fresh sessions for long-running agents (button, or automatically after each merged task), with
+  a handoff note; earlier sessions stay readable.
+- Leftover helper folders of removed projects are cleaned up at startup.
+
 ## [0.1.0]
 
 First version.
