@@ -43,4 +43,9 @@ jobs:
           npm test
           npm run build
       - name: Publish
-        run: npm publish --access public --ignore-scripts # checks already ran above
+        shell: bash
+        run: |
+          # Pre-releases (1.2.3-beta.1) go out as "next", so `npm i symbio` keeps getting the stable one.
+          tag=latest
+          case "$GITHUB_REF_NAME" in *-*) tag=next ;; esac
+          npm publish --access public --tag "$tag" --ignore-scripts # checks already ran above
