@@ -52,6 +52,18 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "free disk space in idle helpers' folders with the new clean_build_outputs tool (it only deletes git-ignored build folders " +
       "like bin, obj and node_modules; work is never touched). Symbio also backs up its own state every day.",
   },
+  {
+    id: "2026-10-30-shared-folder",
+    text:
+      "Where helpers work: in a git project a helper can now work in the project folder itself instead of its own copy on its own " +
+      "branch. spawn_agent has a workspace option: \"own\" (as before: parallel work, merged with merge_work) or \"shared\" (the " +
+      "project folder: what it writes is there at once for you and the next helper; nothing to merge, and it doesn't commit). " +
+      "Use shared for step-by-step work where each step uses the previous one's files. Without the option, the project's setting " +
+      "applies (the human sets it in Settings; it stays \"own\" unless they change it). A shared helper's finished task arrives for " +
+      "review as usual; check its files in the project folder and mark the task done. move_to_project_folder moves an idle helper " +
+      "whose work is merged into the project folder (it continues in a fresh session). Background processes now belong to the agent " +
+      "that started them: list_processes and stop_process only show and stop your own, even in a shared folder.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */

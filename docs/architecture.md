@@ -34,7 +34,8 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
   doesn't reach agents' shells and the server exits with Symbio. It doesn't touch any other
   OpenCode instance you run.
 - **One agent = one OpenCode session**, with `location.directory` set to the agent's working folder
-  (the project root for core, a git worktree for a helper) and its own model.
+  (the project root for core and shared helpers, a git worktree for a helper with its own copy) and
+  its own model.
 - **Symbio is the post office.** Every agent-to-agent and agent-to-human message goes through
   Symbio, is logged to `messages.jsonl`, and is delivered with `session.prompt` (`delivery: queue`,
   or `steer` for urgent messages). Delivery wakes the agent; OpenCode's per-session inbox queues
@@ -62,7 +63,7 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 | `plan.ts` | The plan and its tasks (`plan.json`) |
 | `costs.ts` | Token usage per agent and model, model prices (`~/.symbio/prices.json`) and estimated cost |
 | `assets.ts` | Shared-asset register: holders, queues, history, merge-time checks (`assets.json`) |
-| `workspaces.ts` | Git worktrees for helpers: create, merge, sync, remove, restore |
+| `workspaces.ts` | Where helpers work: git worktrees (create, merge, sync, remove, restore) or the shared project folder |
 | `git.ts` | Thin git wrapper |
 | `inspect.ts` | Deterministic folder inspection for onboarding (no model cost) |
 | `docs.ts` | Project documentation (in the project, or private under `.symbio/docs`) |
@@ -90,10 +91,13 @@ live session, `Kanban.tsx` the plan, and `Settings.tsx`/`Providers.tsx` the glob
    it with the human, and creates or updates `AGENTS.md` and `docs/` (or private docs).
 4. **Plan.** core calls `submit_plan`; the Plan tab shows it for approval. The human approves or
    asks for changes.
-5. **Work.** core spawns helpers (`spawn_agent`) on tasks. Each helper gets a worktree on branch
-   `symbio/<name>`, its own session and the worker brief. Helpers report with `update_task`, talk
+5. **Work.** core spawns helpers (`spawn_agent`) on tasks. Each helper gets its own session, the
+   worker brief, and a folder: a worktree on branch `symbio/<name>`, or the project folder itself
+   (project setting `helperWorkspace`, or core's `workspace` choice). A helper moved into the
+   project folder continues in a fresh session there, since OpenCode ties a session to its folder. Helpers report with `update_task`, talk
    to core and to each other with `send_message`, and request shared assets.
-6. **Merge.** When a helper reports a task for review, core reviews and calls `merge_work`. Changes
+6. **Merge.** When a helper reports a task for review, core reviews and calls `merge_work` (shared
+   helpers have nothing to merge: core marks the task done). Changes
    to shared assets the helper wasn't granted are flagged instead of merged silently. After a merge
    the helper's branch is synced with the project.
 7. **Stop / restart.** A finished helper is stopped: its tasks are unassigned and its worktree is

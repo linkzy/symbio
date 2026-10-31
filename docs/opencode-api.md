@@ -40,7 +40,7 @@ Symbio stops a server left behind by a previous run, if it's still running.
 | Briefs (per-session instructions) | `PUT` / `DELETE /api/experimental/session/{id}/instructions/entries/{key}` `{value}` |
 | Permission requests | events `permission.asked` / `permission.replied`; reply `POST /api/session/{id}/permission/{requestID}/reply` with `once`, `always` or `reject` |
 | Forms (the `question` tool) | `GET /api/session/{id}/form`, `POST /api/session/{id}/form/{formID}/reply` `{answer}` |
-| Background shells | `GET /api/shell?location[directory]=…`, `DELETE /api/shell/{id}?location[directory]=…` |
+| Background shells | `GET /api/shell?location[directory]=…`, `DELETE /api/shell/{id}?location[directory]=…`; a shell an agent started has `metadata.sessionID` (verified 2.1.4), which is how Symbio tells agents' processes apart in a shared folder |
 | Register Symbio's tools | `PUT /api/experimental/mcp/symbio?location[directory]=…` `{config: {type: "remote", url}}` |
 | Check tool registration | `GET /api/mcp?location[directory]=…` → `data: [{name, status: {status: "connected"}}]` |
 | Models / providers | `GET /api/model`, `GET /api/provider` |

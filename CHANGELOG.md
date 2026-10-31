@@ -5,6 +5,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Helpers can work in the project folder itself instead of their own copy on a branch: what one
+  writes, the next sees at once, with nothing to merge (for pipelines and step-by-step work).
+  Settings → Team sets the default for new helpers; core can choose per helper; existing helpers
+  can be moved into the project folder from their chat (or by core) once their work is merged.
+- Background processes belong to the agent that started them: in a shared folder, agents only
+  see and stop their own, and stopping a helper stops only its processes.
+
 ## [0.3.0]
 
 - Remote access: `sym remote` (or Settings → Remote access) opens a temporary Cloudflare link with an

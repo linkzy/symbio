@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { bus, type UiEvent } from "./bus.js";
 import type { OpencodeRuntime } from "./opencode/runtime.js";
-import type { Store, Project, DocsLocation, ProjectConnection } from "./store.js";
+import type { Store, Project, DocsLocation, HelperWorkspace, ProjectConnection } from "./store.js";
 import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 import os from "node:os";
@@ -324,7 +324,9 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       allowedPatterns?: { action: string; pattern: string }[];
       messageLimit?: number;
       renewSessions?: "manual" | "after-task";
+      helperWorkspace?: HelperWorkspace;
     }>();
+    if (body.helperWorkspace === "own" || body.helperWorkspace === "shared") await team.setHelperWorkspace(project, body.helperWorkspace);
     if (body.name?.trim()) project.name = body.name.trim();
     if (body.renewSessions === "manual" || body.renewSessions === "after-task") project.renewSessions = body.renewSessions;
     if (body.messageLimit !== undefined) {
@@ -532,6 +534,18 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     const agent = withAgent(project, c.req.param("agentId"));
     try {
       return c.json({ result: await team.cleanHelperFolder(project, agent) });
+    } catch (err) {
+      return c.json({ error: (err as Error).message }, 400);
+    }
+  });
+
+  // Moves a helper from its own copy (branch) into the project folder.
+  api.post("/projects/:id/agents/:agentId/move-to-project-folder", async (c) => {
+    const project = withProject(c.req.param("id"));
+    const agent = withAgent(project, c.req.param("agentId"));
+    try {
+      await team.moveToProjectFolder(project, agent, "moved by the human");
+      return c.json(project);
     } catch (err) {
       return c.json({ error: (err as Error).message }, 400);
     }

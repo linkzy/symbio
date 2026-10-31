@@ -120,7 +120,9 @@ const releaseAsset: Tool = {
 const spawnAgent: Tool = {
   name: "spawn_agent",
   description:
-    "Create a helper agent. It gets its own isolated workspace in git projects. Give it a short name, its purpose, and its first task.",
+    "Create a helper agent. Give it a short name, its purpose, and its first task. In a git project it works either in its own copy " +
+    "on its own branch (\"own\": parallel edits, merged with merge_work) or in the project folder itself (\"shared\": its files are " +
+    "there at once for the next step, nothing to merge). Without workspace, the project's setting applies.",
   inputSchema: obj(
     {
       name: str("Short unique name, e.g. 'researcher' or 'chapter-writer'"),
@@ -128,11 +130,13 @@ const spawnAgent: Tool = {
       task_id: str("The plan task to start with (e.g. 'T2'). Preferred when there is a plan."),
       task: str("Its first task as text (when there is no plan task), or extra instructions for task_id"),
       model: str("Optional provider/model from the allowed list; defaults to your own model"),
+      workspace: { type: "string", enum: ["own", "shared"], description: "Where it works (git projects); defaults to the project's setting" },
     },
     ["name", "purpose"],
   ),
   async run(args, { team, project, agent }) {
     return team.spawnWorker(project, agent, {
+      workspace: args.workspace === "own" || args.workspace === "shared" ? args.workspace : undefined,
       name: String(args.name),
       purpose: String(args.purpose),
       task: args.task ? String(args.task) : undefined,
@@ -237,6 +241,19 @@ const stopAgent: Tool = {
   },
 };
 
+const moveToProjectFolder: Tool = {
+  name: "move_to_project_folder",
+  description:
+    "Move an idle helper from its own copy (branch) into the project folder, so it works on the project's files directly. " +
+    "It continues in a fresh session with a handoff note. Refused while its own copy has work that isn't merged yet.",
+  inputSchema: obj({ agent: str("Helper name") }, ["agent"]),
+  async run({ agent: name }, { team, project }) {
+    const target = team.findAgent(project, name);
+    if (!target || target.role === "coordinator") throw new Error(`No helper agent named "${name}".`);
+    return team.moveToProjectFolder(project, target, "moved by the coordinator");
+  },
+};
+
 const cleanBuildOutputs: Tool = {
   name: "clean_build_outputs",
   description:
@@ -327,7 +344,7 @@ const listProcesses: Tool = {
   name: "list_processes",
   description: "List the background processes (servers, watchers) you started that are still running, with their ids.",
   inputSchema: obj({}),
-  run: (_args, { team, agent }) => team.listProcesses(agent),
+  run: (_args, { team, project, agent }) => team.listProcesses(project, agent),
 };
 
 const stopProcess: Tool = {
@@ -336,7 +353,7 @@ const stopProcess: Tool = {
     "Stop a background process you started (by its shell id, e.g. sh_…, shown when you started it or by list_processes). " +
     "This is the only way to stop processes — killing by name or PID is blocked.",
   inputSchema: obj({ shell_id: str("The background shell id, e.g. sh_179a…") }, ["shell_id"]),
-  run: ({ shell_id }, { team, agent }) => team.stopProcess(agent, String(shell_id)),
+  run: ({ shell_id }, { team, project, agent }) => team.stopProcess(project, agent, String(shell_id)),
 };
 
 // ---- connections (GitHub, servers): Symbio acts with the stored credentials
@@ -468,6 +485,7 @@ const COORDINATOR_ONLY = [
   stopAgent,
   mergeWork,
   cleanBuildOutputs,
+  moveToProjectFolder,
   declareAsset,
   grantAsset,
   denyAsset,

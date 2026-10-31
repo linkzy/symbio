@@ -112,14 +112,16 @@ function Team({ project, onChanged }: { project: Project; onChanged: (p: Project
   const currentRenew = project.renewSessions ?? "manual";
   const [value, setValue] = useState(String(current));
   const [renew, setRenew] = useState(currentRenew);
+  const currentWorkspace = project.helperWorkspace ?? "own";
+  const [workspace, setWorkspace] = useState(currentWorkspace);
   const [saving, setSaving] = useState(false);
   const parsed = Number(value);
   const valid = value.trim() !== "" && Number.isInteger(parsed) && parsed >= 0 && parsed <= 1000;
-  const dirty = valid && (parsed !== current || renew !== currentRenew);
+  const dirty = valid && (parsed !== current || renew !== currentRenew || workspace !== currentWorkspace);
   async function save() {
     setSaving(true);
     try {
-      onChanged(await api.updateProject(project.id, { messageLimit: parsed, renewSessions: renew }));
+      onChanged(await api.updateProject(project.id, { messageLimit: parsed, renewSessions: renew, helperWorkspace: workspace }));
     } catch (e) {
       alert((e as Error).message);
     } finally {
@@ -136,13 +138,30 @@ function Team({ project, onChanged }: { project: Project; onChanged: (p: Project
       </div>
       <div className="stack" style={{ padding: 16, gap: 14 }}>
         <div className="field">
+          <span>Where new helpers work</span>
+          <div className="seg">
+            <button className={workspace === "own" ? "on" : ""} onClick={() => setWorkspace("own")}>
+              Their own copy
+            </button>
+            <button className={workspace === "shared" ? "on" : ""} onClick={() => setWorkspace("shared")}>
+              The project folder
+            </button>
+          </div>
+          <span className="hint">
+            {workspace === "own"
+              ? "Each helper gets its own copy of the project on its own branch, and core merges finished work. Best when helpers change the same files in parallel."
+              : "Helpers work in the project folder itself: what one writes, the next sees at once, with nothing to merge. Best for step-by-step work where each step uses the previous one's files."}{" "}
+            core can still choose per helper. Existing helpers stay where they are; move one from its chat. Only applies to git projects: without git, helpers always share the folder.
+          </span>
+        </div>
+        <div className="field">
           <span>Fresh sessions for helpers</span>
           <div className="seg">
             <button className={renew === "manual" ? "on" : ""} onClick={() => setRenew("manual")}>
               When I ask
             </button>
             <button className={renew === "after-task" ? "on" : ""} onClick={() => setRenew("after-task")}>
-              After each merged task
+              After each finished task
             </button>
           </div>
           <span className="hint">
@@ -168,6 +187,7 @@ function Team({ project, onChanged }: { project: Project; onChanged: (p: Project
         onReset={() => {
           setValue(String(current));
           setRenew(currentRenew);
+          setWorkspace(currentWorkspace);
         }}
       />
     </section>

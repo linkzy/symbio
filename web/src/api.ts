@@ -134,6 +134,7 @@ export interface Project {
   /** Conversational messages two agents may exchange in 30 minutes; 0 = no limit; unset = default (20). */
   messageLimit?: number;
   renewSessions?: "manual" | "after-task";
+  helperWorkspace?: "own" | "shared";
   heldMessages?: { agentId: string; text: string }[];
   agents: Agent[];
   createdAt: number;
@@ -347,7 +348,7 @@ export const api = {
     call<{ path: string; content: string }>("GET", `/projects/${id}/docs/file?path=${encodeURIComponent(path)}`),
   writeDoc: (id: string, path: string, content: string) =>
     call<{ ok: true }>("PUT", `/projects/${id}/docs/file`, { path, content }),
-  updateProject: (id: string, patch: Partial<Pick<Project, "name" | "allowedModels" | "coordinatorModel" | "connections" | "allowedPatterns" | "messageLimit" | "renewSessions">>) =>
+  updateProject: (id: string, patch: Partial<Pick<Project, "name" | "allowedModels" | "coordinatorModel" | "connections" | "allowedPatterns" | "messageLimit" | "renewSessions" | "helperWorkspace">>) =>
     call<Project>("PATCH", `/projects/${id}`, patch),
   connections: () => call<ConnectionView[]>("GET", "/connections"),
   createConnection: (body: Record<string, unknown>) => call<ConnectionView>("POST", "/connections", body),
@@ -382,6 +383,8 @@ export const api = {
   setAgentModel: (projectId: string, agentId: string, model: string) =>
     call<Project>("POST", `/projects/${projectId}/agents/${agentId}/model`, { model }),
   restartAgent: (projectId: string, agentId: string) => call<Project>("POST", `/projects/${projectId}/agents/${agentId}/restart`),
+  moveToProjectFolder: (projectId: string, agentId: string) =>
+    call<Project>("POST", `/projects/${projectId}/agents/${agentId}/move-to-project-folder`),
   stopAgent: (projectId: string, agentId: string) =>
     call<{ result: string }>("POST", `/projects/${projectId}/agents/${agentId}/stop`),
   forms: (projectId: string, agentId: string) => call<unknown[]>("GET", `/projects/${projectId}/agents/${agentId}/forms`),

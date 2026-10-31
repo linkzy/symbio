@@ -119,3 +119,86 @@ test("after an update, core gets the agent-facing changes once, as a note; new p
   await (team as any).tellAboutUpdates(project);
   assert.equal(notes(calls, "ses_core").length, 1, "not repeated");
 });
+
+test("in the shared project folder, each agent sees and stops only the processes it started", async () => {
+  const { project, team, core, writer, editor } = await setup();
+  const shell = (id: string, sessionID?: string) => ({
+    id,
+    status: "running",
+    command: `run ${id}`,
+    time: { started: 0 },
+    metadata: sessionID ? { sessionID } : {},
+  });
+  // As OpenCode reports them: one list per folder; the starting session is in the metadata.
+  let shells = [shell("sh_w", "ses_writer"), shell("sh_e", "ses_editor"), shell("sh_c", "ses_core"), shell("sh_none"), shell("sh_x", "ses_gone")];
+  const stopped: string[] = [];
+  const client = (team as any).runtime.client;
+  client.shells = async () => shells;
+  client.stopShell = async (_dir: string, id: string) => {
+    stopped.push(id);
+    shells = shells.filter((s) => s.id !== id);
+  };
+  client.interrupt = async () => {};
+
+  assert.match(await team.listProcesses(project, writer), /sh_w/);
+  assert.doesNotMatch(await team.listProcesses(project, writer), /sh_e|sh_c|sh_none|sh_x/);
+  const coreList = await team.listProcesses(project, core);
+  assert.match(coreList, /sh_c/);
+  assert.match(coreList, /sh_none/, "processes with no recorded owner are core's");
+  assert.match(coreList, /sh_x/, "processes of sessions no agent has are core's");
+  assert.doesNotMatch(coreList, /sh_w|sh_e/, "not the helpers'");
+  await assert.rejects(team.stopProcess(project, editor, "sh_w"), /No running background process/);
+
+  // A renewed session keeps its earlier processes.
+  writer.previousSessions = [{ sessionId: "ses_writer" , endedAt: 0 }];
+  writer.sessionId = "ses_writer2";
+  await team.stopAgent(project, writer, "done");
+  assert.deepEqual(stopped, ["sh_w"], "stopping a helper stops only its own processes");
+});
+
+test("where helpers work: project setting, per-helper choice, and moving a helper into the project folder", async () => {
+  const { git, initRepository } = await import("../src/server/git.js");
+  const { writeFileSync, existsSync } = await import("node:fs");
+  const { project, team, calls, core } = await setup();
+  writeFileSync(path.join(project.directory, "a.txt"), "1\n");
+  await initRepository(project.directory);
+  const client = (team as any).runtime.client;
+  let n = 0;
+  client.createSession = async () => ({ id: `ses_new${++n}` });
+  client.messagePage = async () => ({ messages: [], hasMore: false });
+  client.shells = async () => [];
+  (team as any).registerTools = async () => {};
+  (team as any).refreshUsage = async () => {};
+
+  await team.spawnWorker(project, core, { name: "branchy", purpose: "p", task: "t" });
+  const branchy = team.findAgent(project, "branchy")!;
+  assert.equal(branchy.branch, "symbio/branchy", "default: own copy");
+
+  await team.setHelperWorkspace(project, "shared");
+  assert.match(notes(calls, "ses_core").at(-1)!.body, /project folder itself/, "core is told");
+  const reply = await team.spawnWorker(project, core, { name: "stepper", purpose: "p", task: "t" });
+  const stepper = team.findAgent(project, "stepper")!;
+  assert.equal(stepper.branch, null);
+  assert.equal(stepper.directory, project.directory, "project setting: the project folder");
+  assert.match(reply, /nothing to merge/);
+  await team.spawnWorker(project, core, { name: "isolated", purpose: "p", task: "t", workspace: "own" });
+  assert.equal(team.findAgent(project, "isolated")!.branch, "symbio/isolated", "core can still choose per helper");
+
+  // Busy helpers aren't moved; unmerged work in its own copy blocks the move.
+  await assert.rejects(team.moveToProjectFolder(project, branchy, "test"), /is working/);
+  branchy.status = "idle";
+  writeFileSync(path.join(branchy.directory, "draft.txt"), "x\n");
+  await assert.rejects(team.moveToProjectFolder(project, branchy, "test"), /isn't in the project yet \(draft\.txt\)/, "uncommitted");
+  await git(branchy.directory, "add", "-A");
+  await git(branchy.directory, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "draft");
+  await assert.rejects(team.moveToProjectFolder(project, branchy, "test"), /draft\.txt/, "committed but not merged");
+  assert.equal((await team.mergeWork(project, branchy, true)).includes("draft.txt"), true);
+
+  const oldDir = branchy.directory;
+  await team.moveToProjectFolder(project, branchy, "test");
+  assert.equal(branchy.directory, project.directory);
+  assert.equal(branchy.branch, null);
+  assert.equal(branchy.sessionId.startsWith("ses_new"), true, "continues in a fresh session");
+  assert.equal(existsSync(oldDir), false, "its own copy is removed");
+  assert.equal(await git(project.directory, "branch", "--list", "symbio/branchy"), "", "its merged branch is deleted");
+});

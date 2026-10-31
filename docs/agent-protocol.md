@@ -13,8 +13,11 @@ There are no predefined roles like "frontend" or "writer". There are only two ki
   requests, goes to helpers so core stays responsive. core does work itself only for reading and
   review, project docs, merging, trivial setup, or when the human explicitly asks it to.
 - **Helpers** (workers): created by core for a piece of work, named for what they do in *this*
-  project. Each works in its own git worktree on branch `symbio/<name>` (or in the project folder
-  when there's no git). One helper is the default; each extra helper must be justified by
+  project. In a git project a helper works either in its own git worktree on branch `symbio/<name>`
+  ("own": parallel work, merged by core) or in the project folder itself ("shared": what it
+  writes is there at once for the next step, nothing to merge, no commits). The project setting
+  (Settings → Team, default "own") decides unless core passes `workspace` to `spawn_agent`; without
+  git, helpers always share the project folder. One helper is the default; each extra helper must be justified by
   independent work. Idle helpers cost nothing and keep their context, so they're reused for
   follow-ups and stopped only when their area is finished.
 
@@ -74,7 +77,8 @@ being merged (unless core forces the merge).
   *in progress*. Tasks with unfinished dependencies can't be assigned.
 - Helpers report with `update_task`: `in-progress`, `blocked` (with the reason) or `review`
   (finished, with a summary, which is their report to core).
-- core reviews, calls `merge_work`, and marks the task done. Small follow-ups go in with `add_task`
+- core reviews, calls `merge_work` (helpers with their own copy; that marks the task done) or checks
+  the files in the project folder and marks the task done with `update_task` (shared helpers). Small follow-ups go in with `add_task`
   without re-approval.
 
 ## Tools
@@ -92,7 +96,7 @@ All agents:
 | `check_messages` | Collect messages that arrived mid-turn (any Symbio tool call also includes them) |
 | `list_tasks` | The plan: goal, approval status, tasks with status, assignee, dependencies |
 | `update_task` | Report progress on a task: in-progress, blocked, review |
-| `list_processes` | Background processes (servers, watchers) the agent started |
+| `list_processes` | Background processes (servers, watchers) the agent started; in the shared project folder, only its own (OpenCode records the starting session) |
 | `stop_process` | Stop one of them by shell id; the only way agents may stop processes |
 | `list_connections` | Connections the project may use and whether actions need approval |
 | `remote_exec` | Run a non-interactive command on a server over SSH |
@@ -107,10 +111,11 @@ core only:
 | `submit_plan` | Propose (or revise) the plan for approval |
 | `add_task` | Add a task to the approved plan |
 | `assign_task` | Give a task to an existing helper |
-| `spawn_agent` | Create a helper with a name, purpose, first task and optionally a model |
+| `spawn_agent` | Create a helper with a name, purpose, first task, and optionally a model and where it works (`workspace`: own / shared) |
 | `stop_agent` | Stop a helper; its assets are released |
 | `clean_build_outputs` | Delete an idle helper's git-ignored build folders (bin, obj, node_modules…) to free disk space |
 | `merge_work` | Merge a helper's committed work; refuses ungranted asset changes unless forced |
+| `move_to_project_folder` | Move an idle helper whose work is merged from its own copy into the project folder (fresh session, handoff note) |
 | `declare_asset` | Declare or update a shared asset |
 | `grant_asset` / `deny_asset` | Answer an asset request |
 

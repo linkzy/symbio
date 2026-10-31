@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowUp, Brain, Check, CircleAlert, CircleStop, GitBranch, Info, Loader2, Pencil, RefreshCw, Repeat, RotateCcw, Wrench, X } from "lucide-react";
+import { ArrowUp, Brain, Check, CircleAlert, CircleStop, Folder, FolderInput, GitBranch, Info, Loader2, Pencil, RefreshCw, Repeat, RotateCcw, Wrench, X } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { api, subscribe, type Agent, type Project } from "./api";
@@ -171,6 +171,7 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
   const [sending, setSending] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const [renewing, setRenewing] = useState(false);
+  const [moving, setMoving] = useState(false);
   // null = the current session; otherwise an earlier one (read-only), after a renewal.
   const [viewSession, setViewSession] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
@@ -303,11 +304,18 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
                 ))}
               </select>
             )}
-            {agent.branch && (
+            {agent.branch ? (
               <>
                 {" · "}
                 <GitBranch size={11} style={{ verticalAlign: -1 }} /> {agent.branch}
               </>
+            ) : (
+              agent.role !== "coordinator" && (
+                <span title={`Works in the project folder itself: ${project.directory}`}>
+                  {" · "}
+                  <Folder size={11} style={{ verticalAlign: -1 }} /> project folder
+                </span>
+              )
             )}
             {(agent.previousSessions?.length ?? 0) > 0 && (
               <>
@@ -346,6 +354,35 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
           >
             <RefreshCw size={14} />
             {renewing ? "Renewing…" : "New session"}
+          </button>
+        )}
+        {agent.role !== "coordinator" && agent.branch && agent.status !== "stopped" && (
+          <button
+            className="btn ghost sm"
+            disabled={moving || busy || agent.status === "waiting"}
+            title={
+              busy
+                ? "Available when the agent is idle"
+                : "Work in the project folder itself instead of its own copy: what it writes is there at once, nothing to merge"
+            }
+            onClick={() => {
+              if (
+                !confirm(
+                  `Move ${agent.name} into the project folder? Its own copy (branch ${agent.branch}) is removed, so its work must be merged first. ` +
+                    "It continues in a fresh session with a handoff note; the current conversation stays readable.",
+                )
+              )
+                return;
+              setMoving(true);
+              setViewSession(null);
+              api
+                .moveToProjectFolder(project.id, agent.id)
+                .catch((e) => alert(e.message))
+                .finally(() => setMoving(false));
+            }}
+          >
+            <FolderInput size={14} />
+            {moving ? "Moving…" : "Move to project folder"}
           </button>
         )}
         {agent.role !== "coordinator" && agent.status !== "stopped" && (

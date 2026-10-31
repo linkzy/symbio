@@ -1,11 +1,12 @@
-// Worker workspaces. In a git project each worker gets its own worktree on its
-// own branch (isolated copy of the committed files); without git, workers share
-// the project folder and rely on shared-asset grants alone.
+// Worker workspaces. In a git project a worker gets its own worktree on its own
+// branch (isolated copy of the committed files), unless it is set to share the
+// project folder. Without git, workers always share it. Workers in the project
+// folder rely on shared-asset grants alone.
 
 import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 import { git } from "./git.js";
-import { globalDir, type Agent, type Project } from "./store.js";
+import { globalDir, type Agent, type HelperWorkspace, type Project } from "./store.js";
 
 export interface Workspace {
   directory: string;
@@ -18,8 +19,18 @@ export async function isGitRepo(dir: string): Promise<boolean> {
   return existsSync(path.join(dir, ".git"));
 }
 
-export async function createWorkspace(project: Project, agentName: string): Promise<Workspace & { warning?: string }> {
-  if (!(await isGitRepo(project.directory))) {
+/** Whether an agent works in the project folder itself (always true for the coordinator). */
+export function inProjectFolder(project: Project, agent: Agent): boolean {
+  const norm = (p: string) => (process.platform === "win32" ? path.resolve(p).toLowerCase() : path.resolve(p));
+  return norm(agent.directory) === norm(project.directory);
+}
+
+export async function createWorkspace(
+  project: Project,
+  agentName: string,
+  mode: HelperWorkspace = "own",
+): Promise<Workspace & { warning?: string }> {
+  if (mode === "shared" || !(await isGitRepo(project.directory))) {
     return { directory: project.directory, branch: null, base: null };
   }
   const slug = agentName.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || "agent";
@@ -130,6 +141,26 @@ export async function restoreWorkspace(project: Project, agent: Agent): Promise<
 export async function removeWorkspace(project: Project, agent: Agent): Promise<void> {
   if (!agent.branch) return;
   await git(project.directory, "worktree", "remove", "--force", agent.directory).catch(() => {});
+}
+
+/**
+ * Takes a helper out of its own worktree so it can work in the project folder. Refuses while
+ * the worktree holds work that isn't in the project yet. The branch is deleted only when git
+ * agrees it is fully merged (`branch -d`); otherwise it stays, like any other kept branch.
+ */
+export async function leaveWorkspace(project: Project, agent: Agent): Promise<void> {
+  if (!agent.branch) return;
+  const { committed, uncommitted } = await changedFiles(agent);
+  if (committed.length || uncommitted.length) {
+    const files = [...new Set([...committed, ...uncommitted])];
+    throw new Error(
+      `${agent.name}'s own folder has work that isn't in the project yet (${files.slice(0, 8).join(", ")}${files.length > 8 ? ", …" : ""}). ` +
+        "Merge it (or discard it) first.",
+    );
+  }
+  await git(project.directory, "worktree", "remove", "--force", agent.directory).catch(() => {});
+  await git(project.directory, "worktree", "prune").catch(() => {});
+  await git(project.directory, "branch", "-d", agent.branch).catch(() => {});
 }
 
 /**

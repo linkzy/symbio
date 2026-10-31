@@ -55,7 +55,8 @@ place. Here Symbio was restarted mid-task, and it told the helper to pick up whe
 - **One conversation, a whole team.** You chat with core. It asks what you want, studies an
   existing folder before touching it, and proposes a plan of tasks for you to approve.
 - **Helpers that work in parallel without collisions.** Each helper gets its own git worktree and
-  branch. core reviews and merges their work. Helpers are only created when work can really run in
+  branch, and core reviews and merges their work. For step-by-step work (each step using the
+  previous one's files), helpers can share the project folder instead, with nothing to merge. Helpers are only created when work can really run in
   parallel; one helper is the default.
 - **Agents talk to each other.** Messages go straight from agent to agent through Symbio, and
   delivering a message wakes the recipient. No copy-pasting between terminals.
@@ -147,7 +148,7 @@ itself. Whoever gets in controls your agents, so keep the link and code to yours
 | Term | Meaning |
 |---|---|
 | **core** | The project's lead agent. It plans, delegates, reviews and merges; it coordinates rather than doing the work itself. |
-| **Helper** | An agent core creates for a piece of work. It works in its own git worktree (branch `symbio/<name>`). |
+| **Helper** | An agent core creates for a piece of work. It works in its own git worktree (branch `symbio/<name>`) or, if the project is set to, in the project folder itself. |
 | **Shared asset** | Something more than one agent could change. Access goes through core: request, grant, release. |
 | **Connection** | A GitHub account or SSH server agents can use through Symbio, without ever seeing its credentials. |
 | **Allowed models** | The models a project's agents may run on. If one fails, agents fall back to the next. |

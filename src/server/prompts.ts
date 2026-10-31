@@ -1,6 +1,8 @@
 // Briefings injected into agent sessions as instruction entries.
 // Keep these domain-neutral: projects can be software, writing, research, design, anything.
 
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { docsPaths } from "./docs.js";
 import { PROCESS_RULES } from "./guard.js";
 import type { Agent, Project } from "./store.js";
@@ -74,13 +76,14 @@ ${docsSection(project)}
   marks its tasks in review as done.
 - \`spawn_agent\` — create a helper agent with a name, a purpose, its first task
   (\`task_id\` from the plan, or a description) and optionally a model. ${project.allowedModels.length > 1 ? "Pick cheaper models for simpler work. " : ""}Allowed models: ${project.allowedModels.join(", ")}.
-  In a git project each helper works in its own isolated copy (its own branch);
-  it only sees **committed** files, so commit before spawning if it needs recent
-  changes.
+${helperFolders(project)}
 - \`send_message\` — message an agent. Delivering a message wakes the recipient.
 - \`list_team\` — who exists, what they do, whether they are working.
-- \`merge_work\` — bring a helper's committed work into the project. Merges are
-  checked against shared-asset grants; ungranted changes are reported to you.
+- \`merge_work\` — bring a helper's committed work into the project (helpers with
+  their own copy). Merges are checked against shared-asset grants; ungranted
+  changes are reported to you.
+- \`move_to_project_folder\` — move an idle helper from its own copy into the
+  project folder (after its work is merged); it continues in a fresh session.
 - \`stop_agent\` — stop a helper when its area of the project is finished for good.
 - \`declare_asset\`, \`grant_asset\`, \`deny_asset\`, \`list_assets\` — the shared-asset register.
 - \`ask_human\` — reach the human when you are not in a direct conversation.
@@ -123,6 +126,23 @@ ${connectionsSection(connections)}
   exit on its own) in the foreground.
 ${PROCESS_RULES}
 `;
+}
+
+/** Where helpers work, for the coordinator's tool list. */
+function helperFolders(project: Project): string {
+  if (!existsSync(path.join(project.directory, ".git"))) {
+    return "  Helpers work directly in the project folder, alongside you.";
+  }
+  const def = project.helperWorkspace === "shared" ? "shared" : "own";
+  return `  Where a helper works (\`workspace\`; this project's default is **${def}**, set by
+  the human):
+  - **own**: its own isolated copy on its own branch. It only sees **committed**
+    files (commit before spawning if it needs recent changes), and its work
+    reaches the project when you merge it. For parallel work on the same files.
+  - **shared**: the project folder itself. What it writes is there at once for
+    you and the next helper; nothing to merge, and it doesn't commit. For steps
+    that produce or check files others use next (pipelines, reviews of outputs).
+    Helpers in the project folder claim the files they write as shared assets.`;
 }
 
 function onboarding(project: Project): string {
@@ -201,7 +221,11 @@ assets. Your tasks come from the coordinator.
       ? `You work in your own isolated copy of the project, on branch \`${agent.branch}\`.
   Commit your work there with clear messages; never merge or push — the
   coordinator merges your work into the project.`
-      : "You work directly in the shared project folder, alongside other agents."
+      : `You work directly in the project folder, alongside the coordinator and other
+  agents: what you write is there for them at once, and theirs for you. Before
+  writing files others may also write, claim them as a shared asset (below).
+  Don't commit, merge or push unless the coordinator asks; don't touch files or
+  processes that aren't yours.`
   }
 - When you finish a task, or are blocked, report it once: with \`update_task\`
   for plan tasks (see below), otherwise with \`send_message\` to the coordinator
@@ -227,7 +251,7 @@ If you are unsure whether something is shared, ask the coordinator.
 \`send_message\`, \`ask_human\`, \`list_team\`, \`list_assets\`, \`request_asset\`,
 \`release_asset\`, \`check_messages\`, \`list_tasks\`, \`update_task\`.
 
-Tasks from the plan arrive as "Task T3: …". When you finish one, commit and call
+Tasks from the plan arrive as "Task T3: …". When you finish one, ${isolated ? "commit and " : ""}call
 \`update_task("T3", "review", <summary of what you did>)\` — that **is** your
 report to the coordinator; don't also send a message. If you are stuck, use
 \`update_task("T3", "blocked", <why>)\`.

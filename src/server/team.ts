@@ -16,12 +16,12 @@ import { PlanStore, type TaskInput, type TaskStatus } from "./plan.js";
 import type { RemoteOps } from "./remote.js";
 import { coordinatorBrief, kickoffMessage, workerBrief } from "./prompts.js";
 import { git } from "./git.js";
-import { DEFAULT_MESSAGE_LIMIT, globalDir, newId, type Agent, type LoggedMessage, type MessageKind, type Project, type Store } from "./store.js";
+import { DEFAULT_MESSAGE_LIMIT, globalDir, newId, type Agent, type HelperWorkspace, type LoggedMessage, type MessageKind, type Project, type Store } from "./store.js";
 import { accountChildUsage, accountUsage, emptyUsage, sessionUsage } from "./costs.js";
 import { AGENT_UPDATES, unseenUpdates, updatesNote } from "./updates.js";
 import { cleanBuildOutputs, dailyBackup, gb, helperFolders, lastBackup, unpushedWork, type FolderUsage, type UnpushedBranch } from "./housekeeping.js";
 import { coordinatorTools, workerTools, type ToolContext } from "./tools.js";
-import { changedFiles, createWorkspace, mergeWorkspace, removeWorkspace, restoreWorkspace, syncWorkspace } from "./workspaces.js";
+import { changedFiles, createWorkspace, inProjectFolder, isGitRepo, leaveWorkspace, mergeWorkspace, removeWorkspace, restoreWorkspace, syncWorkspace } from "./workspaces.js";
 
 const STUCK_AFTER_MS = Number(process.env.SYMBIO_STUCK_MINUTES ?? 10) * 60_000;
 const WATCHDOG_INTERVAL_MS = 30_000;
@@ -269,6 +269,27 @@ export class Team {
     return project.agents.some((a) => a !== except && (a.name === name || a.aliases?.includes(name)));
   }
 
+  /** The human chose where new helpers work; core's brief describes it, so it's told too. */
+  async setHelperWorkspace(project: Project, mode: HelperWorkspace): Promise<void> {
+    if ((project.helperWorkspace ?? "own") === mode) return;
+    project.helperWorkspace = mode;
+    await this.store.update(project);
+    const coordinator = this.coordinator(project);
+    if (!coordinator || coordinator.status === "stopped") return;
+    await this.refreshInstructions(project, coordinator).catch(() => {});
+    await this.system(
+      project,
+      coordinator,
+      mode === "shared"
+        ? "Symbio: the human set this project's helpers to work in the project folder itself. New helpers work there by default " +
+            "(what they write is there at once; nothing to merge). Helpers that already have their own copy keep it: when one is idle " +
+            "and its work merged, move it with move_to_project_folder if it should share the folder too."
+        : "Symbio: the human set this project's helpers to work in their own copy (own branch) by default. Helpers already in the " +
+            "project folder stay there.",
+      false,
+    );
+  }
+
   /** Renames a helper. Its branch and folder keep their names; the old name keeps working. */
   async renameAgent(project: Project, agent: Agent, newName: string): Promise<void> {
     if (agent.role === "coordinator") throw new Error("core keeps its name.");
@@ -388,7 +409,7 @@ export class Team {
       helper,
       "request",
       `Task ${task.id}: ${task.title}\n\n${task.description}${assets}${extra ? `\n\n${extra}` : ""}\n\n` +
-        `When it's done, commit your work and call update_task("${task.id}", "review", <summary>) — that is your report. ` +
+        `When it's done, ${helper.branch ? "commit your work and " : ""}call update_task("${task.id}", "review", <summary>) — that is your report. ` +
         `If you get stuck, update_task("${task.id}", "blocked", <why>).`,
       { protocol: true },
     );
@@ -413,9 +434,19 @@ export class Team {
         coordinator,
         status === "review" ? "task-review" : "task-blocked",
         `${task.id} "${task.title}" → ${status}${note ? `: ${note}` : ""}` +
-          (status === "review" && agent.branch ? `\nMerge with merge_work("${agent.name}") when it looks right.` : ""),
+          (status === "review"
+            ? agent.branch
+              ? `\nMerge with merge_work("${agent.name}") when it looks right.`
+              : `\nIts work is already in the project folder; check it there, then mark the task done (update_task) or send it back.`
+            : ""),
       );
       return `${task.id} is now ${status}. The coordinator has been notified — no separate report needed.`;
+    }
+    // Helpers without a branch have nothing to merge: the coordinator marking their task done
+    // is the moment a fresh session fits (what merging is for the others).
+    const helper = task.assignee ? project.agents.find((a) => a.id === task.assignee) : undefined;
+    if (agent.role === "coordinator" && status === "done" && helper && !helper.branch && helper.role !== "coordinator") {
+      await this.renewAfterTask(project, helper, "its task was done");
     }
     return `${task.id} is now ${task.status}.`;
   }
@@ -483,7 +514,7 @@ export class Team {
   async spawnWorker(
     project: Project,
     coordinator: Agent,
-    opts: { name: string; purpose: string; task?: string; taskId?: string; model?: string },
+    opts: { name: string; purpose: string; task?: string; taskId?: string; model?: string; workspace?: HelperWorkspace },
   ): Promise<string> {
     if (!opts.task && !opts.taskId) throw new Error("Give the helper a task: a plan task_id, or a task description.");
     if (opts.taskId) {
@@ -508,7 +539,7 @@ export class Team {
       throw new Error(`Model "${model}" is not allowed for this project. Allowed: ${project.allowedModels.join(", ")}`);
     }
 
-    const workspace = await createWorkspace(project, name);
+    const workspace = await createWorkspace(project, name, opts.workspace ?? project.helperWorkspace ?? "own");
     const client = this.client();
     await this.registerTools(project, workspace.directory);
     const session = await client.createSession({
@@ -541,7 +572,10 @@ export class Team {
     else await this.deliver(project, coordinator, agent, "request", opts.task!, { protocol: true });
     const where = workspace.branch
       ? `It works in its own copy of the project on branch ${workspace.branch} (${workspace.directory}); merge its work with merge_work.`
-      : "It works directly in the project folder (no git), so rely on shared-asset grants to avoid conflicts.";
+      : (await isGitRepo(project.directory))
+        ? "It works in the project folder itself, alongside you: what it writes is there at once, and there is nothing to merge. " +
+          "Shared-asset grants keep it from colliding with others; it doesn't commit unless you ask."
+        : "It works directly in the project folder (no git), so rely on shared-asset grants to avoid conflicts.";
     return [`Created ${name} on ${model} and sent it the task. ${where}`, workspace.warning].filter(Boolean).join("\n");
   }
 
@@ -553,7 +587,7 @@ export class Team {
     await reg.forget(agent.id);
     this.assetsChanged(project);
     // Helpers have their own folder; the project root is shared, so leave its processes alone.
-    if (agent.directory !== project.directory) await this.stopAllProcesses(agent);
+    await this.stopAllProcesses(project, agent);
     const { committed, uncommitted } = await changedFiles(agent);
     const unmerged = committed.length > 0 || uncommitted.length > 0;
     if (!unmerged) await removeWorkspace(project, agent);
@@ -620,7 +654,7 @@ export class Team {
    * lossy (compactions), and they inflate OpenCode's memory. The new session starts from
    * a handoff note built from what Symbio knows; the old one stays readable.
    */
-  async renewSession(project: Project, agent: Agent, reason: string): Promise<void> {
+  async renewSession(project: Project, agent: Agent, reason: string, opts: { moved?: boolean } = {}): Promise<void> {
     if (agent.status === "busy" || agent.status === "waiting" || agent.status === "stuck") {
       throw new Error(`${agent.name} is working; renew its session when it's idle.`);
     }
@@ -630,7 +664,7 @@ export class Team {
 
     // Count everything the old session used before leaving it.
     await this.refreshUsage(project, agent).catch(() => {});
-    const handoff = await this.handoffNote(project, agent, oldSession);
+    const handoff = await this.handoffNote(project, agent, oldSession, opts.moved);
 
     await this.registerTools(project, agent.directory);
     const session = await client.createSession({
@@ -660,8 +694,56 @@ export class Team {
     bus.publish({ type: "project.updated", projectId: project.id });
   }
 
+  /**
+   * Moves a helper from its own worktree into the project folder (for pipeline-style work
+   * where each step reads the previous step's files). OpenCode ties a session to its folder,
+   * so the helper continues in a fresh session there, with the usual handoff note.
+   */
+  async moveToProjectFolder(project: Project, agent: Agent, reason: string): Promise<string> {
+    if (agent.role === "coordinator") throw new Error("core already works in the project folder.");
+    if (inProjectFolder(project, agent)) return `${agent.name} already works in the project folder.`;
+    if (agent.status === "stopped") throw new Error(`${agent.name} is stopped; restart it first.`);
+    if (agent.status === "busy" || agent.status === "waiting" || agent.status === "stuck") {
+      throw new Error(`${agent.name} is working; move it when it's idle.`);
+    }
+    // Its processes run in the folder about to go away (and would keep files open on Windows).
+    await this.stopAllProcesses(project, agent);
+    await leaveWorkspace(project, agent);
+    const branch = agent.branch;
+    agent.directory = project.directory;
+    agent.branch = null;
+    agent.base = null;
+    agent.workSince = Date.now();
+    await this.store.update(project);
+    try {
+      await this.renewSession(project, agent, reason, { moved: true });
+    } catch (err) {
+      agent.status = "error";
+      agent.problem = `It moved to the project folder but its new session couldn't start (${(err as Error).message}). Give it a fresh session to retry.`;
+      await this.store.update(project);
+      bus.publish({ type: "project.updated", projectId: project.id });
+      throw new Error(agent.problem);
+    }
+    await this.log(project, {
+      from: "symbio",
+      to: "human",
+      kind: "system",
+      text: `${agent.name} now works in the project folder (${reason}); its own copy${branch ? ` on ${branch}` : ""} was removed.`,
+    });
+    const coordinator = this.coordinator(project);
+    if (coordinator && reason !== "moved by the coordinator") {
+      await this.system(
+        project,
+        coordinator,
+        `Symbio: the human moved ${agent.name} into the project folder. It now works on the project's files directly: nothing of its to merge from now on.`,
+        false,
+      );
+    }
+    return `${agent.name} now works in the project folder, in a fresh session with a handoff note. Its own copy was removed.`;
+  }
+
   /** What an agent needs to carry on in a fresh session, from Symbio's own records. */
-  private async handoffNote(project: Project, agent: Agent, oldSession: string): Promise<string> {
+  private async handoffNote(project: Project, agent: Agent, oldSession: string, moved = false): Promise<string> {
     const plan = (await this.plan(project)).plan;
     const reg = await this.assets(project);
     const mine = plan.tasks.filter((t) => t.assignee === agent.id);
@@ -682,14 +764,21 @@ export class Team {
 
     const parts = [
       `# Handoff: you are continuing as ${agent.name} in a fresh session`,
-      `Your previous session had grown long, so Symbio started a new one. Nothing about your role changed. ` +
+      (moved
+        ? `You now work in the project folder itself instead of your own copy, so Symbio started a new session there. ` +
+          `Nothing else about your role changed. `
+        : `Your previous session had grown long, so Symbio started a new one. Nothing about your role changed. `) +
         `This note is what carries over; the project's docs (AGENTS.md, docs/) hold the durable knowledge, ` +
-        `and your committed work is in your folder.`,
+        `and your work is in your folder.`,
       agent.purpose ? `**Your purpose:** ${agent.purpose}` : "",
       agent.role === "coordinator"
         ? `**Plan:** ${plan.status}${plan.goal ? ` — ${plan.goal}` : ""}\n${plan.tasks.map((t) => `- ${t.id} [${t.status}] ${t.title}${t.assignee ? ` (${nameOf(t.assignee)})` : ""}`).join("\n")}`
         : "",
-      agent.role !== "coordinator" && agent.branch ? `**Your folder:** ${agent.directory} (branch ${agent.branch}).` : "",
+      agent.role === "coordinator"
+        ? ""
+        : agent.branch
+          ? `**Your folder:** ${agent.directory} (branch ${agent.branch}).`
+          : `**Your folder:** ${agent.directory} (the project folder, shared with the team).`,
       open.length ? `**Your open tasks:**\n${open.map((t) => `- ${t.id} [${t.status}] ${t.title}\n  ${cut(t.description, 600)}`).join("\n")}` : "**Open tasks:** none right now; wait for the next one.",
       done.length ? `**Recently finished:**\n${done.map((t) => `- ${t.id} ${t.title}${lastNote(t) ? ` — ${cut(lastNote(t)!, 300)}` : ""}`).join("\n")}` : "",
       held.length ? `**Shared assets you hold:** ${held.join(", ")} (release them when done).` : "",
@@ -697,6 +786,18 @@ export class Team {
       lastText ? `**Your last answer in the previous session:**\n${cut(lastText, 2500)}` : "",
     ];
     return parts.filter(Boolean).join("\n\n");
+  }
+
+  /** With "after-task" renewal, a helper with no other task under way gets a fresh session. */
+  private async renewAfterTask(project: Project, agent: Agent, reason: string): Promise<boolean> {
+    const plan = await this.plan(project);
+    const renew =
+      project.renewSessions === "after-task" &&
+      agent.status === "idle" &&
+      !plan.plan.tasks.some((t) => t.assignee === agent.id && t.status !== "done" && t.status !== "todo");
+    if (!renew) return false;
+    await this.renewSession(project, agent, reason).catch((err) => console.error(`[renew] ${agent.name}:`, err.message));
+    return true;
   }
 
   async mergeWork(project: Project, agent: Agent, force: boolean): Promise<string> {
@@ -722,14 +823,7 @@ export class Team {
       completed.push(task.id);
     }
     if (completed.length) this.planChanged(project);
-    const renew =
-      completed.length > 0 &&
-      project.renewSessions === "after-task" &&
-      agent.status === "idle" &&
-      !plan.plan.tasks.some((t) => t.assignee === agent.id && t.status !== "done" && t.status !== "todo");
-    if (renew) {
-      await this.renewSession(project, agent, "its task was merged").catch((err) => console.error(`[renew] ${agent.name}:`, err.message));
-    } else {
+    if (!(completed.length > 0 && (await this.renewAfterTask(project, agent, "its task was merged")))) {
       await this.system(
         project,
         agent,
@@ -922,7 +1016,7 @@ export class Team {
     for (const agent of project.agents) {
       if (client) {
         await client.interrupt(agent.sessionId).catch(() => {});
-        if (agent.directory !== project.directory) await this.stopAllProcesses(agent).catch(() => {});
+        await this.stopAllProcesses(project, agent).catch(() => {});
       }
       if (agent.branch) await removeWorkspace(project, agent).catch(() => {});
       if (deleteData && client) await client.request("DELETE", `/api/session/${agent.sessionId}`).catch(() => {});
@@ -1115,33 +1209,48 @@ export class Team {
 
   // ---------------------------------------------------------------- processes
 
-  /** Background shells running in the agent's working folder. */
-  async listProcesses(agent: Agent): Promise<string> {
-    const shells = (await this.client().shells(agent.directory)).filter((s) => s.status === "running");
+  /**
+   * The agent's running background shells. An agent alone in its folder owns everything
+   * there; in the project folder (shared by the coordinator and shared helpers) a shell
+   * belongs to the session that started it, which OpenCode records in its metadata.
+   */
+  private async ownShells(project: Project, agent: Agent): Promise<any[]> {
+    const running = (await this.client().shells(agent.directory)).filter((s) => s.status === "running");
+    if (!inProjectFolder(project, agent)) return running;
+    const sessionsOf = (a: Agent) => [a.sessionId, ...(a.previousSessions ?? []).map((p) => p.sessionId), ...Object.keys(a.childSessions ?? {})];
+    const mine = new Set(sessionsOf(agent));
+    const others = new Set(project.agents.filter((a) => a.id !== agent.id).flatMap(sessionsOf));
+    return running.filter((s) => {
+      const owner = s.metadata?.sessionID;
+      if (owner) return mine.has(owner) || (agent.role === "coordinator" && !others.has(owner));
+      // No owner recorded (started outside an agent session): the coordinator manages it.
+      return agent.role === "coordinator";
+    });
+  }
+
+  /** Background shells the agent started that are still running. */
+  async listProcesses(project: Project, agent: Agent): Promise<string> {
+    const shells = await this.ownShells(project, agent);
     if (shells.length === 0) return "You have no background processes running.";
     return shells
       .map((s) => `- ${s.id}: ${s.command} (pid ${s.pid ?? "?"}, started ${new Date(s.time.started).toLocaleTimeString()})`)
       .join("\n");
   }
 
-  /** Stops one background shell — only ones started in the agent's own working folder. */
-  async stopProcess(agent: Agent, shellId: string): Promise<string> {
-    const shells = await this.client().shells(agent.directory);
-    const shell = shells.find((s) => s.id === shellId.trim());
+  /** Stops one background shell — only one the agent itself started. */
+  async stopProcess(project: Project, agent: Agent, shellId: string): Promise<string> {
+    const shell = (await this.ownShells(project, agent)).find((s) => s.id === shellId.trim());
     if (!shell) {
-      throw new Error(`No background process "${shellId}" in your folder. Use list_processes to see yours.`);
+      throw new Error(`No running background process "${shellId}" of yours. Use list_processes to see yours.`);
     }
-    if (shell.status !== "running") return `${shell.id} already ${shell.status}.`;
     await this.client().stopShell(agent.directory, shell.id);
     return `Stopped ${shell.id} (${shell.command}).`;
   }
 
   /** Stops every background shell an agent left running (used when the agent is stopped). */
-  private async stopAllProcesses(agent: Agent) {
-    const shells = await this.client()
-      .shells(agent.directory)
-      .catch(() => []);
-    for (const s of shells.filter((s: any) => s.status === "running")) {
+  private async stopAllProcesses(project: Project, agent: Agent) {
+    const shells = await this.ownShells(project, agent).catch(() => []);
+    for (const s of shells) {
       await this.client()
         .stopShell(agent.directory, s.id)
         .catch(() => {});
@@ -1409,7 +1518,8 @@ export class Team {
       );
       if (!next) {
         if (agent.problem) return; // already reported
-        agent.problem = `Every allowed model failed recently. Last error (${agent.model}): ${message}`;
+        const problem = `Every allowed model failed recently. Last error (${agent.model}): ${message}`;
+        agent.problem = problem;
         this.setStatus(project, agent, "error");
         await this.store.update(project);
         bus.publish({ type: "project.updated", projectId: project.id });
@@ -1417,7 +1527,7 @@ export class Team {
           from: "symbio",
           to: "human",
           kind: "alert",
-          text: `${agent.name} can't continue: ${agent.problem}\n\nAdd another model to the project (Models in the sidebar) — stuck agents resume automatically — or use “Retry now” once the quota resets.`,
+          text: `${agent.name} can't continue: ${problem}\n\nAdd another model to the project (Models in the sidebar) — stuck agents resume automatically — or use “Retry now” once the quota resets.`,
         });
         return;
       }

@@ -16,7 +16,7 @@ export interface Agent {
   /** What this agent is for, in the coordinator's words. */
   purpose?: string;
   sessionId: string;
-  /** Working folder: the project root, or the worker's own git worktree. */
+  /** Working folder: the project root (coordinator, shared helpers), or the helper's own git worktree. */
   directory: string;
   /** Worktree branch, or null when working directly in the project folder. */
   branch?: string | null;
@@ -77,8 +77,14 @@ export interface Project {
    * before further ones are refused. 0 turns the guard off. Unset = DEFAULT_MESSAGE_LIMIT.
    */
   messageLimit?: number;
-  /** "after-task": helpers get a fresh session when their task is merged. Unset/"manual": only on request. */
+  /** "after-task": helpers get a fresh session when their task is merged (or, without a branch, marked done). Unset/"manual": only on request. */
   renewSessions?: "manual" | "after-task";
+  /**
+   * Where new helpers work in a git project. "own": their own worktree and branch (parallel
+   * edits, merged by the coordinator). "shared": the project folder itself, so what one writes
+   * the next sees at once (pipelines). Unset = "own". Projects without git always share.
+   */
+  helperWorkspace?: HelperWorkspace;
   /** Agent-facing Symbio updates (updates.ts) the coordinator has been told about. */
   updatesSeen?: string[];
   /** When the daily housekeeping check last ran (and told the human/coordinator). */
@@ -88,6 +94,8 @@ export interface Project {
 }
 
 export const DEFAULT_MESSAGE_LIMIT = 20;
+
+export type HelperWorkspace = "own" | "shared";
 
 export interface ProjectConnection {
   id: string;
