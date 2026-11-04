@@ -17,6 +17,10 @@ import { Store, globalDir } from "./store.js";
 import { Team } from "./team.js";
 import { removeOrphanWorkspaces } from "./workspaces.js";
 
+// Background work (timers, event handlers) must never take the whole app down: an error there
+// (e.g. OpenCode restarting mid-call) is logged and the next tick tries again.
+process.on("unhandledRejection", (err) => console.error("[unhandled]", err instanceof Error ? err.stack ?? err.message : err));
+
 const PORT = Number(process.env.SYMBIO_PORT ?? 4310);
 const here = path.dirname(fileURLToPath(import.meta.url));
 // dist/server/index.js → dist/web ; src/server/index.ts → dist/web (after a build)

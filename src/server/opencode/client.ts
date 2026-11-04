@@ -144,6 +144,7 @@ export class OpencodeClient {
    * "older than id" (verified against 2.1.4, see docs/opencode-api.md).
    */
   async messagePage(sessionId: string, limit: number, before?: string): Promise<{ messages: any[]; hasMore: boolean }> {
+    limit = Math.min(limit, 199); // OpenCode refuses more than 200, and we ask for one extra
     const params = new URLSearchParams({ limit: String(limit + 1) }); // one extra tells whether more exist
     if (before) params.set("cursor", Buffer.from(JSON.stringify({ id: before, order: "desc", direction: "next" })).toString("base64url"));
     const res = await this.request("GET", `/api/session/${sessionId}/message?${params}`);

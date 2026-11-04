@@ -14,6 +14,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 - Agents are told that OpenCode's "tool catalog changed" notices don't list Symbio's tools, so they
   keep using them instead of reporting them missing.
 - update_task accepts summary as well as note, so review notes aren't lost.
+- Symbio no longer crashes when OpenCode is restarted (to free memory) while it was reading usage;
+  errors in background work are logged instead of stopping the app.
+- Long chats: asking for a 200-message page no longer fails.
 
 ## [0.3.0]
 

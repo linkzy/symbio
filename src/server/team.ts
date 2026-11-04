@@ -1202,7 +1202,8 @@ export class Team {
       agent.id,
       setTimeout(() => {
         this.usageTimers.delete(agent.id);
-        void this.refreshUsage(project, agent);
+        // OpenCode may be restarting; the next burst of usage events reads the totals again.
+        this.refreshUsage(project, agent).catch(() => {});
       }, 3000),
     );
   }
