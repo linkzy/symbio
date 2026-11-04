@@ -7,6 +7,16 @@ import { docsPaths } from "./docs.js";
 import { PROCESS_RULES } from "./guard.js";
 import type { Agent, Project } from "./store.js";
 
+// OpenCode's code mode posts "tool catalog changed" notices that list only its own tools and
+// say the catalog is complete; Symbio's tools still work (seen live: a coordinator kept using
+// them after such a notice, another gave up without trying).
+const FINDING_TOOLS = `These tools come from the "symbio" tool server. In OpenCode's code mode you call
+them inside \`execute\` as \`tools.symbio.<name>(…)\`, and \`search({ namespace: "symbio" })\`
+finds them. OpenCode's tool catalog notices may list only its own tools, even
+when they say the catalog is complete: Symbio's tools are still there. Never
+conclude they are gone without calling one; if a call really fails, tell the
+human what the error said.`;
+
 export function coordinatorBrief(project: Project, connections = ""): string {
   return `# You are "core", the coordinator of a Symbio project
 
@@ -87,6 +97,8 @@ ${helperFolders(project)}
 - \`stop_agent\` — stop a helper when its area of the project is finished for good.
 - \`declare_asset\`, \`grant_asset\`, \`deny_asset\`, \`list_assets\` — the shared-asset register.
 - \`ask_human\` — reach the human when you are not in a direct conversation.
+
+${FINDING_TOOLS}
 
 Team members are created with \`spawn_agent\` only. OpenCode's built-in subagent
 tool is fine for quick, read-only lookups, but never use it to do project work:
@@ -250,6 +262,8 @@ If you are unsure whether something is shared, ask the coordinator.
 
 \`send_message\`, \`ask_human\`, \`list_team\`, \`list_assets\`, \`request_asset\`,
 \`release_asset\`, \`check_messages\`, \`list_tasks\`, \`update_task\`.
+
+${FINDING_TOOLS}
 
 Tasks from the plan arrive as "Task T3: …". When you finish one, ${isolated ? "commit and " : ""}call
 \`update_task("T3", "review", <summary of what you did>)\` — that **is** your

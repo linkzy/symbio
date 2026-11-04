@@ -222,11 +222,14 @@ const updateTask: Tool = {
       task_id: str("Task id, e.g. T3"),
       status: { type: "string", enum: [...TASK_STATUSES] },
       note: str("What happened: progress, blocker, or a summary of the finished work"),
+      summary: str("Same as note (either name works)"),
     },
     ["task_id"],
   ),
-  async run({ task_id, status, note }, { team, project, agent }) {
-    return team.updateTask(project, agent, String(task_id), status, note ? String(note) : undefined);
+  async run({ task_id, status, note, summary }, { team, project, agent }) {
+    // Agents often call it "summary"; dropping it silently lost their review notes.
+    const text = note ?? summary;
+    return team.updateTask(project, agent, String(task_id), status, text ? String(text) : undefined);
   },
 };
 

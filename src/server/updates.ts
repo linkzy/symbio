@@ -64,6 +64,14 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "whose work is merged into the project folder (it continues in a fresh session). Background processes now belong to the agent " +
       "that started them: list_processes and stop_process only show and stop your own, even in a shared folder.",
   },
+  {
+    id: "2026-11-03-tool-catalog",
+    text:
+      "Finding Symbio's tools: OpenCode sometimes posts a \"tool catalog has changed\" notice that lists only its own tools and says " +
+      "the catalog is complete. Symbio's tools are still there: call them inside execute as tools.symbio.<name>(…), or find them " +
+      "with search({ namespace: \"symbio\" }). Never conclude they're gone without calling one; if a call really fails, tell the " +
+      "human what the error said.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */

@@ -56,6 +56,14 @@ and idle), `session.text.*`, `session.reasoning.*`, `session.tool.*` (live outpu
 
 ## Behaviors worth knowing
 
+- **Code mode's catalog notices don't list MCP tools.** OpenCode posts "The Code Mode tool catalog
+  has changed … The catalog is complete" into a session, listing only its own `opencode` tools.
+  Symbio's tools still work (`tools.symbio.<name>` inside `execute`, discoverable with
+  `search({ namespace: "symbio" })`): one coordinator kept making Symbio calls for days after such a
+  notice, while another took it literally and told the human its tools were gone. The briefs say so.
+- **A runtime-registered MCP server is "pending" right after the `PUT`** and "connected" a moment
+  later; a prompt sent while it's pending still gets its tools (verified 2.1.4).
+
 - **Tool calls carry the session.** Every MCP call from OpenCode includes
   `params._meta["ai.opencode/sessionID"]`, which is how Symbio knows which agent is calling.
   Tool *listing* has no session, so the listing for the project root (core's folder) returns the

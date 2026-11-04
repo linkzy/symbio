@@ -11,6 +11,9 @@ versions follow [Semantic Versioning](https://semver.org/).
   can be moved into the project folder from their chat (or by core) once their work is merged.
 - Background processes belong to the agent that started them: in a shared folder, agents only
   see and stop their own, and stopping a helper stops only its processes.
+- Agents are told that OpenCode's "tool catalog changed" notices don't list Symbio's tools, so they
+  keep using them instead of reporting them missing.
+- update_task accepts summary as well as note, so review notes aren't lost.
 
 ## [0.3.0]
 
