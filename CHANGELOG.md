@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0]
+
 - Helpers can work in the project folder itself instead of their own copy on a branch: what one
   writes, the next sees at once, with nothing to merge (for pipelines and step-by-step work).
   Settings → Team sets the default for new helpers; core can choose per helper; existing helpers
