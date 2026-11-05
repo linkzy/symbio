@@ -5,12 +5,16 @@
 
 import type { Context } from "hono";
 
+/** MCP result content: text, or an image (base64) for tools that show the model a picture. */
+export type ToolContent = { type: "text"; text: string } | { type: "image"; data: string; mimeType: string };
+export type ToolResult = string | { content: ToolContent[] };
+
 export interface ToolDef<Ctx> {
   name: string;
   description: string;
   inputSchema: Record<string, unknown>;
-  /** Return text shown to the model. Throw to report an error to the model. */
-  run: (args: any, ctx: Ctx) => Promise<string> | string;
+  /** Return text (or content with images) shown to the model. Throw to report an error to the model. */
+  run: (args: any, ctx: Ctx) => Promise<ToolResult> | ToolResult;
 }
 
 /**
@@ -82,8 +86,8 @@ async function handleOne<Ctx>(req: JsonRpcRequest, token: string, resolve: McpRe
       if (!tool) return fail(-32602, `unknown tool ${req.params?.name}`);
       if (caller.ctx == null) return fail(-32001, "could not identify the calling agent");
       try {
-        const text = await tool.run(req.params?.arguments ?? {}, caller.ctx);
-        return reply({ content: [{ type: "text", text }] });
+        const result = await tool.run(req.params?.arguments ?? {}, caller.ctx);
+        return reply({ content: typeof result === "string" ? [{ type: "text", text: result }] : result.content });
       } catch (err) {
         // Tool errors go back to the model as a result, so it can react.
         return reply({ content: [{ type: "text", text: `Error: ${(err as Error).message}` }], isError: true });

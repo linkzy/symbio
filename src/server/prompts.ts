@@ -9,11 +9,11 @@ import type { Agent, Project } from "./store.js";
 
 // Seen live: a coordinator read eight 2–4 MB images, its conversation reached 25 MB and the
 // provider gave up receiving it ("Timed out reading request body"), whatever the model.
-const KEEP_CONVERSATION_SMALL = `- Don't read large files in full into your conversation, especially images:
-  whatever you read stays in it and is sent to the model again on every turn,
-  until the conversation becomes too large to send. To look at an image, read a
-  scaled-down copy (about 1000 px wide); to check a big file, read the part you
-  need. Reviewing many images is work for a helper.`;
+const KEEP_CONVERSATION_SMALL = `- Keep your conversation small: whatever you read stays in it and is sent to
+  the model again on every turn, until it becomes too large to send. Look at
+  images with Symbio's \`view_image\` tool (a scaled-down copy; ask for a crop to
+  see details) — reading image files directly is blocked. For a big file, read
+  the part you need. Reviewing many images is work for a helper.`;
 
 // OpenCode's code mode posts "tool catalog changed" notices that list only its own tools and
 // say the catalog is complete; Symbio's tools still work (seen live: a coordinator kept using

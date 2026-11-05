@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { AGENT_PERMISSIONS, wildcardMatch } from "../src/server/guard.js";
+import { AGENT_PERMISSIONS, imageReadRefusal, wildcardMatch } from "../src/server/guard.js";
 import { sumProcessTree } from "../src/server/opencode/runtime.js";
 
 test("wildcard matching (OpenCode semantics)", () => {
@@ -48,9 +48,22 @@ test("process tree memory", () => {
 test("agents can't read Symbio's backups", () => {
   const effect = (action: string, resource: string) => {
     const matches = AGENT_PERMISSIONS.filter((r) => r.action === action && wildcardMatch(r.resource, resource));
-    return matches.some((r) => r.effect === "deny") ? "deny" : "default";
+    return matches.some((r) => r.effect === "deny") ? "deny" : matches.some((r) => r.effect === "ask") ? "ask" : "default";
   };
   assert.equal(effect("read", String.raw`C:\Users\me\.symbio\backups\2026-10-30\symbio\secrets.enc`), "deny");
   assert.equal(effect("read", "/home/me/.symbio/backups/2026-10-30/projects/x/project.json"), "deny");
   assert.equal(effect("shell", "ls ~/.symbio/backups"), "deny");
+});
+
+test("agents can't read image files directly (they use view_image), in either case", () => {
+  const effect = (action: string, resource: string) => {
+    const matches = AGENT_PERMISSIONS.filter((r) => r.action === action && wildcardMatch(r.resource, resource));
+    return matches.some((r) => r.effect === "deny") ? "deny" : matches.some((r) => r.effect === "ask") ? "ask" : "default";
+  };
+  for (const file of [String.raw`C:\proj\docs\visuals\board.png`, "/proj/shot.JPG", "/proj/a.jpeg", "/proj/a.webp", "/proj/a.gif"]) {
+    assert.equal(effect("read", file), "ask", file);
+    assert.match(imageReadRefusal("read", [file]) ?? "", /view_image/, "and Symbio refuses it with what to use instead");
+  }
+  assert.equal(effect("read", "/proj/src/main.ts"), "default");
+  assert.equal(effect("edit", "/proj/board.png"), "default", "writing images is still allowed");
 });

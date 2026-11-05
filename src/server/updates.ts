@@ -85,8 +85,9 @@ export const AGENT_UPDATES: AgentUpdate[] = [
     text:
       "Keep conversations small: whatever an agent reads stays in its conversation and is sent to the model again every turn. " +
       "Reading several full-size images made a coordinator's conversation too large to send at all (\"Timed out reading request " +
-      "body\"), whatever the model. Look at images through a scaled-down copy, read only the part of a big file you need, and " +
-      "leave reviewing many images to a helper. If a conversation does become too large, Symbio now moves that agent to a fresh " +
+      "body\"), whatever the model. So reading image files directly is now refused: look at images with the new view_image tool " +
+      "(a scaled-down copy; ask for a crop to see details at full resolution). Read only the part of a big file you need, and " +
+      "leave reviewing many images to a helper. If a conversation still becomes too large, Symbio moves that agent to a fresh " +
       "session with a handoff note instead of trying other models.",
   },
 ];

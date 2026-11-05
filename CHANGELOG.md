@@ -7,7 +7,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 - An agent whose conversation becomes too large to send ("Timed out reading request body", often
   after reading full-size images) continues in a fresh session with a handoff note, instead of
-  Symbio trying every other model; agents are told to read scaled-down copies of images.
+  Symbio trying every other model.
+- `view_image`: agents look at images through a scaled-down copy (or a full-resolution crop);
+  reading image files directly is refused with a message pointing to it, so images can't bloat a
+  conversation.
 - A helper's folder that was deleted outside Symbio is recreated from its branch (committed work
   kept), and the human and the helper are told.
 

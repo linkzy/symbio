@@ -2,10 +2,11 @@
 // specific agent (identified by its session); coordinator-only tools refuse
 // other callers.
 
-import type { ToolDef } from "./mcp.js";
+import type { ToolDef, ToolResult } from "./mcp.js";
 import { describeTask, TASK_STATUSES } from "./plan.js";
 import type { Agent, MessageKind, Project } from "./store.js";
 import { CONFIRMATIONS, listRules, saveArea, saveRule, saveSource, STATUSES } from "./rules.js";
+import { DEFAULT_IMAGE_SIZE, viewImage } from "./images.js";
 import type { Team } from "./team.js";
 
 export interface ToolContext {
@@ -468,6 +469,28 @@ function registerOn(project: Project) {
   if (!project.rulesRegister) throw new Error("This project doesn't keep a rules register (the human can turn it on in the project's Settings).");
 }
 
+// ---- images
+
+const viewImageTool: Tool = {
+  name: "view_image",
+  description:
+    "Look at an image (png, jpg, gif, webp, bmp): returns a scaled-down copy, so it doesn't bloat your conversation. " +
+    "Reading image files directly is blocked: a full-size image stays in your conversation and is re-sent every turn. " +
+    "For details, ask for a crop: a region of the original, in its pixels, shown at full resolution.",
+  inputSchema: obj(
+    {
+      path: str("The image file (absolute, or relative to your folder)"),
+      max_size: { type: "integer", description: `Longest side of the copy in pixels (default ${DEFAULT_IMAGE_SIZE}, at most 2048)` },
+      crop: obj(
+        { left: { type: "integer" }, top: { type: "integer" }, width: { type: "integer" }, height: { type: "integer" } },
+        ["left", "top", "width", "height"],
+      ),
+    },
+    ["path"],
+  ),
+  run: (args, { agent }) => viewImage(agent.directory, args),
+};
+
 const listRulesTool: Tool = {
   name: "list_rules",
   description: "The project's rules register: its areas, sources and rules (id, status, confirmation, text, sources). Filter to keep it short.",
@@ -554,6 +577,7 @@ const saveRuleSourceTool: Tool = {
 };
 
 const COMMON = [
+  viewImageTool,
   listRulesTool,
   saveRuleTool,
   saveRuleAreaTool,
@@ -608,7 +632,7 @@ function withInbox(tool: Tool): Tool {
   return {
     ...tool,
     async run(args, ctx) {
-      let result: string;
+      let result: ToolResult;
       try {
         result = await tool.run(args, ctx);
       } catch (err) {
@@ -616,11 +640,13 @@ function withInbox(tool: Tool): Tool {
       }
       const arrived = await ctx.team.takeInbox(ctx.agent).catch(() => []);
       if (arrived.length === 0) {
-        if (result.startsWith("Error: ")) throw new Error(result.slice(7));
+        if (typeof result === "string" && result.startsWith("Error: ")) throw new Error(result.slice(7));
         return result;
       }
+      const inbox = `📬 Messages that arrived while you were working (already delivered — they won't be repeated):\n\n${arrived.join("\n\n---\n\n")}`;
+      if (typeof result !== "string") return { content: [...result.content, { type: "text", text: inbox }] };
       const header = tool === checkMessages ? "" : `${result}\n\n`;
-      return `${header}📬 Messages that arrived while you were working (already delivered — they won't be repeated):\n\n${arrived.join("\n\n---\n\n")}`;
+      return `${header}${inbox}`;
     },
   };
 }

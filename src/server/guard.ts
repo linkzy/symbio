@@ -109,6 +109,25 @@ const SECRET_SHELL = [
   "*opencode*auth.json*",
 ];
 
+// Images read with the read tool go into the conversation at full size and are re-sent every
+// turn; a few large ones made a conversation too big to send at all. Agents look at images
+// through Symbio's view_image tool instead, which scales them down. These reads are "ask", not
+// "deny", only so the refusal can carry a message: Symbio rejects them itself, at once, telling
+// the agent to use view_image (a bare deny just says "Permission denied", and a model gave up).
+// Patterns are case-sensitive, hence both spellings.
+export const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "gif", "webp", "bmp"];
+const IMAGE_PATHS = IMAGE_EXTENSIONS.flatMap((ext) => [`*.${ext}`, `*.${ext.toUpperCase()}`]);
+
+/** A read Symbio refuses on the agent's behalf (an image file), with what to do instead. */
+export function imageReadRefusal(action: string, resources: string[]): string | null {
+  if (action !== "read" || !resources.length || !resources.every((r) => IMAGE_PATHS.some((p) => wildcardMatch(p, r)))) return null;
+  return (
+    "Symbio blocks reading image files directly: a full-size image stays in your conversation and is sent again on every " +
+    `turn. Use Symbio's view_image tool instead (in code mode: tools.symbio.view_image({ path: ${JSON.stringify(resources[0])} })); ` +
+    "it returns a scaled-down copy, and a crop shows details at full resolution."
+  );
+}
+
 const rules = (action: string, effect: PermissionRule["effect"], patterns: string[]): PermissionRule[] =>
   patterns.map((resource) => ({ action, resource, effect }));
 
@@ -116,11 +135,17 @@ const rules = (action: string, effect: PermissionRule["effect"], patterns: strin
 // so they also win under "last match wins".
 export const AGENT_PERMISSIONS: PermissionRule[] = [
   ...rules("shell", "ask", INSTALL_PATTERNS),
+  ...rules("read", "ask", IMAGE_PATHS), // refused by Symbio with a message (imageReadRefusal)
   ...rules("shell", "deny", KILL_PATTERNS),
   ...rules("shell", "deny", SECRET_SHELL),
   ...rules("read", "deny", SECRET_PATHS),
   ...rules("edit", "deny", SECRET_PATHS),
 ];
+
+/** Whether a path is one agents may never read (keys, Symbio's secrets…), for Symbio's own file tools. */
+export function isSecretPath(file: string): boolean {
+  return SECRET_PATHS.some((p) => wildcardMatch(p, file));
+}
 
 /** Text for agent briefs explaining the rule and the alternative. */
 export const PROCESS_RULES = `- Never kill processes by name or PID (taskkill, Stop-Process, kill, pkill…):

@@ -93,6 +93,9 @@ project the connections it needs.
   wait for your approval; read-only GitHub API calls (GET) don't need approval.
 - **Model provider keys** are passed straight to OpenCode, which stores them in its own data folder.
   Symbio doesn't keep them and only returns non-secret fields to the browser.
+- Agents can't read image files with OpenCode's read tool: those reads are refused (by Symbio,
+  with a message pointing to `view_image`), because a full-size image stays in the conversation and
+  is re-sent every turn. `view_image` returns a scaled-down copy and refuses secret paths.
 - File paths agents give Symbio (uploads, docs) are checked by their real path, so a symlink can't
   point outside the agent's folder.
 - The Docs tab can open any file in the docs locations (`AGENTS.md`, `docs/`, or the private docs),

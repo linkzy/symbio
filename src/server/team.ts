@@ -6,7 +6,7 @@ import { randomBytes } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { AssetRegister } from "./assets.js";
-import { AGENT_PERMISSIONS, wildcardMatch } from "./guard.js";
+import { AGENT_PERMISSIONS, imageReadRefusal, wildcardMatch } from "./guard.js";
 import { bus } from "./bus.js";
 import { privateDocsInstruction } from "./docs.js";
 import type { McpResolver } from "./mcp.js";
@@ -1067,6 +1067,14 @@ export class Team {
   private async onPermissionAsked(project: Project, agent: Agent, req: any) {
     const action = String(req.action ?? "");
     const resources: string[] = Array.isArray(req.resources) ? req.resources.map(String) : [];
+    // Image files: refused at once, with what to use instead (never a question for the human).
+    const refusal = imageReadRefusal(action, resources);
+    if (refusal) {
+      await this.client()
+        .request("POST", `/api/session/${agent.sessionId}/permission/${req.id}/reply`, { decision: "reject", message: refusal })
+        .catch(() => {});
+      return;
+    }
     // Already answered "always" for this kind of request in this project?
     const allowed = resources.length > 0 && resources.every((r) => project.allowedPatterns.some((a) => a.action === action && wildcardMatch(a.pattern, r)));
     if (allowed) {

@@ -61,6 +61,13 @@ and idle), `session.text.*`, `session.reasoning.*`, `session.tool.*` (live outpu
   reading request body. Try again, or use a smaller request size." (GitHub Copilot), even with
   1M-token models: the limit is the request's size, not tokens. Symbio treats that error as "start a
   fresh session", not as a model failure.
+- **Images from an MCP tool reach the model.** A tool result with `{type: "image", data, mimeType}`
+  content shows up as a `file` part with a data URI, and a vision model describes it (verified
+  2.1.4). That's how `view_image` works.
+- **A deny rule can't carry a message** (`Permission.Rule` is only action, resource, effect), so the
+  agent just sees "Permission denied: read" and may give up. An `ask` rule that Symbio answers with
+  `reject` and a `message` reaches the agent as the tool's error, so it learns what to do instead
+  (verified 2.1.4: the agent then used `view_image`).
 
 - **Code mode's catalog notices don't list MCP tools.** OpenCode posts "The Code Mode tool catalog
   has changed … The catalog is complete" into a session, listing only its own `opencode` tools.
