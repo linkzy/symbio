@@ -72,6 +72,14 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "with search({ namespace: \"symbio\" }). Never conclude they're gone without calling one; if a call really fails, tell the " +
       "human what the error said.",
   },
+  {
+    id: "2026-11-05-rules-register",
+    text:
+      "Rules register: a project can keep a register of its rules (requirements, decisions, constraints), each with its source, " +
+      "a literal excerpt, who imposes it, how confirmed it is and whether the work meets it; the human browses it in the Docs tab. " +
+      "It's on only when the human turns it on in the project's Settings (new projects have it on by default); then your " +
+      "instructions explain the tools (list_rules, save_rule, save_rule_area, save_rule_source). Until then, nothing changes.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */

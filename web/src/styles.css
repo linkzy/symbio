@@ -602,3 +602,46 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); margi
 .folder-browser-item svg { color: var(--text-3); flex: none; }
 .folder-browser-foot { display: flex; align-items: center; gap: 8px; padding: 8px; border-top: 1px solid var(--border); }
 .folder-browser-foot .spacer { flex: 1; }
+
+/* ---------- Rules register (Docs tab) ---------- */
+.docs-rules { margin-bottom: 6px; color: var(--text); font-weight: 500; }
+.docs-rules svg { color: var(--accent-text); }
+.rules { display: flex; flex-direction: column; gap: 20px; font-size: 13px; }
+.rules-filters { display: grid; grid-template-columns: minmax(200px, 1.4fr) repeat(5, minmax(120px, 1fr)); gap: 12px; padding: 14px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-lg); }
+.rules-filters select:disabled { opacity: 0.5; }
+.rules-filters-foot { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; }
+.rules-check { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text-2); cursor: pointer; }
+.rules-area h2 { font-size: 16px; margin: 4px 0 6px; }
+.rules-prefix { font-family: var(--mono); font-size: 12px; color: var(--text-3); font-weight: 400; margin-left: 4px; }
+.rules-stages { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--text-3); margin: 0 0 10px; }
+.rules-stages a { color: var(--accent-text); text-decoration: none; }
+.rules-stages a:hover { text-decoration: underline; }
+.rules-stage h3 { font-size: 14px; margin: 16px 0 8px; scroll-margin-top: 12px; }
+.rules-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r-lg); }
+.rules-table { width: 100%; min-width: 1000px; border-collapse: collapse; table-layout: fixed; }
+.rules-table th { text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-3); padding: 9px 10px; background: var(--panel); border-bottom: 1px solid var(--border); }
+.rules-table td { vertical-align: top; padding: 10px; border-top: 1px solid var(--border); line-height: 1.5; color: var(--text-2); overflow-wrap: anywhere; }
+.rules-table tr:first-child td { border-top: none; }
+.rules-table tr.superseded td { opacity: 0.55; }
+.rules-table tr { scroll-margin-top: 12px; }
+.rules-id { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--accent-text) !important; }
+.rules-superseded { font-family: var(--font); font-weight: 400; font-size: 11px; color: var(--text-3); margin-top: 4px; }
+.rules-md { color: var(--text) !important; }
+.rules-md p { margin: 0 0 6px; }
+.rules-md p:last-child { margin: 0; }
+.rules-md ul, .rules-md ol { margin: 0 0 6px; padding-left: 18px; }
+.rules-md code { background: var(--surface-2); border: 1px solid var(--border); padding: 0 4px; border-radius: var(--r-sm); font-size: 0.86em; }
+.rules-md a, .rules-cites a { color: var(--accent-text); }
+.rules-check-how { margin-top: 6px; font-size: 12px; color: var(--text-3); }
+.rules-cites { color: var(--text); }
+.rules-cite { text-decoration: underline dotted var(--text-3); text-underline-offset: 3px; }
+.rules-excerpt-toggle { display: inline-flex; align-items: center; gap: 3px; margin-top: 6px; padding: 0; background: none; border: none; font: inherit; font-size: 12px; color: var(--accent-text); cursor: pointer; }
+.rules-excerpt { margin: 6px 0 0; padding: 8px 10px; background: var(--accent-soft); border-left: 2px solid var(--accent); border-radius: var(--r-sm); font-style: italic; color: var(--text); font-size: 12.5px; }
+.rules-excerpt-src { font-style: normal; font-weight: 600; font-size: 11px; color: var(--accent-text); margin-bottom: 3px; }
+.rules-status { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; white-space: nowrap; }
+.rules-status.done { color: var(--green); }
+.rules-status.partial { color: var(--amber); }
+.rules-status.missing { color: var(--red); }
+.rules-status.na { color: var(--text-3); }
+.rule-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--amber); display: inline-block; }
+.docs-body .rules ~ *, .docs-body:has(.rules) { padding-right: 24px; }

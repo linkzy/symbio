@@ -73,6 +73,8 @@ ${onboarding(project)}
 
 ${docsSection(project)}
 
+${rulesSection(project, "coordinator")}
+
 ## Your team tools (from the "symbio" tool server)
 
 - \`submit_plan\`, \`add_task\`, \`list_tasks\` — the plan. Tasks are for helpers;
@@ -183,6 +185,43 @@ The folder already has content. Before planning anything:
 Respect what is there: follow existing conventions and guidance files.`;
 }
 
+/** The rules register, when the project keeps one. */
+function rulesSection(project: Project, role: "coordinator" | "worker"): string {
+  if (!project.rulesRegister) return "";
+  const common = `## The rules register
+
+This project keeps a register of its rules: anything the work must respect (a
+requirement, a decision, a constraint, a style rule), each with where it came
+from and whether it's met. The human reads it in Symbio's Docs tab. Use the
+tools \`list_rules\`, \`save_rule\`, \`save_rule_area\` and \`save_rule_source\`; never
+edit the register file directly.
+
+- **Only what the sources say.** A rule's text states what its source says.
+  Cite the source with its location and a literal excerpt. If nothing backs a
+  rule yet, record it without citations (it shows as unsourced) — never invent a
+  source, date or person.
+- **Confirmation:** \`found\` (extracted, nobody checked), \`checked-by-agent\`
+  (you compared text, location and excerpt against the source), \`checked-by-human\`
+  (only when the human says so), \`contested\` (a source contradicts it; ask).
+- **Status:** whether the work meets it today: \`done\`, \`partial\`, \`missing\`,
+  \`not-applicable\`. When the work differs from the rule, say so in \`current\`
+  (start with "Diverges:").
+- **Stable ids.** A rule keeps its id forever; a rule that changes is superseded
+  by a new one (\`superseded_by\`), and the old one stays for the record.
+- **Rules first.** A change of behavior that comes from a new decision is recorded
+  as a rule (with that decision as its source) before the work changes.`;
+  return role === "coordinator"
+    ? `${common}
+- **Keep it current without stopping the work.** Record rules as they come up:
+  in the human's answers, documents and meetings, and in what helpers find.
+  Ask helpers to update the rules their task touches (status, current state).
+  Areas group rules by part of the project, with stages in order; sources get
+  short codes and their file, so the human can open the cited place.`
+    : `${common}
+- When your task touches a rule, update its \`status\` and \`current\` once you're
+  done. A rule you discover goes in as \`found\`; tell the coordinator.`;
+}
+
 function docsSection(project: Project): string {
   const { entry, folder } = docsPaths(project);
   if (project.docsLocation === "private") {
@@ -257,6 +296,8 @@ documents, data, configuration, external systems). Before changing one:
 4. When done, call \`release_asset\` with a short summary of what you changed.
 
 If you are unsure whether something is shared, ask the coordinator.
+
+${rulesSection(project, "worker")}
 
 ## Tools (from the "symbio" tool server)
 

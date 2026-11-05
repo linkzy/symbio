@@ -13,6 +13,7 @@ import { gitAvailable, initRepository } from "./git.js";
 import { pickFolder } from "./folder-picker.js";
 import { beginOauth, cancelOauth, completeOauth, connectWithKey, listProviders, oauthStatus, removeLogin } from "./providers.js";
 import { docsRoot, listDocs, readDoc, searchDocs, writeDoc } from "./docs.js";
+import { readRegister } from "./rules.js";
 import type { Team } from "./team.js";
 import type { Connections } from "./connections.js";
 import { PriceBook, projectUsage, resolvePrices, type Price } from "./costs.js";
@@ -273,6 +274,7 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       docsLocation?: DocsLocation;
       initGit?: boolean;
       connections?: ProjectConnection[];
+      rulesRegister?: boolean;
     }>();
     if (!body.name?.trim() || !body.directory?.trim()) return c.json({ error: "name and directory are required" }, 400);
     if (!path.isAbsolute(body.directory.trim())) return c.json({ error: "directory must be a full path" }, 400);
@@ -294,6 +296,7 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       allowedModels: allowed,
       coordinatorModel: body.coordinatorModel,
       docsLocation: body.docsLocation === "private" ? "private" : "project",
+      rulesRegister: body.rulesRegister === true,
       origin: inspection.empty ? "new" : "existing",
       inspectionSummary: describeInspection(inspection),
       connections: cleanLinks(body.connections),
@@ -325,7 +328,9 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       messageLimit?: number;
       renewSessions?: "manual" | "after-task";
       helperWorkspace?: HelperWorkspace;
+      rulesRegister?: boolean;
     }>();
+    if (typeof body.rulesRegister === "boolean") await team.setRulesRegister(project, body.rulesRegister);
     if (body.helperWorkspace === "own" || body.helperWorkspace === "shared") await team.setHelperWorkspace(project, body.helperWorkspace);
     if (body.name?.trim()) project.name = body.name.trim();
     if (body.renewSessions === "manual" || body.renewSessions === "after-task") project.renewSessions = body.renewSessions;
@@ -391,6 +396,11 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
   api.get("/projects/:id/docs", async (c) => {
     const project = withProject(c.req.param("id"));
     return c.json({ location: project.docsLocation, root: docsRoot(project), files: await listDocs(project) });
+  });
+
+  api.get("/projects/:id/rules", async (c) => {
+    const project = withProject(c.req.param("id"));
+    return c.json({ enabled: !!project.rulesRegister, ...(await readRegister(project)) });
   });
 
   api.get("/projects/:id/docs/search", async (c) => {

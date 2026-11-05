@@ -2,12 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { AnimatePresence, motion } from "motion/react";
 import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ArrowLeft, BookOpen, ChevronDown, ChevronRight, FileText, Folder, Pencil, Save, Search, X } from "lucide-react";
-import { api, subscribe, type DocFile, type DocMatch, type Project } from "./api";
+import { ArrowLeft, BookOpen, ChevronDown, ChevronRight, FileText, Folder, Pencil, Save, Scale, Search, X } from "lucide-react";
+import { api, subscribe, type DocFile, type DocMatch, type Project, type RulesRegister } from "./api";
+import { RulesView } from "./Rules";
 import { EmptyState, timeAgo } from "./ui";
 
 /** Where to land in a doc after opening it: a heading anchor, a line (text files), or a line's text (Markdown). */
 type Target = { anchor?: string; line?: number; text?: string } | null;
+
+/** The rules register's place in the list (not a file). */
+const RULES = ":rules";
 
 export function Docs({ project }: { project: Project }) {
   const [files, setFiles] = useState<DocFile[] | null>(null);
@@ -24,21 +28,29 @@ export function Docs({ project }: { project: Project }) {
   const [history, setHistory] = useState<string[]>([]);
   const [target, setTarget] = useState<Target>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [register, setRegister] = useState<RulesRegister | null>(null);
   const editingRef = useRef(false);
   editingRef.current = editing;
   const body = useRef<HTMLDivElement>(null);
 
   const loadList = useCallback(
     () =>
-      api
-        .docs(project.id)
-        .then((d) => {
-          setFiles(d.files);
+      Promise.all([
+        api.docs(project.id).then((d) => {
           setRoot(d.root);
+          return d.files;
+        }),
+        api.rules(project.id).catch(() => null),
+      ])
+        .then(([docs, rules]) => {
+          // Set the register first: the list effect picks the opening view from it.
+          setRegister(rules);
+          setFiles(docs);
         })
         .catch((e) => setError(e.message)),
     [project.id],
   );
+  const showRules = !!register && (register.enabled || register.rules.length > 0);
 
   const loadFile = useCallback(
     (path: string) =>
@@ -67,17 +79,23 @@ export function Docs({ project }: { project: Project }) {
 
   // Select the entry point by default; reload the open file when the list changes (unless editing).
   useEffect(() => {
-    if (!files?.length) return;
-    const current = selected && files.some((f) => f.path === selected) ? selected : files[0].path;
+    if (!files) return;
+    // The rules index opens first when there are rules: it's what people come to read.
+    const fallback = register?.rules.length ? RULES : files[0]?.path ?? (showRules ? RULES : null);
+    const current = selected === RULES ? (showRules ? RULES : fallback) : selected && files.some((f) => f.path === selected) ? selected : fallback;
+    if (!current) return;
     if (current !== selected) setSelected(current);
-    else if (!editingRef.current) void loadFile(current);
+    else if (current !== RULES && !editingRef.current) void loadFile(current);
     // Top-level folders start open.
     const top = files.filter((f) => f.path.includes("/")).map((f) => f.path.split("/")[0]);
     setExpanded((prev) => new Set([...prev, ...top]));
   }, [files]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (selected) {
+    if (selected === RULES) {
+      setEditing(false);
+      setContent(null);
+    } else if (selected) {
       setEditing(false);
       setContent(null);
       void loadFile(selected);
@@ -167,7 +185,7 @@ export function Docs({ project }: { project: Project }) {
     }
   }
 
-  if (files && files.length === 0) {
+  if (files && files.length === 0 && !showRules) {
     return (
       <EmptyState icon={<BookOpen size={20} />} title="No documentation yet">
         core writes it as it learns the project — {project.docsLocation === "private" ? "privately in .symbio/docs" : "in AGENTS.md and docs/"}.
@@ -199,6 +217,13 @@ export function Docs({ project }: { project: Project }) {
           />
         ) : (
           <>
+            {showRules && (
+              <button className={`docs-item docs-rules ${selected === RULES ? "active" : ""}`} onClick={() => open(RULES)}>
+                <Scale size={14} />
+                <span className="grow">Rules</span>
+                <span className="docs-item-time">{register!.rules.length}</span>
+              </button>
+            )}
             <div className="side-group-title" title={root}>
               {project.docsLocation === "private" ? "Private docs" : "Project docs"}
             </div>
@@ -214,11 +239,15 @@ export function Docs({ project }: { project: Project }) {
             <button className="btn ghost icon sm" title="Back" disabled={!history.length || editing} onClick={back}>
               <ArrowLeft size={14} />
             </button>
-            <code className="ellipsis" title={selected}>
-              {selected}
-            </code>
+            {selected === RULES ? (
+              <strong className="small">Rules register</strong>
+            ) : (
+              <code className="ellipsis" title={selected}>
+                {selected}
+              </code>
+            )}
             <div className="spacer" />
-            {editing ? (
+            {selected === RULES ? null : editing ? (
               <>
                 <button className="btn ghost sm" onClick={() => setEditing(false)}>
                   Cancel
@@ -253,7 +282,18 @@ export function Docs({ project }: { project: Project }) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.12 }}
           >
-            {editing ? (
+            {selected === RULES ? (
+              register && (
+                <RulesView
+                  register={register}
+                  openSource={(file, line) => {
+                    const doc = paths.has(file) ? file : paths.has(file.replace(/^docs\//, "")) ? file.replace(/^docs\//, "") : null;
+                    if (doc) open(doc, line ? { line } : null);
+                    else alert(`${file} isn't among the docs Symbio shows, so it can't be opened here.`);
+                  }}
+                />
+              )
+            ) : editing ? (
               <textarea className="docs-editor" value={draft} onChange={(e) => setDraft(e.target.value)} spellCheck />
             ) : content === null ? (
               <div className="muted">Loading…</div>

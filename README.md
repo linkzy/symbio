@@ -68,6 +68,10 @@ place. Here Symbio was restarted mid-task, and it told the helper to pick up whe
   Docs tab shows them as a folder tree with search across every doc, links between docs that open
   in place, an outline of long docs, and plain-text sources (e-mails, transcripts) with line
   numbers.
+- **A rules register (optional).** Agents record the project's rules (requirements, decisions,
+  constraints) with where each came from, a literal excerpt, who imposes it, how confirmed it is
+  and whether it's met. The Docs tab shows them as an index you can filter and search, with each
+  citation opening its source at the cited line.
 - **A live plan.** The Plan tab is an animated kanban that moves by itself as helpers pick up
   tasks, ask for review and get merged.
 - **You stay in control.** Questions, plan approvals, permission requests (like installing

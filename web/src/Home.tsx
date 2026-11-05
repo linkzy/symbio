@@ -141,6 +141,7 @@ function NewProjectDialog({ onClose }: { onClose: () => void }) {
   const [inspectError, setInspectError] = useState<string | null>(null);
   const [initGit, setInitGit] = useState(true);
   const [docsLocation, setDocsLocation] = useState<DocsLocation>("project");
+  const [rulesRegister, setRulesRegister] = useState(true);
   const [projectConnections, setProjectConnections] = useState<ProjectConnection[]>([]);
   const [allowed, setAllowed] = useState<string[]>([]);
   const [coordinator, setCoordinator] = useState("");
@@ -204,6 +205,7 @@ function NewProjectDialog({ onClose }: { onClose: () => void }) {
         allowedModels: allowed,
         coordinatorModel: coordinator,
         docsLocation,
+        rulesRegister,
         initGit: !!offerGit && initGit,
         connections: projectConnections,
       });
@@ -344,6 +346,16 @@ function NewProjectDialog({ onClose }: { onClose: () => void }) {
               </span>
             </label>
           </div>
+          <label className="choice">
+            <input type="checkbox" checked={rulesRegister} onChange={(e) => setRulesRegister(e.target.checked)} />
+            <span className="choice-body">
+              <span className="choice-title">Keep a rules register</span>
+              <span className="choice-desc">
+                Agents record the project's rules (requirements, decisions, constraints) with where each came from and whether it's met.
+                You browse and filter them in the Docs tab. You can turn it off later.
+              </span>
+            </span>
+          </label>
           <div className="field">
             <span>Connections</span>
             <span className="hint">GitHub accounts and servers agents may use. Optional — you can change this later.</span>

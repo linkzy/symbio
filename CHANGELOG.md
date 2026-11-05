@@ -5,6 +5,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Rules register (optional, per project; on by default for new projects): agents record rules with
+  their sources, literal excerpts, who imposes them, confirmation and status through new tools, and
+  the Docs tab shows them as a filterable index grouped by area and stage.
+
 - Docs tab: a folder tree instead of a flat list; search across all docs (any case or accent) that
   opens the doc at the matching line; links and paths in backticks that point to another doc open
   it, with Back; an "On this page" outline for long docs; .txt sources shown with line numbers.

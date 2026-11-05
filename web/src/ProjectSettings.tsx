@@ -58,11 +58,12 @@ function SaveBar({ dirty, saving, onSave, onReset }: { dirty: boolean; saving: b
 function General({ project, onChanged }: { project: Project; onChanged: (p: Project) => void }) {
   const [name, setName] = useState(project.name);
   const [saving, setSaving] = useState(false);
-  const dirty = name.trim() !== project.name && !!name.trim();
+  const [rules, setRules] = useState(!!project.rulesRegister);
+  const dirty = (name.trim() !== project.name && !!name.trim()) || rules !== !!project.rulesRegister;
   async function save() {
     setSaving(true);
     try {
-      onChanged(await api.updateProject(project.id, { name: name.trim() }));
+      onChanged(await api.updateProject(project.id, { name: name.trim() || project.name, rulesRegister: rules }));
     } catch (e) {
       alert((e as Error).message);
     } finally {
@@ -99,8 +100,26 @@ function General({ project, onChanged }: { project: Project; onChanged: (p: Proj
             )}
           </div>
         </div>
+        <label className="choice">
+          <input type="checkbox" checked={rules} onChange={(e) => setRules(e.target.checked)} />
+          <span className="choice-body">
+            <span className="choice-title">Rules register</span>
+            <span className="choice-desc">
+              Agents record the project's rules with where each came from and whether it's met; you browse them in the Docs tab. Turning
+              it off keeps what's recorded.
+            </span>
+          </span>
+        </label>
       </div>
-      <SaveBar dirty={dirty} saving={saving} onSave={save} onReset={() => setName(project.name)} />
+      <SaveBar
+        dirty={dirty}
+        saving={saving}
+        onSave={save}
+        onReset={() => {
+          setName(project.name);
+          setRules(!!project.rulesRegister);
+        }}
+      />
     </section>
   );
 }

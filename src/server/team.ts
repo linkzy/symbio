@@ -290,6 +290,27 @@ export class Team {
     );
   }
 
+  /** The human turned the rules register on or off; every brief mentions it, and core is told. */
+  async setRulesRegister(project: Project, on: boolean): Promise<void> {
+    if (!!project.rulesRegister === on) return;
+    project.rulesRegister = on;
+    await this.store.update(project);
+    bus.publish({ type: "project.updated", projectId: project.id });
+    for (const agent of project.agents.filter(active)) await this.refreshInstructions(project, agent).catch(() => {});
+    const coordinator = this.coordinator(project);
+    if (!coordinator || coordinator.status === "stopped") return;
+    await this.system(
+      project,
+      coordinator,
+      on
+        ? "Symbio: the human turned on the rules register for this project. Your instructions now explain it (save_rule, list_rules…). " +
+            "Record rules as they come up in the work; if the project already has rules written down somewhere, offer the human to " +
+            "bring them into the register as a planned task."
+        : "Symbio: the human turned off the rules register for this project. Stop recording rules; what's recorded stays in the file.",
+      false,
+    );
+  }
+
   /** Renames a helper. Its branch and folder keep their names; the old name keeps working. */
   async renameAgent(project: Project, agent: Agent, newName: string): Promise<void> {
     if (agent.role === "coordinator") throw new Error("core keeps its name.");

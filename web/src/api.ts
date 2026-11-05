@@ -135,6 +135,7 @@ export interface Project {
   messageLimit?: number;
   renewSessions?: "manual" | "after-task";
   helperWorkspace?: "own" | "shared";
+  rulesRegister?: boolean;
   heldMessages?: { agentId: string; text: string }[];
   agents: Agent[];
   createdAt: number;
@@ -154,6 +155,34 @@ export interface Inspection {
   guidance: string[];
   gitAvailable: boolean;
   existingProject: { id: string; name: string } | null;
+}
+
+export type RuleStatus = "done" | "partial" | "missing" | "not-applicable";
+export type RuleConfirmation = "found" | "checked-by-agent" | "checked-by-human" | "contested";
+
+export interface Rule {
+  id: string;
+  area: string;
+  stage?: string;
+  text: string;
+  action?: string;
+  citations: { source: string; location?: string; excerpt?: string }[];
+  imposedBy?: string;
+  confirmation: RuleConfirmation;
+  status: RuleStatus;
+  current?: string;
+  check?: string;
+  supersededBy?: string;
+  updatedAt: number;
+  updatedBy?: string;
+}
+
+export interface RulesRegister {
+  enabled: boolean;
+  areas: { id: string; name: string; group?: string; description?: string; stages: { id: string; name: string }[] }[];
+  sources: { id: string; name: string; file?: string; authority?: string }[];
+  authorities: { id: string; name: string }[];
+  rules: Rule[];
 }
 
 export interface DocMatch {
@@ -342,6 +371,7 @@ export const api = {
     docsLocation: DocsLocation;
     initGit: boolean;
     connections: ProjectConnection[];
+    rulesRegister?: boolean;
   }) => call<Project>("POST", "/projects", input),
   permissions: (projectId: string) => call<PermissionRequest[]>("GET", `/projects/${projectId}/permissions`),
   answerPermission: (projectId: string, requestId: string, decision: "once" | "always" | "reject", note?: string) =>
@@ -349,6 +379,7 @@ export const api = {
   approvals: (projectId: string) => call<Approval[]>("GET", `/projects/${projectId}/approvals`),
   decideApproval: (projectId: string, approvalId: string, approved: boolean, note?: string) =>
     call<{ ok: true }>("POST", `/projects/${projectId}/approvals/${approvalId}`, { approved, note }),
+  rules: (id: string) => call<RulesRegister>("GET", `/projects/${id}/rules`),
   searchDocs: (id: string, q: string) =>
     call<{ matches: DocMatch[]; truncated: boolean }>("GET", `/projects/${id}/docs/search?q=${encodeURIComponent(q)}`),
   docs: (id: string) => call<{ location: DocsLocation; root: string; files: DocFile[] }>("GET", `/projects/${id}/docs`),
@@ -356,7 +387,7 @@ export const api = {
     call<{ path: string; content: string }>("GET", `/projects/${id}/docs/file?path=${encodeURIComponent(path)}`),
   writeDoc: (id: string, path: string, content: string) =>
     call<{ ok: true }>("PUT", `/projects/${id}/docs/file`, { path, content }),
-  updateProject: (id: string, patch: Partial<Pick<Project, "name" | "allowedModels" | "coordinatorModel" | "connections" | "allowedPatterns" | "messageLimit" | "renewSessions" | "helperWorkspace">>) =>
+  updateProject: (id: string, patch: Partial<Pick<Project, "name" | "allowedModels" | "coordinatorModel" | "connections" | "allowedPatterns" | "messageLimit" | "renewSessions" | "helperWorkspace" | "rulesRegister">>) =>
     call<Project>("PATCH", `/projects/${id}`, patch),
   connections: () => call<ConnectionView[]>("GET", "/connections"),
   createConnection: (body: Record<string, unknown>) => call<ConnectionView>("POST", "/connections", body),

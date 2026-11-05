@@ -96,6 +96,9 @@ All agents:
 | `check_messages` | Collect messages that arrived mid-turn (any Symbio tool call also includes them) |
 | `list_tasks` | The plan: goal, approval status, tasks with status, assignee, dependencies |
 | `update_task` | Report progress on a task: in-progress, blocked, review |
+| `list_rules` | The rules register (when the project keeps one): areas, sources, rules, with filters |
+| `save_rule` | Add or update a rule: text, citations (source, location, literal excerpt), who imposes it, confirmation, status, current state |
+| `save_rule_area` / `save_rule_source` | Define an area (id prefix and its stages) or a source (code, name, file, authority) |
 | `list_processes` | Background processes (servers, watchers) the agent started; in the shared project folder, only its own (OpenCode records the starting session) |
 | `stop_process` | Stop one of them by shell id; the only way agents may stop processes |
 | `list_connections` | Connections the project may use and whether actions need approval |

@@ -5,6 +5,7 @@
 import type { ToolDef } from "./mcp.js";
 import { describeTask, TASK_STATUSES } from "./plan.js";
 import type { Agent, MessageKind, Project } from "./store.js";
+import { CONFIRMATIONS, listRules, saveArea, saveRule, saveSource, STATUSES } from "./rules.js";
 import type { Team } from "./team.js";
 
 export interface ToolContext {
@@ -461,7 +462,102 @@ const githubApi: Tool = {
     ),
 };
 
+// ---- rules register (only when the project keeps one)
+
+function registerOn(project: Project) {
+  if (!project.rulesRegister) throw new Error("This project doesn't keep a rules register (the human can turn it on in the project's Settings).");
+}
+
+const listRulesTool: Tool = {
+  name: "list_rules",
+  description: "The project's rules register: its areas, sources and rules (id, status, confirmation, text, sources). Filter to keep it short.",
+  inputSchema: obj({
+    query: str("Words to look for in the id, text, current state or citations"),
+    area: str("Only this area (its prefix, e.g. 'AP')"),
+    status: { type: "string", enum: [...STATUSES] },
+  }),
+  async run(args, { project }) {
+    registerOn(project);
+    return listRules(project, args);
+  },
+};
+
+const saveRuleTool: Tool = {
+  name: "save_rule",
+  description:
+    "Add a rule to the register, or update one (give its id; only the fields you pass change). A new rule gets the next id in its " +
+    "area. State only what the sources say; if nothing backs it yet, add it without citations (it shows as unsourced) rather than " +
+    "inventing a source. Citations quote the source literally.",
+  inputSchema: obj(
+    {
+      id: str("To update an existing rule, e.g. 'AP-031'. Leave out to add a new one."),
+      area: str("Area prefix (define areas with save_rule_area)"),
+      stage: str("Stage id within the area (e.g. 'B')"),
+      text: str("What the rule says (Markdown)"),
+      action: str("What the work does about it, e.g. 'blocks submission', 'warning only', 'none'"),
+      citations: {
+        type: "array",
+        description: "Where it comes from. Each: source code (define sources with save_rule_source), location (p.20, l.10…), literal excerpt.",
+        items: obj({ source: str("Source code, e.g. 'MA'"), location: str("Where in the source"), excerpt: str("The source's words, copied literally") }, ["source"]),
+      },
+      imposed_by: str("Who imposes it (an authority code)"),
+      confirmation: { type: "string", enum: [...CONFIRMATIONS], description: "found = extracted, nobody checked; checked-by-agent; checked-by-human; contested" },
+      status: { type: "string", enum: [...STATUSES], description: "Is it met by the work today?" },
+      current: str("How things are today, especially where they differ from the rule"),
+      check: str("How to check that it's met"),
+      superseded_by: str("Id of the rule that replaced this one (the old rule stays for the record)"),
+    },
+    [],
+  ),
+  async run(args, { project, agent }) {
+    registerOn(project);
+    return saveRule(project, args, agent.name);
+  },
+};
+
+const saveRuleAreaTool: Tool = {
+  name: "save_rule_area",
+  description: "Define or update an area of the rules register (a part of the project with its own rule ids) and its stages, in order.",
+  inputSchema: obj(
+    {
+      id: str("Short prefix for its rule ids, e.g. 'AP' → AP-001. Must differ from every source code."),
+      name: str("Name, e.g. 'Student — Submission'"),
+      group: str("Optional larger group it belongs to"),
+      description: str("What it covers"),
+      stages: { type: "array", items: obj({ id: str("e.g. 'A'"), name: str("e.g. 'Access'") }, ["name"]), description: "Its steps or sections, in order" },
+    },
+    ["id", "name"],
+  ),
+  async run(args, { project }) {
+    registerOn(project);
+    return saveArea(project, args as any);
+  },
+};
+
+const saveRuleSourceTool: Tool = {
+  name: "save_rule_source",
+  description: "Define or update a source rules are cited from (a document, a meeting, a decision), with the file when there is one.",
+  inputSchema: obj(
+    {
+      id: str("Short code used in citations, e.g. 'MA' or 'D38'. Must differ from every area prefix."),
+      name: str("e.g. 'Student manual 2026'"),
+      file: str("The file, relative to the project folder (so the human can open it at the cited place)"),
+      authority: str("Code of who stands behind it, e.g. 'EC'"),
+      authority_name: str("Name of that authority, the first time you use its code"),
+    },
+    ["id", "name"],
+  ),
+  async run(args, { project }) {
+    registerOn(project);
+    return saveSource(project, args as any);
+  },
+};
+
 const COMMON = [
+  listRulesTool,
+  saveRuleTool,
+  saveRuleAreaTool,
+  saveRuleSourceTool,
   listConnections,
   remoteExec,
   remoteUpload,

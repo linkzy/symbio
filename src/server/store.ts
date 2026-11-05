@@ -85,6 +85,8 @@ export interface Project {
    * the next sees at once (pipelines). Unset = "own". Projects without git always share.
    */
   helperWorkspace?: HelperWorkspace;
+  /** Keep a rules register (rules.json next to the docs, shown in the Docs tab). Unset = off. */
+  rulesRegister?: boolean;
   /** Agent-facing Symbio updates (updates.ts) the coordinator has been told about. */
   updatesSeen?: string[];
   /** When the daily housekeeping check last ran (and told the human/coordinator). */
@@ -214,6 +216,7 @@ export class Store {
     origin: "new" | "existing";
     inspectionSummary: string;
     connections?: ProjectConnection[];
+    rulesRegister?: boolean;
   }) {
     const directory = path.resolve(input.directory);
     const existing = this.list().find((p) => samePath(p.directory, directory));
@@ -231,6 +234,7 @@ export class Store {
           allowedModels: input.allowedModels,
           coordinatorModel: input.coordinatorModel,
           docsLocation: input.docsLocation,
+          rulesRegister: input.rulesRegister,
           origin: input.origin,
           inspectionSummary: input.inspectionSummary,
           kickedOff: false,
