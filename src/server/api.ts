@@ -12,7 +12,7 @@ import { describeInspection, inspectFolder } from "./inspect.js";
 import { gitAvailable, initRepository } from "./git.js";
 import { pickFolder } from "./folder-picker.js";
 import { beginOauth, cancelOauth, completeOauth, connectWithKey, listProviders, oauthStatus, removeLogin } from "./providers.js";
-import { docsRoot, listDocs, readDoc, writeDoc } from "./docs.js";
+import { docsRoot, listDocs, readDoc, searchDocs, writeDoc } from "./docs.js";
 import type { Team } from "./team.js";
 import type { Connections } from "./connections.js";
 import { PriceBook, projectUsage, resolvePrices, type Price } from "./costs.js";
@@ -391,6 +391,11 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
   api.get("/projects/:id/docs", async (c) => {
     const project = withProject(c.req.param("id"));
     return c.json({ location: project.docsLocation, root: docsRoot(project), files: await listDocs(project) });
+  });
+
+  api.get("/projects/:id/docs/search", async (c) => {
+    const project = withProject(c.req.param("id"));
+    return c.json(await searchDocs(project, (c.req.query("q") ?? "").slice(0, 200)));
   });
 
   api.get("/projects/:id/docs/file", async (c) => {

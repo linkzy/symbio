@@ -156,6 +156,12 @@ export interface Inspection {
   existingProject: { id: string; name: string } | null;
 }
 
+export interface DocMatch {
+  path: string;
+  line: number;
+  text: string;
+}
+
 export interface DocFile {
   path: string;
   size: number;
@@ -343,6 +349,8 @@ export const api = {
   approvals: (projectId: string) => call<Approval[]>("GET", `/projects/${projectId}/approvals`),
   decideApproval: (projectId: string, approvalId: string, approved: boolean, note?: string) =>
     call<{ ok: true }>("POST", `/projects/${projectId}/approvals/${approvalId}`, { approved, note }),
+  searchDocs: (id: string, q: string) =>
+    call<{ matches: DocMatch[]; truncated: boolean }>("GET", `/projects/${id}/docs/search?q=${encodeURIComponent(q)}`),
   docs: (id: string) => call<{ location: DocsLocation; root: string; files: DocFile[] }>("GET", `/projects/${id}/docs`),
   readDoc: (id: string, path: string) =>
     call<{ path: string; content: string }>("GET", `/projects/${id}/docs/file?path=${encodeURIComponent(path)}`),

@@ -66,7 +66,7 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 | `workspaces.ts` | Where helpers work: git worktrees (create, merge, sync, remove, restore) or the shared project folder |
 | `git.ts` | Thin git wrapper |
 | `inspect.ts` | Deterministic folder inspection for onboarding (no model cost) |
-| `docs.ts` | Project documentation (in the project, or private under `.symbio/docs`) |
+| `docs.ts` | Project documentation (in the project, or private under `.symbio/docs`): list, read, write, search |
 | `guard.ts` | OpenCode permission rules for every agent (kill/secret denies, install asks) |
 | `connections.ts`, `secrets.ts` | GitHub/SSH connections and the encrypted secret vault |
 | `remote.ts`, `ssh.ts` | Running remote actions for agents (SSH exec/upload, git push/pull, GitHub API) with approvals |

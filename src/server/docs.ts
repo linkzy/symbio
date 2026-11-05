@@ -54,6 +54,37 @@ export async function readDoc(project: Project, rel: string): Promise<string> {
   return fs.readFile(resolveDoc(project, rel), "utf8");
 }
 
+export interface DocMatch {
+  path: string;
+  /** 1-based line number. */
+  line: number;
+  text: string;
+}
+
+const MAX_MATCHES = 300;
+const MAX_SEARCH_BYTES = 2_000_000; // per file; larger files are skipped
+
+/** Case- and accent-insensitive, so "regra" also finds "Regra" and "regrá". */
+const fold = (s: string) => s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+
+/** Lines containing every word of the query, across all docs. */
+export async function searchDocs(project: Project, query: string): Promise<{ matches: DocMatch[]; truncated: boolean }> {
+  const words = fold(query).split(/\s+/).filter(Boolean);
+  if (!words.length) return { matches: [], truncated: false };
+  const matches: DocMatch[] = [];
+  for (const file of await listDocs(project)) {
+    if (file.size > MAX_SEARCH_BYTES) continue;
+    const lines = (await readDoc(project, file.path).catch(() => "")).split(/\r?\n/);
+    for (let i = 0; i < lines.length; i++) {
+      const hay = fold(lines[i]);
+      if (!words.every((w) => hay.includes(w))) continue;
+      matches.push({ path: file.path, line: i + 1, text: lines[i].trim().slice(0, 300) });
+      if (matches.length >= MAX_MATCHES) return { matches, truncated: true };
+    }
+  }
+  return { matches, truncated: false };
+}
+
 export async function writeDoc(project: Project, rel: string, content: string): Promise<void> {
   const abs = resolveDoc(project, rel);
   await fs.mkdir(path.dirname(abs), { recursive: true });

@@ -56,14 +56,18 @@ place. Here Symbio was restarted mid-task, and it told the helper to pick up whe
   existing folder before touching it, and proposes a plan of tasks for you to approve.
 - **Helpers that work in parallel without collisions.** Each helper gets its own git worktree and
   branch, and core reviews and merges their work. For step-by-step work (each step using the
-  previous one's files), helpers can share the project folder instead, with nothing to merge. Helpers are only created when work can really run in
-  parallel; one helper is the default.
+  previous one's files), helpers can share the project folder instead, with nothing to merge.
+  Helpers are only created when work can really run in parallel; one helper is the default.
 - **Agents talk to each other.** Messages go straight from agent to agent through Symbio, and
   delivering a message wakes the recipient. No copy-pasting between terminals.
 - **Shared assets with a gatekeeper.** Anything several agents could change (a file pattern, a
   database, a spreadsheet) can be declared a *shared asset*. Agents request it from core, wait for
   the grant and release it when done. Changes to an asset an agent wasn't granted are flagged at
   merge.
+- **Documentation you can find your way in.** core keeps the project's docs up to date, and the
+  Docs tab shows them as a folder tree with search across every doc, links between docs that open
+  in place, an outline of long docs, and plain-text sources (e-mails, transcripts) with line
+  numbers.
 - **A live plan.** The Plan tab is an animated kanban that moves by itself as helpers pick up
   tasks, ask for review and get merged.
 - **You stay in control.** Questions, plan approvals, permission requests (like installing

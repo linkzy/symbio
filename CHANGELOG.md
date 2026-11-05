@@ -5,6 +5,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Docs tab: a folder tree instead of a flat list; search across all docs (any case or accent) that
+  opens the doc at the matching line; links and paths in backticks that point to another doc open
+  it, with Back; an "On this page" outline for long docs; .txt sources shown with line numbers.
+
 ## [0.4.0]
 
 - Helpers can work in the project folder itself instead of their own copy on a branch: what one
