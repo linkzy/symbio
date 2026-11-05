@@ -7,7 +7,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 - Rules register (optional, per project; on by default for new projects): agents record rules with
   their sources, literal excerpts, who imposes them, confirmation and status through new tools, and
-  the Docs tab shows them as a filterable index grouped by area and stage.
+  the Docs tab shows them as a filterable index grouped by area and stage. A citation opens its
+  source: a text doc at the cited line, a PDF in a new tab at the cited page.
+- Links in docs to PDFs and images open them in a new tab.
 
 - Docs tab: a folder tree instead of a flat list; search across all docs (any case or accent) that
   opens the doc at the matching line; links and paths in backticks that point to another doc open

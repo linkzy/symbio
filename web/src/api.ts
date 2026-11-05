@@ -275,6 +275,35 @@ const token = (() => {
   return localStorage.getItem(TOKEN_KEY) ?? "";
 })();
 
+/**
+ * Opens a file from the project docs (a PDF a rule cites, an image) in a new tab, at a page for
+ * PDFs; types a browser can't show are downloaded. Fetched with the key, so it never sits in a URL.
+ */
+export function openDocFile(projectId: string, path: string, page?: number) {
+  // Open the tab now, while the click still counts: after the download, a popup would be blocked.
+  const win = window.open("", "_blank");
+  fetch(`/api/projects/${projectId}/docs/raw?path=${encodeURIComponent(path)}`, { headers: { "x-symbio-token": token } })
+    .then(async (res) => {
+      if (!res.ok) throw new Error(((await res.json().catch(() => null)) as { error?: string } | null)?.error ?? res.statusText);
+      const inline = (res.headers.get("content-disposition") ?? "").startsWith("inline");
+      const url = URL.createObjectURL(await res.blob());
+      if (inline && win) {
+        win.location.href = url + (page ? `#page=${page}` : "");
+        return;
+      }
+      win?.close();
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = path.split("/").pop() ?? "file";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    })
+    .catch((err) => {
+      win?.close();
+      alert(`Couldn't open ${path}: ${(err as Error).message}`);
+    });
+}
+
 /** Fired when the server rejects our key; the app shows how to get back in. */
 export const LOCKED_EVENT = "symbio:locked";
 

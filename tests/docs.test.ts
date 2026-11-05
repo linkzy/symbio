@@ -26,3 +26,24 @@ test("docs search: every word, any case or accent, with line numbers; only docs 
   assert.equal((await searchDocs(project, "assinatura conclusão")).matches.length, 0);
   assert.equal((await searchDocs(project, "   ")).matches.length, 0, "empty query finds nothing");
 });
+
+test("raw docs files: PDFs show inline, other types download, nothing outside the docs is served", async () => {
+  const { rawDoc } = await import("../src/server/docs.js");
+  const dir = mkdtempSync(path.join(os.tmpdir(), "sym-raw-"));
+  mkdirSync(path.join(dir, "docs", "guias"), { recursive: true });
+  mkdirSync(path.join(dir, ".symbio"), { recursive: true });
+  writeFileSync(path.join(dir, "docs", "guias", "manual.pdf"), "%PDF-1.4 test");
+  writeFileSync(path.join(dir, "docs", "page.html"), "<script>alert(1)</script>");
+  writeFileSync(path.join(dir, ".symbio", "project.json"), "{}");
+  writeFileSync(path.join(dir, "secret.txt"), "no");
+  const project: any = { directory: dir, docsLocation: "project" };
+
+  const pdf = await rawDoc(project, "docs/guias/manual.pdf");
+  assert.equal(pdf.type, "application/pdf");
+  assert.equal(pdf.inline, true);
+  const html = await rawDoc(project, "docs/page.html");
+  assert.equal(html.inline, false, "HTML is never shown inline (it could run scripts)");
+  for (const outside of ["secret.txt", ".symbio/project.json", "docs/../secret.txt", "../outside.pdf"]) {
+    await assert.rejects(rawDoc(project, outside), /Not a docs file/, outside);
+  }
+});

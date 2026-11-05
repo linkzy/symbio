@@ -91,8 +91,32 @@ export async function writeDoc(project: Project, rel: string, content: string): 
   await fs.writeFile(abs, content);
 }
 
+/**
+ * Any file in the docs locations, read-only, with how to send it: sources cited by the rules
+ * register are often PDFs or images. Shown inline only for types a browser displays safely
+ * (no HTML or SVG, which could run scripts); everything else is a download.
+ */
+export async function rawDoc(project: Project, rel: string): Promise<{ data: Buffer; type: string; inline: boolean; name: string }> {
+  const abs = resolveDoc(project, rel, true);
+  const ext = path.extname(abs).toLowerCase();
+  const inline = RAW_INLINE[ext];
+  return { data: await fs.readFile(abs), type: inline ?? "application/octet-stream", inline: !!inline, name: path.basename(abs) };
+}
+
+const RAW_INLINE: Record<string, string> = {
+  ".pdf": "application/pdf",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".txt": "text/plain; charset=utf-8",
+  ".md": "text/plain; charset=utf-8",
+  ".csv": "text/plain; charset=utf-8",
+};
+
 /** Validates a doc path against the allowed locations. Throws on anything else. */
-function resolveDoc(project: Project, rel: string): string {
+function resolveDoc(project: Project, rel: string, anyType = false): string {
   const root = docsRoot(project);
   const normalized = rel.replace(/\\/g, "/").replace(/^\/+/, "");
   const abs = path.resolve(root, normalized);
@@ -102,7 +126,7 @@ function resolveDoc(project: Project, rel: string): string {
     project.docsLocation === "private"
       ? insideRoot
       : insideRoot && (relBack === "AGENTS.md" || relBack.startsWith("docs/"));
-  if (!allowed || !TEXT_EXT.has(path.extname(abs).toLowerCase())) {
+  if (!allowed || (!anyType && !TEXT_EXT.has(path.extname(abs).toLowerCase()))) {
     throw new Error(`Not a docs file: ${rel}`);
   }
   // A symlink inside the docs could point at any file (an SSH key, say); compare real

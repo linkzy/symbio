@@ -12,7 +12,7 @@ import { describeInspection, inspectFolder } from "./inspect.js";
 import { gitAvailable, initRepository } from "./git.js";
 import { pickFolder } from "./folder-picker.js";
 import { beginOauth, cancelOauth, completeOauth, connectWithKey, listProviders, oauthStatus, removeLogin } from "./providers.js";
-import { docsRoot, listDocs, readDoc, searchDocs, writeDoc } from "./docs.js";
+import { docsRoot, listDocs, rawDoc, readDoc, searchDocs, writeDoc } from "./docs.js";
 import { readRegister } from "./rules.js";
 import type { Team } from "./team.js";
 import type { Connections } from "./connections.js";
@@ -401,6 +401,25 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
   api.get("/projects/:id/rules", async (c) => {
     const project = withProject(c.req.param("id"));
     return c.json({ enabled: !!project.rulesRegister, ...(await readRegister(project)) });
+  });
+
+  // Any file in the docs (a PDF cited by a rule, an image), read-only.
+  api.get("/projects/:id/docs/raw", async (c) => {
+    const project = withProject(c.req.param("id"));
+    try {
+      const file = await rawDoc(project, c.req.query("path") ?? "");
+      return new Response(new Uint8Array(file.data), {
+        headers: {
+          "content-type": file.type,
+          "content-disposition": `${file.inline ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(file.name)}`,
+          "x-content-type-options": "nosniff",
+          "content-security-policy": "default-src 'none'; img-src 'self' blob: data:; style-src 'unsafe-inline'",
+        },
+      });
+    } catch (err: any) {
+      if (err.code === "ENOENT") throw new HttpError(404, "file not found");
+      throw new HttpError(400, err.message);
+    }
   });
 
   api.get("/projects/:id/docs/search", async (c) => {

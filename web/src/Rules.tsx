@@ -19,8 +19,8 @@ const CONFIRMATION: Record<RuleConfirmation, { label: string; className: string;
   contested: { label: "Contested", className: "amber", hint: "A source contradicts it; waiting for a decision" },
 };
 
-/** Where a citation points in a doc, when its source is a file the Docs tab can open. */
-export type OpenSource = (file: string, line?: number) => void;
+/** Opens a cited source file: in the Docs tab when it's a doc (at a line), else in a new tab (at a page). */
+export type OpenSource = (file: string, at: { line?: number; page?: number }) => void;
 
 export function RulesView({ register, openSource }: { register: RulesRegister; openSource: OpenSource }) {
   const [query, setQuery] = useState("");
@@ -312,17 +312,18 @@ function RulesTable({
                       {r.citations.map((c, i) => {
                         const src = sources.get(c.source);
                         const line = lineOf(c.location);
-                        const openable = !!src?.file && /\.(md|markdown|txt)$/i.test(src.file);
+                        const page = pageOf(c.location);
+                        const openable = !!src?.file;
                         const label = `${c.source}${c.location ? ` ${c.location}` : ""}`;
                         return (
                           <span key={i}>
                             {openable ? (
                               <a
                                 href={`#${src!.file}`}
-                                title={`${src!.name} — open ${src!.file}${line ? ` at line ${line}` : ""}`}
+                                title={`${src!.name} — open ${src!.file}${line ? ` at line ${line}` : page ? ` at page ${page}` : ""}`}
                                 onClick={(e) => {
                                   e.preventDefault();
-                                  openSource(src!.file!, line);
+                                  openSource(src!.file!, { line, page });
                                 }}
                               >
                                 {label}
@@ -412,6 +413,12 @@ const fold = (s: string) => s.normalize("NFD").replace(/\p{Diacritic}/gu, "").to
 /** "l.10", "L10", "line 10", "linha 10", "l. 10-12" → 10. */
 function lineOf(location?: string): number | undefined {
   const m = location && /(?:^|\b)(?:l\.?|line|linha)\s*(\d+)/i.exec(location);
+  return m ? Number(m[1]) : undefined;
+}
+
+/** "p.20", "p. 20", "pp. 20-21", "pág. 20", "page 20" → 20. */
+function pageOf(location?: string): number | undefined {
+  const m = location && /(?:^|\b)(?:pp?\.?|p[aá]g\.?|page|p[aá]gina)\s*(\d+)/i.exec(location);
   return m ? Number(m[1]) : undefined;
 }
 

@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ArrowLeft, BookOpen, ChevronDown, ChevronRight, FileText, Folder, Pencil, Save, Scale, Search, X } from "lucide-react";
-import { api, subscribe, type DocFile, type DocMatch, type Project, type RulesRegister } from "./api";
+import { api, openDocFile, subscribe, type DocFile, type DocMatch, type Project, type RulesRegister } from "./api";
 import { RulesView } from "./Rules";
 import { EmptyState, timeAgo } from "./ui";
 
@@ -157,6 +157,16 @@ export function Docs({ project }: { project: Project }) {
     setSelected(previous);
   };
 
+  /** A relative link to a file that isn't a doc (a PDF, an image): open it in a new tab. */
+  const openFile = (href: string) => {
+    if (!selected || /^[a-z][a-z0-9+.-]*:/i.test(href) || !/\.[a-z0-9]{2,5}(#.*)?$/i.test(href)) return;
+    const [rawPath, hash = ""] = href.split("#");
+    const dir = selected.includes("/") ? selected.slice(0, selected.lastIndexOf("/")) : "";
+    const file = join(dir, safeDecode(rawPath).replace(/\\/g, "/"));
+    const page = /^page=(\d+)$/i.exec(hash)?.[1];
+    if (file) openDocFile(project.id, file, page ? Number(page) : undefined);
+  };
+
   /** A link or path written in a doc → an existing doc (and place), if it is one. */
   const resolve = (href: string): { path: string; to: Target } | null => {
     if (!selected || /^[a-z][a-z0-9+.-]*:/i.test(href)) return null;
@@ -286,10 +296,10 @@ export function Docs({ project }: { project: Project }) {
               register && (
                 <RulesView
                   register={register}
-                  openSource={(file, line) => {
-                    const doc = paths.has(file) ? file : paths.has(file.replace(/^docs\//, "")) ? file.replace(/^docs\//, "") : null;
-                    if (doc) open(doc, line ? { line } : null);
-                    else alert(`${file} isn't among the docs Symbio shows, so it can't be opened here.`);
+                  openSource={(file, at) => {
+                    // Text docs open here (at the line); PDFs, images and the rest in a new tab (at the page).
+                    if (paths.has(file)) open(file, at.line ? { line: at.line } : null);
+                    else openDocFile(project.id, file, at.page);
                   }}
                 />
               )
@@ -302,7 +312,7 @@ export function Docs({ project }: { project: Project }) {
             ) : (
               <div className="docs-page">
                 <div className="md">
-                  <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents(resolve, open)}>
+                  <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents(resolve, open, openFile)}>
                     {content}
                   </Markdown>
                 </div>
@@ -553,7 +563,11 @@ function unique(base: string, seen: Map<string, number>) {
   return n ? `${base}-${n}` : base;
 }
 
-function markdownComponents(resolve: (href: string) => { path: string; to: Target } | null, open: (path: string, to?: Target) => void): Components {
+function markdownComponents(
+  resolve: (href: string) => { path: string; to: Target } | null,
+  open: (path: string, to?: Target) => void,
+  openFile: (href: string) => void,
+): Components {
   const seen = new Map<string, number>(); // fresh per render, in document order, like outline()
   const heading =
     (Tag: "h1" | "h2" | "h3" | "h4") =>
@@ -585,8 +599,20 @@ function markdownComponents(resolve: (href: string) => { path: string; to: Targe
           </a>
         );
       }
-      // A file outside the docs, or a folder: nothing to open here.
-      return <span title={href}>{children}</span>;
+      // Another file in the docs (a PDF, an image) opens in a new tab; a folder doesn't open.
+      if (!/\.[a-z0-9]{2,5}(#.*)?$/i.test(href)) return <span title={href}>{children}</span>;
+      return (
+        <a
+          href={href}
+          title={href}
+          onClick={(e) => {
+            e.preventDefault();
+            openFile(href);
+          }}
+        >
+          {children}
+        </a>
+      );
     },
     // Agents often write paths in backticks: the ones that are docs become links.
     code: ({ className, children }) => {

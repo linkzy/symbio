@@ -95,6 +95,10 @@ project the connections it needs.
   Symbio doesn't keep them and only returns non-secret fields to the browser.
 - File paths agents give Symbio (uploads, docs) are checked by their real path, so a symlink can't
   point outside the agent's folder.
+- The Docs tab can open any file in the docs locations (`AGENTS.md`, `docs/`, or the private docs),
+  read-only, such as a PDF a rule cites. Only PDFs, images and plain text are shown in the browser;
+  anything else (HTML, SVG…) is downloaded instead, so a file in the docs can't run script in
+  Symbio's page. The page fetches it with its key, so the key never appears in a tab's address.
 
 ## Things to know
 
