@@ -51,3 +51,16 @@ test("rules register: concurrent writes from several agents all land, with disti
   assert.equal(reg.rules.length, 12);
   assert.equal(new Set(reg.rules.map((r: any) => r.id)).size, 12);
 });
+
+test("reopening a project's folder takes the rules register choice made in the dialog", async () => {
+  const { Store } = await import("../src/server/store.js");
+  const store = new Store();
+  await store.load();
+  const dir = mkdtempSync(path.join(os.tmpdir(), "sym-reopen-"));
+  const input = { name: "p", directory: dir, allowedModels: ["a/b"], coordinatorModel: "a/b", docsLocation: "project" as const, origin: "new" as const, inspectionSummary: "" };
+  const first = await store.create({ ...input, rulesRegister: false });
+  await store.remove(first, false);
+  const reopened = await store.create({ ...input, rulesRegister: true });
+  assert.equal(reopened.id, first.id, "same project, reopened");
+  assert.equal(reopened.rulesRegister, true);
+});

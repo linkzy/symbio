@@ -244,6 +244,9 @@ export class Store {
           createdAt: Date.now(),
         };
     project.directory = directory;
+    // A reopened project keeps its history and team, but takes the options just chosen in the
+    // dialog that have no history behind them.
+    if (onDisk && input.rulesRegister !== undefined) project.rulesRegister = input.rulesRegister;
     this.projects.set(project.id, project);
     await this.saveProject(project);
     await this.saveGlobal();
