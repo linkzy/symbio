@@ -1,6 +1,6 @@
 # Roadmap
 
-## Done (0.3)
+## Done (0.5)
 
 1. **Core runtime.** Private OpenCode server, projects, core's session, streaming chat, watchdog,
    crash recovery, memory recycling.
@@ -18,14 +18,26 @@
    first-run guidance.
 9. **Remote access.** `sym remote`: a temporary Cloudflare link with an access code, lockout, a banner
    and a button to turn it off.
+10. **Shared project folder.** Helpers can work in the project folder instead of their own branch,
+    for step-by-step work; processes belong to the agent that started them.
+11. **Documentation for humans.** The Docs tab with a folder tree, search, links between docs and
+    numbered text sources; an optional rules register with sources, excerpts and status, shown as
+    a filterable index whose citations open the cited place.
+12. **Conversation size.** Images only through scaled-down copies (`view_image`); a conversation
+    too large to send continues in a fresh session.
 
 ## Next
+
+- **Rules register on import.** When importing an existing project, offer to build the register
+  from the project and from sources the human points to (e-mails, meeting notes, manuals), marking
+  rules found only in the work as unsourced.
 
 - **Moving projects between machines.** Docs and plan travel with the folder, but agent sessions
   live in the local OpenCode database; reopening a project elsewhere should re-create its agents
   cleanly.
 - **Agent graph.** A live view of agents and the messages flowing between them.
-- **Eyes for agents.** Screenshots of what they build, routed to vision-capable models.
+- **Eyes for agents.** Screenshots of what they build, routed to vision-capable models (agents can
+  already look at images with `view_image`).
 - **Per-task model routing.** Cheap models for simple tasks, strong ones for hard ones.
 
 ## Known limitations

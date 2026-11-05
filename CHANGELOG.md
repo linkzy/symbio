@@ -5,24 +5,25 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-- An agent whose conversation becomes too large to send ("Timed out reading request body", often
-  after reading full-size images) continues in a fresh session with a handoff note, instead of
-  Symbio trying every other model.
-- `view_image`: agents look at images through a scaled-down copy (or a full-resolution crop);
-  reading image files directly is refused with a message pointing to it, so images can't bloat a
-  conversation.
-- A helper's folder that was deleted outside Symbio is recreated from its branch (committed work
-  kept), and the human and the helper are told.
+## [0.5.0]
 
+- Docs tab: a folder tree instead of a flat list; search across all docs (any case or accent) that
+  opens the doc at the matching line; links and paths in backticks that point to another doc open
+  it, with Back; an "On this page" outline for long docs; .txt sources shown with line numbers.
 - Rules register (optional, per project; on by default for new projects): agents record rules with
   their sources, literal excerpts, who imposes them, confirmation and status through new tools, and
   the Docs tab shows them as a filterable index grouped by area and stage. A citation opens its
   source: a text doc at the cited line, a PDF in a new tab at the cited page.
 - Links in docs to PDFs and images open them in a new tab.
-
-- Docs tab: a folder tree instead of a flat list; search across all docs (any case or accent) that
-  opens the doc at the matching line; links and paths in backticks that point to another doc open
-  it, with Back; an "On this page" outline for long docs; .txt sources shown with line numbers.
+- `view_image`: agents look at images through a scaled-down copy (or a full-resolution crop);
+  reading image files directly is refused with a message pointing to it, so images can't bloat a
+  conversation.
+- An agent whose conversation becomes too large to send ("Timed out reading request body", often
+  after reading full-size images) continues in a fresh session with a handoff note, instead of
+  Symbio trying every other model.
+- A helper's folder that was deleted outside Symbio is recreated from its branch (committed work
+  kept), and the human and the helper are told.
+- A project reopened from its folder takes the rules register choice made in the New project dialog.
 
 ## [0.4.0]
 

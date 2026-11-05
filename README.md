@@ -84,7 +84,8 @@ place. Here Symbio was restarted mid-task, and it told the helper to pick up whe
   when a model fails (quota, outage) the agent switches to the next allowed model and carries on.
 - **Safety rails.** Agents can't kill processes by name (which would take down your terminals and
   editors), can't read your SSH keys or Symbio's secret store, and must ask before installing
-  software.
+  software. They look at images through scaled-down copies, so a few large pictures can't make a
+  conversation too big to send.
 
 ## Requirements
 
