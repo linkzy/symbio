@@ -56,6 +56,12 @@ and idle), `session.text.*`, `session.reasoning.*`, `session.tool.*` (live outpu
 
 ## Behaviors worth knowing
 
+- **Images read with the read tool stay in the conversation as data** and are sent with every
+  request. A session with eight 2–4 MB images (about 25 MB) failed on every model with "Timed out
+  reading request body. Try again, or use a smaller request size." (GitHub Copilot), even with
+  1M-token models: the limit is the request's size, not tokens. Symbio treats that error as "start a
+  fresh session", not as a model failure.
+
 - **Code mode's catalog notices don't list MCP tools.** OpenCode posts "The Code Mode tool catalog
   has changed … The catalog is complete" into a session, listing only its own `opencode` tools.
   Symbio's tools still work (`tools.symbio.<name>` inside `execute`, discoverable with

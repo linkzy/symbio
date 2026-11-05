@@ -138,6 +138,23 @@ export async function restoreWorkspace(project: Project, agent: Agent): Promise<
   return { directory: agent.directory, branch: agent.branch, base, reset: true };
 }
 
+/**
+ * An active helper's folder that disappeared (deleted outside Symbio): recreate it from its
+ * branch, which keeps everything it committed. Unlike restoreWorkspace, the branch is never
+ * moved. Returns false when there was nothing to do.
+ */
+export async function reattachWorkspace(project: Project, agent: Agent): Promise<boolean> {
+  if (!agent.branch || existsSync(agent.directory) || !(await isGitRepo(project.directory))) return false;
+  await git(project.directory, "worktree", "prune").catch(() => {});
+  const branchExists = await git(project.directory, "rev-parse", "--verify", "--quiet", agent.branch).then(
+    () => true,
+    () => false,
+  );
+  await fs.mkdir(path.dirname(agent.directory), { recursive: true });
+  await git(project.directory, "worktree", "add", ...(branchExists ? [agent.directory, agent.branch] : ["-b", agent.branch, agent.directory, "HEAD"]));
+  return true;
+}
+
 export async function removeWorkspace(project: Project, agent: Agent): Promise<void> {
   if (!agent.branch) return;
   await git(project.directory, "worktree", "remove", "--force", agent.directory).catch(() => {});

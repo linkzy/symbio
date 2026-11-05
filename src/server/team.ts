@@ -21,7 +21,7 @@ import { accountChildUsage, accountUsage, emptyUsage, sessionUsage } from "./cos
 import { AGENT_UPDATES, unseenUpdates, updatesNote } from "./updates.js";
 import { cleanBuildOutputs, dailyBackup, gb, helperFolders, lastBackup, unpushedWork, type FolderUsage, type UnpushedBranch } from "./housekeeping.js";
 import { coordinatorTools, workerTools, type ToolContext } from "./tools.js";
-import { changedFiles, createWorkspace, inProjectFolder, isGitRepo, leaveWorkspace, mergeWorkspace, removeWorkspace, restoreWorkspace, syncWorkspace } from "./workspaces.js";
+import { changedFiles, createWorkspace, inProjectFolder, isGitRepo, leaveWorkspace, mergeWorkspace, reattachWorkspace, removeWorkspace, restoreWorkspace, syncWorkspace } from "./workspaces.js";
 
 const STUCK_AFTER_MS = Number(process.env.SYMBIO_STUCK_MINUTES ?? 10) * 60_000;
 const WATCHDOG_INTERVAL_MS = 30_000;
@@ -99,6 +99,8 @@ export class Team {
   private limitNoticed = new Map<string, number>(); // pair → when the human was last told
   private failedModels = new Map<string, Map<string, number>>(); // agentId → model → failedAt
   private fallbackBusy = new Set<string>();
+  /** When each agent last got a fresh session because its conversation was too large to send. */
+  private oversizedAt = new Map<string, number>();
   /** agentId → tool call id of an open interactive question. */
   private pendingQuestion = new Map<string, string>();
   /** Connection actions (SSH, git, GitHub API) and their approvals. Set at startup. */
@@ -1375,12 +1377,29 @@ export class Team {
 
   /** Before starting an agent's turn: make sure its tools and private docs are in place. */
   private async prepare(project: Project, agent: Agent) {
+    await this.reattach(project, agent);
     await this.ensureTools(project, agent.directory);
     await this.syncPrivateDocs(project, agent);
   }
 
+  /** A helper whose folder disappeared gets it back from its branch (see reattachWorkspace). */
+  private async reattach(project: Project, agent: Agent) {
+    if (agent.status === "stopped") return;
+    const recreated = await reattachWorkspace(project, agent).catch((err) => {
+      console.error(`[team] could not recreate ${agent.name}'s folder:`, err.message);
+      return false;
+    });
+    if (!recreated) return;
+    const text =
+      `${agent.name}'s folder (${agent.directory}) had disappeared; Symbio recreated it from its branch ${agent.branch}. ` +
+      "Everything it committed is there; changes it hadn't committed were in the folder and are gone.";
+    await this.log(project, { from: "symbio", to: "human", kind: "system", text });
+    await this.system(project, agent, `Symbio: ${text.replace(`${agent.name}'s folder`, "Your folder")} Check your state before continuing.`, false);
+  }
+
   private async refreshAll() {
     for (const project of this.store.list()) {
+      for (const agent of project.agents.filter(active)) await this.reattach(project, agent);
       const dirs = new Set(project.agents.filter(active).map((a) => a.directory));
       for (const dir of dirs) {
         await this.registerTools(project, dir).catch((err) =>
@@ -1513,6 +1532,48 @@ export class Team {
   }
 
   /**
+   * An agent whose conversation got too large to send continues in a fresh session (with the
+   * usual handoff note) and is told why. Once per 15 minutes: if the fresh one fails the same
+   * way, the human is told instead of looping.
+   */
+  private async renewOversized(project: Project, agent: Agent, message: string) {
+    const last = this.oversizedAt.get(agent.id) ?? 0;
+    if (Date.now() - last < 15 * 60_000) {
+      if (agent.problem) return;
+      agent.problem = `Its conversation is too large to send, even after a fresh session (${message}).`;
+      this.setStatus(project, agent, "error");
+      await this.store.update(project);
+      bus.publish({ type: "project.updated", projectId: project.id });
+      await this.log(project, { from: "symbio", to: "human", kind: "alert", text: `${agent.name} can't continue: ${agent.problem}` });
+      return;
+    }
+    this.oversizedAt.set(agent.id, Date.now());
+    this.fallbackBusy.add(agent.id);
+    try {
+      agent.problem = null;
+      if (agent.status !== "idle") this.setStatus(project, agent, "idle");
+      await this.renewSession(project, agent, "its conversation had grown too large to send");
+      await this.system(
+        project,
+        agent,
+        "Symbio: your previous conversation had grown too large to send to the model (the provider said: " +
+          `"${message}"), so you continue in this fresh session; the handoff note above has what carries over. ` +
+          "Usually it's images read in full: each one stays in the conversation and is sent again every turn. " +
+          "To look at an image, read a small copy (scaled down to about 1000 px wide) or have a helper review it. " +
+          "Continue where you left off.",
+      );
+    } catch (err) {
+      agent.problem = `Its conversation is too large to send (${message}), and a fresh session couldn't start: ${(err as Error).message}. Use New session in its chat.`;
+      this.setStatus(project, agent, "error");
+      await this.store.update(project);
+      bus.publish({ type: "project.updated", projectId: project.id });
+      await this.log(project, { from: "symbio", to: "human", kind: "alert", text: `${agent.name} can't continue: ${agent.problem}` });
+    } finally {
+      this.fallbackBusy.delete(agent.id);
+    }
+  }
+
+  /**
    * When an agent's model fails for provider reasons (quota, outage, timeouts),
    * switch it to the next allowed model and tell it to continue.
    */
@@ -1522,6 +1583,14 @@ export class Team {
     const type = String(error?.type ?? "");
     const status = Number(error?.status ?? 0);
     if (/interrupt|abort|cancel/i.test(`${type} ${message}`)) return; // our own interrupts
+    // The conversation itself is too big to send (seen with Copilot: "Timed out reading request
+    // body", after an agent read several large images). Another model won't help; a fresh session will.
+    if (status === 413 || /request body|request size|payload too large|request too large|request entity too large/i.test(message)) {
+      // Still retrying the same oversized request: stop it before moving on.
+      if (interruptFirst) await this.client().interrupt(agent.sessionId).catch(() => {});
+      await this.renewOversized(project, agent, message);
+      return;
+    }
     const providerProblem =
       type.startsWith("provider") ||
       [401, 402, 403, 404, 408, 429].includes(status) ||

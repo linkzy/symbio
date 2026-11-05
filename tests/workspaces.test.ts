@@ -108,3 +108,24 @@ test("leftover folders of removed projects are cleaned up; live projects are lef
   assert.equal(existsSync(path.join(root, "prj_live456")), true, "live project untouched");
   assert.equal(existsSync(path.join(root, "not-a-project")), true, "unknown folders untouched");
 });
+
+test("a helper's folder deleted outside Symbio comes back from its branch, committed work kept", async () => {
+  const { reattachWorkspace } = await import("../src/server/workspaces.js");
+  const { rmSync, existsSync } = await import("node:fs");
+  const dir = mkdtempSync(path.join(os.tmpdir(), "orq-ws-"));
+  writeFileSync(path.join(dir, "a.txt"), "one\n");
+  await initRepository(dir);
+  const project: any = { id: "prj_reattach", directory: dir };
+  const ws = await createWorkspace(project, "artist");
+  const agent: any = { id: "artist", name: "artist", role: "worker", status: "idle", directory: ws.directory, branch: ws.branch, base: ws.base };
+  writeFileSync(path.join(agent.directory, "art.txt"), "drawn\n");
+  await commitAll(agent.directory, "art");
+  const head = await git(agent.directory, "rev-parse", "HEAD");
+
+  assert.equal(await reattachWorkspace(project, agent), false, "nothing to do while the folder exists");
+  rmSync(agent.directory, { recursive: true, force: true });
+  assert.equal(await reattachWorkspace(project, agent), true);
+  assert.ok(existsSync(agent.directory));
+  assert.equal(read(path.join(agent.directory, "art.txt")), "drawn\n", "committed work is back");
+  assert.equal(await git(project.directory, "rev-parse", agent.branch), head, "the branch wasn't moved");
+});

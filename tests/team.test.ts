@@ -202,3 +202,26 @@ test("where helpers work: project setting, per-helper choice, and moving a helpe
   assert.equal(existsSync(oldDir), false, "its own copy is removed");
   assert.equal(await git(project.directory, "branch", "--list", "symbio/branchy"), "", "its merged branch is deleted");
 });
+
+test("a conversation too large to send gets one fresh session, then an alert instead of a loop", async () => {
+  const { project, team, calls, store } = await setup();
+  const writer = project.agents[1];
+  const client = (team as any).runtime.client;
+  let n = 0;
+  client.createSession = async () => ({ id: `ses_fresh${++n}` });
+  client.messagePage = async () => ({ messages: [], hasMore: false });
+  client.interrupt = async () => {};
+  (team as any).refreshUsage = async () => {};
+  const error = { type: "provider.error", message: "Timed out reading request body. Try again, or use a smaller request size." };
+
+  await (team as any).fallback(project, writer, error);
+  assert.equal(writer.sessionId, "ses_fresh1", "continues in a fresh session");
+  assert.equal(writer.model, "p/m", "no model switching");
+  assert.match(prompts(calls, "ses_fresh1").at(-1)!.body, /too large to send/, "and is told why");
+
+  await (team as any).fallback(project, writer, error);
+  assert.equal(writer.sessionId, "ses_fresh1", "not renewed again right away");
+  assert.equal(writer.status, "error");
+  const log = await store.readMessages(project);
+  assert.ok(log.some((m: any) => m.kind === "alert" && /too large to send/.test(m.text)), "the human is told");
+});

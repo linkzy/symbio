@@ -5,6 +5,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- An agent whose conversation becomes too large to send ("Timed out reading request body", often
+  after reading full-size images) continues in a fresh session with a handoff note, instead of
+  Symbio trying every other model; agents are told to read scaled-down copies of images.
+- A helper's folder that was deleted outside Symbio is recreated from its branch (committed work
+  kept), and the human and the helper are told.
+
 - Rules register (optional, per project; on by default for new projects): agents record rules with
   their sources, literal excerpts, who imposes them, confirmation and status through new tools, and
   the Docs tab shows them as a filterable index grouped by area and stage. A citation opens its
