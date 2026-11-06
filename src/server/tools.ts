@@ -450,7 +450,8 @@ const githubApi: Tool = {
       connection: str("GitHub connection name"),
       method: { type: "string", enum: ["GET", "POST", "PATCH", "PUT", "DELETE"] },
       path: str("API path, e.g. /user/repos"),
-      body: { type: "object", description: "JSON body for POST/PATCH/PUT" },
+      // Some endpoints take a list (e.g. Azure DevOps ref updates), others an object.
+      body: { anyOf: [{ type: "object" }, { type: "array" }], description: "JSON body for POST/PATCH/PUT (an object, or a list where the API expects one)" },
       reason: reasonField,
     },
     ["connection", "method", "path", "reason"],
@@ -477,7 +478,8 @@ const azureDevopsApi: Tool = {
       connection: str("Azure DevOps connection name"),
       method: { type: "string", enum: ["GET", "POST", "PATCH", "PUT", "DELETE"] },
       path: str("Path inside the organization, e.g. MyProject/_apis/git/repositories"),
-      body: { type: "object", description: "JSON body for POST/PATCH/PUT" },
+      // Some endpoints take a list (e.g. Azure DevOps ref updates), others an object.
+      body: { anyOf: [{ type: "object" }, { type: "array" }], description: "JSON body for POST/PATCH/PUT (an object, or a list where the API expects one)" },
       reason: reasonField,
     },
     ["connection", "method", "path", "reason"],
