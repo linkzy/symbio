@@ -1,7 +1,7 @@
 // Actions agents take through connections (SSH commands and uploads, git push/pull,
-// GitHub API). Symbio runs them itself with credentials from the vault — agents
-// only see results. Connections set to "ask" queue an approval for the human; the
-// result is delivered to the agent as a message once approved.
+// GitHub and Azure DevOps APIs). Symbio runs them itself with credentials from the
+// vault — agents only see results. Connections set to "ask" queue an approval for
+// the human; the result is delivered to the agent as a message once approved.
 
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -10,7 +10,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { bus } from "./bus.js";
-import type { Connection, Connections, GithubConnection, ServerConnection } from "./connections.js";
+import type { AzureConnection, Connection, Connections, GithubConnection, ServerConnection } from "./connections.js";
 import { sshExec, sshUpload } from "./ssh.js";
 import { globalDir, newId, type Agent, type Project, type ProjectConnection } from "./store.js";
 
@@ -21,7 +21,8 @@ export type RemoteAction =
   | { kind: "remote_upload"; connectionId: string; localPath: string; remotePath: string }
   | { kind: "git_push"; connectionId: string; remote: string | null; branch: string | null }
   | { kind: "git_pull"; connectionId: string; remote: string | null; branch: string | null }
-  | { kind: "github_api"; connectionId: string; method: string; path: string; body?: unknown };
+  | { kind: "github_api"; connectionId: string; method: string; path: string; body?: unknown }
+  | { kind: "azure_devops_api"; connectionId: string; method: string; path: string; body?: unknown };
 
 export interface Approval {
   id: string;
@@ -63,13 +64,17 @@ export class RemoteOps {
 
   describeFor(project: Project): string {
     const list = this.enabled(project);
-    if (list.length === 0) return "This project has no connections. If the work needs GitHub or a server, tell the human to add one in the project's sidebar (Connections).";
+    if (list.length === 0) {
+      return "This project has no connections. If the work needs GitHub, Azure DevOps or a server, tell the human to add one in the project's Settings (Connections).";
+    }
     return list
       .map(({ conn, link }) => {
         const what =
           conn.type === "github"
             ? `GitHub${conn.account ? ` account ${conn.account}` : ""} — git_push, git_pull, github_api`
-            : `server ${conn.username}@${conn.host} — remote_exec, remote_upload`;
+            : conn.type === "azure"
+              ? `Azure DevOps organization ${conn.organization}${conn.account ? ` (as ${conn.account})` : ""} — git_push, git_pull, azure_devops_api`
+              : `server ${conn.username}@${conn.host} — remote_exec, remote_upload`;
         return `- "${conn.name}": ${what} (${link.policy === "ask" ? "each action needs the human's approval" : "allowed without approval"})`;
       })
       .join("\n");
@@ -79,7 +84,7 @@ export class RemoteOps {
   async request(project: Project, agent: Agent, action: RemoteAction, reason: string): Promise<string> {
     const { conn, link } = this.resolve(project, action.connectionId, action.kind);
     const summary = this.summarize(conn, action, agent);
-    const readOnly = action.kind === "github_api" && action.method.toUpperCase() === "GET";
+    const readOnly = (action.kind === "github_api" || action.kind === "azure_devops_api") && action.method.toUpperCase() === "GET";
     if (link.policy === "allow" || readOnly) {
       return this.execute(project, agent, conn, action, summary, reason);
     }
@@ -153,8 +158,17 @@ export class RemoteOps {
       const names = this.enabled(project).map(({ conn }) => conn.name).join(", ") || "none";
       throw new Error(`No connection "${connectionRef}" in this project. Available: ${names}.`);
     }
-    const needs = kind.startsWith("remote_") ? "server" : "github";
-    if (found.conn.type !== needs) throw new Error(`"${found.conn.name}" is a ${found.conn.type} connection; ${kind} needs a ${needs} connection.`);
+    const needs: Connection["type"][] = kind.startsWith("remote_")
+      ? ["server"]
+      : kind === "github_api"
+        ? ["github"]
+        : kind === "azure_devops_api"
+          ? ["azure"]
+          : ["github", "azure"]; // git_push / git_pull
+    if (!needs.includes(found.conn.type)) {
+      const label = (t: string) => (t === "azure" ? "Azure DevOps" : t === "github" ? "GitHub" : "server");
+      throw new Error(`"${found.conn.name}" is a ${label(found.conn.type)} connection; ${kind} needs a ${needs.map(label).join(" or ")} connection.`);
+    }
     return found;
   }
 
@@ -170,6 +184,8 @@ export class RemoteOps {
         return `git pull ${a.remote ?? "origin"} ${a.branch ?? "(current branch)"} into ${agent.name}'s workspace using ${conn.name}`;
       case "github_api":
         return `GitHub API ${a.method.toUpperCase()} ${a.path} using ${conn.name}`;
+      case "azure_devops_api":
+        return `Azure DevOps API ${a.method.toUpperCase()} ${a.path} using ${conn.name}`;
     }
   }
 
@@ -208,12 +224,11 @@ export class RemoteOps {
       }
       case "git_push":
       case "git_pull": {
-        const token = await this.connections.githubToken(conn as GithubConnection);
+        const gitConn = conn as GithubConnection | AzureConnection;
+        const token = await this.connections.githubToken(gitConn);
         const remote = a.remote ?? "origin";
         const url = remote.startsWith("https://") ? remote : await gitOut(agent.directory, ["remote", "get-url", remote]);
-        if (!/^https:\/\/github\.com\//i.test(url)) {
-          throw new Error(`The remote must be a GitHub HTTPS URL (got ${url || "nothing"}). Add one with: git remote add origin https://github.com/<owner>/<repo>.git`);
-        }
+        const auth = gitAuth(gitConn, url, token);
         const branch = a.branch ?? (await gitOut(agent.directory, ["rev-parse", "--abbrev-ref", "HEAD"]));
         // The agent controls this repository, so its config and hooks are untrusted: a hook
         // would see the token, a proxy or URL rewrite would send it elsewhere.
@@ -222,7 +237,7 @@ export class RemoteOps {
         const safe = ["-c", `core.hooksPath=${noHooks}`, "-c", "http.proxy=", "-c", "http.sslVerify=true", "-c", "credential.helper="];
         // The token goes in an HTTP header via environment-only git config: never in
         // the command line, the repo config or the agent's view.
-        const header = `Authorization: Basic ${Buffer.from(`x-access-token:${token}`).toString("base64")}`;
+        const { headerKey, header } = auth;
         const git = (args: string[], withToken: boolean) =>
           run("git", [...safe, ...args], {
             cwd: agent.directory,
@@ -231,9 +246,7 @@ export class RemoteOps {
             env: {
               ...process.env,
               GIT_TERMINAL_PROMPT: "0",
-              ...(withToken
-                ? { GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "http.https://github.com/.extraheader", GIT_CONFIG_VALUE_0: header }
-                : {}),
+              ...(withToken ? { GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: headerKey, GIT_CONFIG_VALUE_0: header } : {}),
             },
           }).catch((err) => {
             throw new Error(scrub(String(err.stderr || err.message), token));
@@ -247,8 +260,12 @@ export class RemoteOps {
         const merged = await git(["merge", "--no-edit", "FETCH_HEAD"], false);
         return scrub(`${fetched.stdout}${fetched.stderr}${merged.stdout}${merged.stderr}`.trim() || "done", token);
       }
-      case "github_api": {
-        const data = await this.connections.githubRequest(conn as GithubConnection, a.method.toUpperCase(), a.path, a.body);
+      case "github_api":
+      case "azure_devops_api": {
+        const data =
+          a.kind === "github_api"
+            ? await this.connections.githubRequest(conn as GithubConnection, a.method.toUpperCase(), a.path, a.body)
+            : await this.connections.azureRequest(conn as AzureConnection, a.method.toUpperCase(), a.path, a.body);
         const text = JSON.stringify(data, null, 2) ?? "(no content)";
         return text.length > 20_000 ? `${text.slice(0, 20_000)}\n… (truncated)` : text;
       }
@@ -308,7 +325,7 @@ export async function refuseRiskyGitConfig(dir: string): Promise<void> {
     .map(([, key]) => key);
   if (risky.length) {
     throw new Error(
-      `Refusing to use GitHub credentials: this repository's git config sets ${risky.join(", ")}, which could redirect or capture them. Remove ${risky.length > 1 ? "these settings" : "it"} (git config --unset <name>) and try again.`,
+      `Refusing to use the connection's credentials: this repository's git config sets ${risky.join(", ")}, which could redirect or capture them. Remove ${risky.length > 1 ? "these settings" : "it"} (git config --unset <name>) and try again.`,
     );
   }
 }
@@ -319,6 +336,37 @@ async function gitOut(cwd: string, args: string[]): Promise<string> {
 }
 
 function scrub(text: string, secret: string): string {
-  const b64 = Buffer.from(`x-access-token:${secret}`).toString("base64");
-  return text.split(secret).join("***").split(b64).join("***");
+  let out = text.split(secret).join("***");
+  for (const user of ["x-access-token:", ":"]) out = out.split(Buffer.from(`${user}${secret}`).toString("base64")).join("***");
+  return out;
+}
+
+/**
+ * How to send a connection's token to a git remote, after checking the remote belongs to it:
+ * a GitHub HTTPS URL for GitHub; for Azure DevOps, a dev.azure.com (or older visualstudio.com)
+ * URL of the connection's own organization, so its token never goes to someone else's.
+ */
+export function gitAuth(conn: GithubConnection | AzureConnection, url: string, token: string): { headerKey: string; header: string } {
+  if (conn.type === "github") {
+    if (!/^https:\/\/github\.com\//i.test(url)) {
+      throw new Error(`The remote must be a GitHub HTTPS URL (got ${url || "nothing"}). Add one with: git remote add origin https://github.com/<owner>/<repo>.git`);
+    }
+    return { headerKey: "http.https://github.com/.extraheader", header: `Authorization: Basic ${Buffer.from(`x-access-token:${token}`).toString("base64")}` };
+  }
+  const devAzure = /^https:\/\/(?:[^@/]+@)?dev\.azure\.com\/([^/]+)\//i.exec(url);
+  const legacy = /^https:\/\/(?:[^@/]+@)?([^./]+)\.visualstudio\.com\//i.exec(url);
+  if (!devAzure && !legacy) {
+    throw new Error(
+      `The remote must be an Azure DevOps HTTPS URL (got ${url || "nothing"}). ` +
+        (/^git@|^ssh:/i.test(url)
+          ? "It's an SSH remote; switch it to HTTPS: git remote set-url origin https://dev.azure.com/<organization>/<project>/_git/<repository>"
+          : "Add one with: git remote add origin https://dev.azure.com/<organization>/<project>/_git/<repository>"),
+    );
+  }
+  const org = decodeURIComponent((devAzure ?? legacy)![1]);
+  if (org.toLowerCase() !== conn.organization.toLowerCase()) {
+    throw new Error(`This remote belongs to the Azure DevOps organization "${org}", but "${conn.name}" is for "${conn.organization}". Use a connection for "${org}".`);
+  }
+  const host = devAzure ? "https://dev.azure.com/" : `https://${legacy![1]}.visualstudio.com/`;
+  return { headerKey: `http.${host}.extraheader`, header: `Authorization: Basic ${Buffer.from(`:${token}`).toString("base64")}` };
 }

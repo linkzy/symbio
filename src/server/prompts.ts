@@ -350,13 +350,16 @@ export function kickoffMessage(project: Project): string {
 }
 
 function connectionsSection(connections: string): string {
-  return `## Connections (GitHub, servers)
+  return `## Connections (GitHub, Azure DevOps, servers)
 
 ${connections || "None."}
 
-Use connections only through Symbio's tools: \`list_connections\`, \`git_push\`,
-\`git_pull\`, \`github_api\` (GitHub) and \`remote_exec\`, \`remote_upload\` (servers).
-Symbio performs the action with the stored credentials — you never see them.
+Use connections only through Symbio's tools: \`list_connections\`; \`git_push\`,
+\`git_pull\` (GitHub or Azure DevOps); \`github_api\` (GitHub); \`azure_devops_api\`
+(Azure DevOps: pull requests, repositories, branches); \`remote_exec\`,
+\`remote_upload\` (servers). Symbio performs the action with the stored
+credentials — you never see them. To open a pull request: push the branch with
+\`git_push\`, then create it with \`github_api\` or \`azure_devops_api\`.
 Remote commands must be non-interactive. Always give a clear \`reason\`: when a
 connection needs approval, the human decides based on it, and the result
 arrives later as a message.

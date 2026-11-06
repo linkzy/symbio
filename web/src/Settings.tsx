@@ -16,7 +16,7 @@ function goBack() {
 
 export function Settings() {
   const [connections, setConnections] = useState<ConnectionView[] | null>(null);
-  const [editing, setEditing] = useState<ConnectionView | "new-github" | "new-server" | null>(null);
+  const [editing, setEditing] = useState<ConnectionView | "new-github" | "new-azure" | "new-server" | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,7 +65,7 @@ export function Settings() {
           <div>
             <h2>Connections</h2>
             <p>
-              GitHub accounts and servers agents can use to push and deploy. Credentials are encrypted on this computer, tied to your Windows
+              GitHub accounts, Azure DevOps organizations and servers agents can use to push, open pull requests and deploy. Credentials are encrypted on this computer, tied to your Windows
               login, and never shown to agents — they ask Symbio to act, and Symbio uses the credentials itself.
             </p>
           </div>
@@ -73,6 +73,10 @@ export function Settings() {
             <button className="btn sm" onClick={() => setEditing("new-github")}>
               <Plus size={13} />
               GitHub
+            </button>
+            <button className="btn sm" onClick={() => setEditing("new-azure")}>
+              <Plus size={13} />
+              Azure DevOps
             </button>
             <button className="btn sm" onClick={() => setEditing("new-server")}>
               <Plus size={13} />
@@ -88,7 +92,7 @@ export function Settings() {
         )}
         {connections?.length === 0 && (
           <EmptyState icon={<Plug size={20} />} title="No connections yet">
-            Add a GitHub account or a server (SSH) so agents can push code or deploy for you.
+            Add a GitHub account, an Azure DevOps organization or a server (SSH) so agents can push code, open pull requests or deploy for you.
           </EmptyState>
         )}
 
@@ -104,7 +108,9 @@ export function Settings() {
                       ? c.account
                         ? `GitHub · ${c.account}`
                         : "GitHub · not tested yet"
-                      : `${c.username}@${c.host}${c.port !== 22 ? `:${c.port}` : ""} · ${c.auth === "password" ? "password" : c.keyPath ? `key file ${c.keyPath}` : "stored key"}`}
+                      : c.type === "azure"
+                        ? `Azure DevOps · ${c.organization}${c.account ? ` · ${c.account}` : " · not tested yet"}`
+                        : `${c.username}@${c.host}${c.port !== 22 ? `:${c.port}` : ""} · ${c.auth === "password" ? "password" : c.keyPath ? `key file ${c.keyPath}` : "stored key"}`}
                   </div>
                   {c.lastTest && (
                     <div className={`conn-test ${c.lastTest.ok ? "ok" : "bad"}`}>
@@ -139,7 +145,7 @@ export function Settings() {
         {editing && (
           <ConnectionForm
             existing={typeof editing === "string" ? null : editing}
-            type={typeof editing === "string" ? (editing === "new-github" ? "github" : "server") : editing.type}
+            type={typeof editing === "string" ? (editing === "new-github" ? "github" : editing === "new-azure" ? "azure" : "server") : editing.type}
             onClose={() => setEditing(null)}
             onSaved={async (id) => {
               setEditing(null);
@@ -160,13 +166,14 @@ function ConnectionForm({
   onSaved,
 }: {
   existing: ConnectionView | null;
-  type: "github" | "server";
+  type: ConnectionView["type"];
   onClose: () => void;
   onSaved: (id: string) => void;
 }) {
   const server = existing?.type === "server" ? existing : null;
   const [name, setName] = useState(existing?.name ?? "");
   const [token, setToken] = useState("");
+  const [organization, setOrganization] = useState(existing?.type === "azure" ? existing.organization : "");
   const [host, setHost] = useState(server?.host ?? "");
   const [port, setPort] = useState(String(server?.port ?? 22));
   const [username, setUsername] = useState(server?.username ?? "");
@@ -188,7 +195,9 @@ function ConnectionForm({
     const body =
       type === "github"
         ? { type, name, token }
-        : {
+        : type === "azure"
+          ? { type, name, organization, token }
+          : {
             type,
             name,
             host,
@@ -211,7 +220,7 @@ function ConnectionForm({
 
   return (
     <Dialog
-      title={`${existing ? "Edit" : "New"} ${type === "github" ? "GitHub connection" : "server connection"}`}
+      title={`${existing ? "Edit" : "New"} ${type === "github" ? "GitHub connection" : type === "azure" ? "Azure DevOps connection" : "server connection"}`}
       onClose={onClose}
       footer={
         <>
@@ -226,7 +235,7 @@ function ConnectionForm({
     >
       <label className="field">
         <span>Name</span>
-        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={type === "github" ? "My GitHub" : "My VPS"} />
+        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={type === "github" ? "My GitHub" : type === "azure" ? "Company Azure DevOps" : "My VPS"} />
       </label>
 
       {type === "github" ? (
@@ -238,6 +247,22 @@ function ConnectionForm({
             work on is safest; give it Contents (read &amp; write), Pull requests and Issues as needed.
           </span>
         </label>
+      ) : type === "azure" ? (
+        <>
+          <label className="field">
+            <span>Organization</span>
+            <input value={organization} onChange={(e) => setOrganization(e.target.value)} placeholder="contoso, or https://dev.azure.com/contoso" />
+            <span className="hint">The name in your Azure DevOps address: https://dev.azure.com/&lt;organization&gt;.</span>
+          </label>
+          <label className="field">
+            <span>Personal access token</span>
+            <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder={keep("token") || "Paste the token"} />
+            <span className="hint">
+              Azure DevOps → User settings → Personal access tokens. Give it access to this organization only, with Code (Read &amp; write) so
+              agents can push and open pull requests; add Work Items if they should update boards. Pick a short expiry and renew it here.
+            </span>
+          </label>
+        </>
       ) : (
         <>
           <div className="field-row">

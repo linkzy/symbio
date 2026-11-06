@@ -408,15 +408,16 @@ const remoteUpload: Tool = {
 };
 
 const gitFields = {
-  connection: str("GitHub connection name"),
-  remote: str("Remote name or https://github.com/… URL (default: origin)"),
+  connection: str("GitHub or Azure DevOps connection name"),
+  remote: str("Remote name or HTTPS URL (github.com, dev.azure.com) (default: origin)"),
   branch: str("Branch (default: your current branch)"),
   reason: reasonField,
 };
 
 const gitPush: Tool = {
   name: "git_push",
-  description: "Push committed work from your working folder to GitHub (the token is applied by Symbio; plain `git push` has no credentials).",
+  description:
+    "Push committed work from your working folder to GitHub or Azure DevOps (the token is applied by Symbio; plain `git push` may have no credentials).",
   inputSchema: obj(gitFields, ["connection", "reason"]),
   run: ({ connection, remote, branch, reason }, { team, project, agent }) =>
     team.remote.request(
@@ -429,7 +430,7 @@ const gitPush: Tool = {
 
 const gitPull: Tool = {
   name: "git_pull",
-  description: "Pull from GitHub into your working folder (merge, no rebase).",
+  description: "Pull from GitHub or Azure DevOps into your working folder (merge, no rebase).",
   inputSchema: obj(gitFields, ["connection", "reason"]),
   run: ({ connection, remote, branch, reason }, { team, project, agent }) =>
     team.remote.request(
@@ -459,6 +460,33 @@ const githubApi: Tool = {
       project,
       agent,
       { kind: "github_api", connectionId: String(connection), method: String(method), path: String(path), body },
+      String(reason),
+    ),
+};
+
+const azureDevopsApi: Tool = {
+  name: "azure_devops_api",
+  description:
+    "Call the Azure DevOps REST API of the connection's organization. The path is relative to https://dev.azure.com/<organization>/ " +
+    "and api-version is added if missing. E.g. GET <project>/_apis/git/repositories to find a repository's id; " +
+    "POST <project>/_apis/git/repositories/<repo>/pullrequests with {sourceRefName: 'refs/heads/<branch>', targetRefName: " +
+    "'refs/heads/main', title, description} to open a pull request (push the branch first with git_push); " +
+    "GET <project>/_apis/git/repositories/<repo>/pullrequests?searchCriteria.status=active to list them. Read-only GET calls never need approval.",
+  inputSchema: obj(
+    {
+      connection: str("Azure DevOps connection name"),
+      method: { type: "string", enum: ["GET", "POST", "PATCH", "PUT", "DELETE"] },
+      path: str("Path inside the organization, e.g. MyProject/_apis/git/repositories"),
+      body: { type: "object", description: "JSON body for POST/PATCH/PUT" },
+      reason: reasonField,
+    },
+    ["connection", "method", "path", "reason"],
+  ),
+  run: ({ connection, method, path, body, reason }, { team, project, agent }) =>
+    team.remote.request(
+      project,
+      agent,
+      { kind: "azure_devops_api", connectionId: String(connection), method: String(method), path: String(path), body },
       String(reason),
     ),
 };
@@ -588,6 +616,7 @@ const COMMON = [
   gitPush,
   gitPull,
   githubApi,
+  azureDevopsApi,
   sendMessage,
   askHuman,
   listTeam,

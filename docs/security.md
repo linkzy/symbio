@@ -73,7 +73,7 @@ project the connections it needs.
 
 ## Credentials
 
-- **Connections** (GitHub tokens, SSH passwords and keys) are encrypted with AES-256-GCM in
+- **Connections** (GitHub and Azure DevOps tokens, SSH passwords and keys) are encrypted with AES-256-GCM in
   `~/.symbio/secrets.enc`. The master key lives in your OS credential store (Windows Credential
   Manager, macOS Keychain, Secret Service). If that key can't be read, Symbio stops with an error
   instead of replacing it.
@@ -90,17 +90,20 @@ project the connections it needs.
 - Symbio's own records stay on this machine: a project's `.symbio/` folder has its own
   `.gitignore` (`*`), so the message log, plan and agent data are never committed. Anything typed
   in a chat also lives in OpenCode's local database.
-- **GitHub pushes and pulls** happen in a repository the agent controls, so Symbio treats its config
+- **Pushes and pulls** (GitHub, Azure DevOps) happen in a repository the agent controls, so Symbio treats its config
   as untrusted. The token is passed only to git's HTTP layer, repository hooks are disabled, proxies
   and credential helpers are reset, pulls merge without the token, and Symbio refuses to use the
   token at all if the repository's config sets URL rewrites, proxies, hooks paths, credential
-  helpers or includes.
+  helpers or includes. A token only goes to its own host: GitHub tokens to `github.com`, Azure
+  DevOps tokens to `dev.azure.com` (or the older `<organization>.visualstudio.com`) and only for
+  remotes of the connection's organization. Azure DevOps API calls are confined to that
+  organization too (paths only, no full URLs).
 - **SSH servers** are pinned on first use: the host key fingerprint seen on the first connection is
   stored, and a different key is refused. Editing and saving the connection clears the pin, for a
   reinstalled server.
 - **Approvals** for remote actions are stored in `~/.symbio/approvals/`, outside the project, so an
   agent can't edit what you're about to approve. A connection set to **Ask me** makes every action
-  wait for your approval; read-only GitHub API calls (GET) don't need approval.
+  wait for your approval; read-only API calls (GET, GitHub or Azure DevOps) don't need approval.
 - **Model provider keys** are passed straight to OpenCode, which stores them in its own data folder.
   Symbio doesn't keep them and only returns non-secret fields to the browser.
 - Agents can't read image files with OpenCode's read tool: those reads are refused (by Symbio,

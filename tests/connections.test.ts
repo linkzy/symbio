@@ -60,3 +60,55 @@ test("server test reports a friendly error", async () => {
   assert.equal(result.ok, false);
   assert.match(result.message, /refused|timed out/i);
 });
+
+test("azure devops connection: organization from what people paste, token kept secret, API calls scoped to the organization", async () => {
+  const { azureOrganization } = await import("../src/server/connections.js");
+  assert.equal(azureOrganization("unipti"), "unipti");
+  assert.equal(azureOrganization("https://dev.azure.com/unipti/"), "unipti");
+  assert.equal(azureOrganization("https://user@dev.azure.com/unipti/CPA/_git/Pesquisas"), "unipti");
+  assert.equal(azureOrganization("https://unipti.visualstudio.com/DefaultCollection"), "unipti");
+
+  const conns = new Connections();
+  await conns.load();
+  await assert.rejects(conns.create({ type: "azure", name: "x", token: "t" }), /organization/);
+  const AZ = "azdo_FAKE_PAT_0123456789abcdef";
+  const c: any = await conns.create({ type: "azure", name: "Company", organization: "https://dev.azure.com/contoso", token: AZ });
+  assert.equal(c.organization, "contoso");
+  assert.ok(!JSON.stringify(await conns.view(c)).includes(AZ));
+
+  // The API: requests go to the connection's organization, with api-version, Basic auth with an empty user.
+  const realFetch = globalThis.fetch;
+  const seen: { url: string; auth: string }[] = [];
+  let reply = () => new Response(JSON.stringify({ value: [] }), { status: 200, headers: { "content-type": "application/json" } });
+  globalThis.fetch = (async (url: any, init: any) => {
+    seen.push({ url: String(url), auth: init.headers.authorization });
+    return reply();
+  }) as any;
+  try {
+    await conns.azureRequest(c, "GET", "/CPA/_apis/git/repositories");
+    assert.equal(seen[0].url, "https://dev.azure.com/contoso/CPA/_apis/git/repositories?api-version=7.1");
+    assert.equal(seen[0].auth, `Basic ${Buffer.from(`:${AZ}`).toString("base64")}`);
+    await assert.rejects(conns.azureRequest(c, "GET", "https://evil.example/_apis"), /not a full URL/);
+    // A refused token gets a sign-in page, not a 401.
+    reply = () => new Response("<html>Sign in</html>", { status: 203, headers: { "content-type": "text/html" } });
+    await assert.rejects(conns.azureRequest(c, "GET", "_apis/projects"), /rejected the token/);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  await conns.remove(c.id);
+});
+
+test("git credentials only go to a remote of the connection's own host and organization", async () => {
+  const { gitAuth } = await import("../src/server/remote.js");
+  const azure: any = { type: "azure", name: "Company", organization: "contoso" };
+  const github: any = { type: "github", name: "Mine" };
+  const a = gitAuth(azure, "https://contoso@dev.azure.com/contoso/Proj/_git/repo", "PAT");
+  assert.equal(a.headerKey, "http.https://dev.azure.com/.extraheader");
+  assert.equal(a.header, `Authorization: Basic ${Buffer.from(":PAT").toString("base64")}`);
+  assert.equal(gitAuth(azure, "https://contoso.visualstudio.com/Proj/_git/repo", "PAT").headerKey, "http.https://contoso.visualstudio.com/.extraheader");
+  assert.throws(() => gitAuth(azure, "https://dev.azure.com/otherorg/Proj/_git/repo", "PAT"), /organization "otherorg"/);
+  assert.throws(() => gitAuth(azure, "git@ssh.dev.azure.com:v3/contoso/Proj/repo", "PAT"), /SSH remote; switch it to HTTPS/);
+  assert.throws(() => gitAuth(azure, "https://github.com/me/repo.git", "PAT"), /Azure DevOps HTTPS URL/);
+  assert.throws(() => gitAuth(github, "https://dev.azure.com/contoso/Proj/_git/repo", "T"), /GitHub HTTPS URL/);
+  assert.equal(gitAuth(github, "https://github.com/me/repo.git", "T").headerKey, "http.https://github.com/.extraheader");
+});

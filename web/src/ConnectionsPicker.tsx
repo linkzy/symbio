@@ -1,9 +1,21 @@
 import { useEffect, useState } from "react";
-import { GitBranch, Server } from "lucide-react";
+import { Cloud, GitBranch, Server } from "lucide-react";
 import { api, type ConnectionView, type ProjectConnection } from "./api";
 
-export function ConnIcon({ type, small }: { type: "github" | "server"; small?: boolean }) {
-  return <span className={`conn-icon ${small ? "sm" : ""}`}>{type === "github" ? <GitBranch size={small ? 12 : 15} /> : <Server size={small ? 12 : 15} />}</span>;
+export function ConnIcon({ type, small }: { type: ConnectionView["type"]; small?: boolean }) {
+  const size = small ? 12 : 15;
+  return (
+    <span className={`conn-icon ${small ? "sm" : ""}`}>
+      {type === "github" ? <GitBranch size={size} /> : type === "azure" ? <Cloud size={size} /> : <Server size={size} />}
+    </span>
+  );
+}
+
+/** One line describing a connection: account, organization or user@host. */
+export function connectionLabel(c: ConnectionView): string {
+  if (c.type === "github") return c.account ? `GitHub · ${c.account}` : "GitHub";
+  if (c.type === "azure") return `Azure DevOps · ${c.organization}${c.account ? ` · ${c.account}` : ""}`;
+  return `${c.username}@${c.host}`;
 }
 
 /** Choose which global connections a project may use, and whether actions need approval. */
@@ -20,7 +32,7 @@ export function ConnectionsPicker({ value, onChange }: { value: ProjectConnectio
   if (all.length === 0) {
     return (
       <div className="subtle small">
-        No connections yet — add GitHub accounts or servers in <a className="link" href="#/settings">Settings</a>.
+        No connections yet — add GitHub, Azure DevOps or servers in <a className="link" href="#/settings">Settings</a>.
       </div>
     );
   }
@@ -40,7 +52,7 @@ export function ConnectionsPicker({ value, onChange }: { value: ProjectConnectio
               <ConnIcon type={c.type} small />
               <span className="grow ellipsis">
                 <span style={{ fontWeight: 500 }}>{c.name}</span>{" "}
-                <span className="subtle small">{c.type === "github" ? (c.account ?? "GitHub") : `${c.username}@${c.host}`}</span>
+                <span className="subtle small">{connectionLabel(c)}</span>
               </span>
             </label>
             {l && (

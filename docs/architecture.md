@@ -25,7 +25,7 @@ Non-goals for now: multiple users, remote hosting, runtimes other than OpenCode.
 Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCode v2 HTTP API)
      REST + SSE         team · store · bus · MCP           sessions = agents
                               ⇅
-                    git worktrees, SSH, GitHub API
+                    git worktrees, SSH, GitHub/Azure DevOps APIs
 ```
 
 - **OpenCode is the agent runtime.** Symbio ships with a pinned OpenCode (the `@opencode/cli`
@@ -70,8 +70,8 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 | `rules.ts` | The rules register (`docs/rules.json`, or `rules.json` in private docs): validated writes, one at a time, ids that are never reused |
 | `docs.ts` | Project documentation (in the project, or private under `.symbio/docs`): list, read, write, search |
 | `guard.ts` | OpenCode permission rules for every agent (kill/secret denies, install asks) |
-| `connections.ts`, `secrets.ts` | GitHub/SSH connections and the encrypted secret vault |
-| `remote.ts`, `ssh.ts` | Running remote actions for agents (SSH exec/upload, git push/pull, GitHub API) with approvals |
+| `connections.ts`, `secrets.ts` | GitHub, Azure DevOps and SSH connections, and the encrypted secret vault |
+| `remote.ts`, `ssh.ts` | Running remote actions for agents (SSH exec/upload, git push/pull, GitHub and Azure DevOps APIs) with approvals |
 | `providers.ts` | Listing, adding and removing OpenCode model providers |
 | `remote-access.ts` | Optional remote access: Cloudflare quick tunnel, access code, remote sessions, the remote login page |
 | `folder-picker.ts` | Native "choose a folder" dialog on the machine running Symbio |

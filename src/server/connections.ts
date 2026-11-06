@@ -1,6 +1,7 @@
-// Global connections (set once in Settings, used by any project): GitHub accounts
-// and servers reachable over SSH. Public details live in ~/.symbio/connections.json;
-// secrets live in the encrypted vault and are never returned by the API.
+// Global connections (set once in Settings, used by any project): GitHub accounts,
+// Azure DevOps organizations and servers reachable over SSH. Public details live in
+// ~/.symbio/connections.json; secrets live in the encrypted vault and are never
+// returned by the API.
 
 import { promises as fs, readFileSync } from "node:fs";
 import os from "node:os";
@@ -9,7 +10,7 @@ import { SecretVault } from "./secrets.js";
 import { sshExec, type SshTarget } from "./ssh.js";
 import { globalDir, newId } from "./store.js";
 
-export type ConnectionType = "github" | "server";
+export type ConnectionType = "github" | "azure" | "server";
 
 export interface ConnectionTest {
   ok: boolean;
@@ -44,7 +45,22 @@ export interface ServerConnection extends Base {
   hostKey?: string | null;
 }
 
-export type Connection = GithubConnection | ServerConnection;
+export interface AzureConnection extends Base {
+  type: "azure";
+  /** The organization, as in https://dev.azure.com/<organization>. */
+  organization: string;
+  /** Display name of the token's owner (filled by Test). */
+  account: string | null;
+}
+
+export type Connection = GithubConnection | AzureConnection | ServerConnection;
+
+/** Organization from what people paste: "org", https://dev.azure.com/org/…, https://org.visualstudio.com/…. */
+export function azureOrganization(value: string): string {
+  const v = value.trim();
+  const m = /^https?:\/\/(?:[^@/]+@)?dev\.azure\.com\/([^/?#]+)/i.exec(v) ?? /^https?:\/\/(?:[^@/]+@)?([^./]+)\.visualstudio\.com/i.exec(v);
+  return decodeURIComponent(m ? m[1] : v.replace(/\/+$/, ""));
+}
 
 /** What the browser sees: public fields plus which secrets are stored. */
 export type ConnectionView = Connection & { secrets: Record<string, boolean> };
@@ -52,8 +68,10 @@ export type ConnectionView = Connection & { secrets: Record<string, boolean> };
 export interface ConnectionInput {
   type?: ConnectionType;
   name?: string;
-  // github
+  // github, azure
   token?: string;
+  // azure
+  organization?: string;
   // server
   host?: string;
   port?: number;
@@ -67,6 +85,7 @@ export interface ConnectionInput {
 
 const SECRET_FIELDS: Record<ConnectionType, string[]> = {
   github: ["token"],
+  azure: ["token"],
   server: ["privateKey", "passphrase", "password"],
 };
 
@@ -98,13 +117,15 @@ export class Connections {
   }
 
   async create(input: ConnectionInput): Promise<Connection> {
-    if (input.type !== "github" && input.type !== "server") throw new Error("type must be github or server");
+    if (input.type !== "github" && input.type !== "azure" && input.type !== "server") throw new Error("type must be github, azure or server");
     const now = Date.now();
     const base = { id: newId("con"), name: "", createdAt: now, updatedAt: now, lastTest: null };
     const conn: Connection =
       input.type === "github"
         ? { ...base, type: "github", account: null }
-        : { ...base, type: "server", host: "", port: 22, username: "", auth: "key", keyPath: null };
+        : input.type === "azure"
+          ? { ...base, type: "azure", organization: "", account: null }
+          : { ...base, type: "server", host: "", port: 22, username: "", auth: "key", keyPath: null };
     this.apply(conn, input);
     if (!conn.name) throw new Error("Give the connection a name.");
     this.validate(conn);
@@ -149,6 +170,13 @@ export class Connections {
         const user = await this.githubRequest(conn, "GET", "/user");
         conn.account = user.login;
         result = { ok: true, message: `Signed in as ${user.login}${user.name ? ` (${user.name})` : ""}`, time: Date.now() };
+      } else if (conn.type === "azure") {
+        const data = await this.azureRequest(conn, "GET", "_apis/connectionData", undefined, "7.1-preview");
+        const user = data?.authenticatedUser;
+        conn.account = user?.providerDisplayName ?? user?.customDisplayName ?? null;
+        const projects = await this.azureRequest(conn, "GET", "_apis/projects").catch(() => null);
+        const count = Array.isArray(projects?.value) ? ` — ${projects.value.length} project(s) visible` : "";
+        result = { ok: true, message: `Signed in to ${conn.organization}${conn.account ? ` as ${conn.account}` : ""}${count}`, time: Date.now() };
       } else {
         const res = await sshExec(await this.sshTarget(conn), "uname -srm 2>/dev/null || ver", 30_000);
         const out = (res.stdout || res.stderr).trim().split("\n")[0];
@@ -185,7 +213,40 @@ export class Connections {
     return target;
   }
 
-  async githubToken(conn: GithubConnection): Promise<string> {
+  /** Calls the Azure DevOps REST API of the connection's organization with its token. */
+  async azureRequest(conn: AzureConnection, method: string, apiPath: string, body?: unknown, apiVersion = "7.1"): Promise<any> {
+    const rel = apiPath.trim().replace(/^\/+/, "");
+    if (/^[a-z]+:/i.test(rel)) throw new Error("Give a path inside the organization (e.g. MyProject/_apis/git/repositories), not a full URL.");
+    const url = new URL(`https://dev.azure.com/${encodeURIComponent(conn.organization)}/${rel}`);
+    if (!url.searchParams.has("api-version")) url.searchParams.set("api-version", apiVersion);
+    const token = await this.githubToken(conn);
+    const res = await fetch(url, {
+      method,
+      redirect: "manual", // a sign-in redirect means the token was refused
+      headers: {
+        authorization: `Basic ${Buffer.from(`:${token}`).toString("base64")}`,
+        accept: "application/json",
+        "user-agent": "symbio",
+        ...(body === undefined ? {} : { "content-type": "application/json" }),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const text = await res.text();
+    // A rejected token gets a sign-in page (203 or a redirect) rather than a 401.
+    const html = /^\s*</.test(text) || (res.headers.get("content-type") ?? "").includes("text/html");
+    if (res.status === 401 || res.status === 203 || (res.status >= 300 && res.status < 400) || (html && res.ok)) {
+      throw new Error(`Azure DevOps rejected the token for "${conn.organization}" (expired, revoked, or without access to this organization?)`);
+    }
+    const data = text ? safeJson(text) : null;
+    if (!res.ok) {
+      const msg = (data as any)?.message ?? res.statusText;
+      throw new Error(`Azure DevOps ${res.status}: ${msg}`);
+    }
+    return data;
+  }
+
+  /** The stored token of a GitHub or Azure DevOps connection. */
+  async githubToken(conn: GithubConnection | AzureConnection): Promise<string> {
     const token = await this.vault.get(`${conn.id}:token`);
     if (!token) throw new Error(`No token stored for "${conn.name}".`);
     return token;
@@ -215,6 +276,7 @@ export class Connections {
 
   private apply(conn: Connection, input: ConnectionInput) {
     if (input.name !== undefined) conn.name = input.name.trim();
+    if (conn.type === "azure" && input.organization !== undefined) conn.organization = azureOrganization(input.organization);
     if (conn.type === "server") {
       if (input.host !== undefined) conn.host = input.host.trim();
       if (input.port !== undefined) conn.port = Number(input.port) || 22;
@@ -225,6 +287,9 @@ export class Connections {
   }
 
   private validate(conn: Connection) {
+    if (conn.type === "azure" && !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,62}$/.test(conn.organization)) {
+      throw new Error("Give the organization, e.g. \"contoso\" or https://dev.azure.com/contoso.");
+    }
     if (conn.type === "server") {
       if (!conn.host) throw new Error("Host is required.");
       if (!conn.username) throw new Error("User is required.");
@@ -238,7 +303,7 @@ export class Connections {
       const value = (input as Record<string, unknown>)[field];
       if (typeof value === "string" && value.trim()) await this.vault.set(`${conn.id}:${field}`, value.trim());
     }
-    if (conn.type === "github" && !(await this.vault.has(`${conn.id}:token`))) throw new Error("The token is required.");
+    if ((conn.type === "github" || conn.type === "azure") && !(await this.vault.has(`${conn.id}:token`))) throw new Error("The token is required.");
     if (conn.type === "server") {
       if (conn.auth === "password" && !(await this.vault.has(`${conn.id}:password`))) throw new Error("The password is required.");
       if (conn.auth === "key" && !conn.keyPath && !(await this.vault.has(`${conn.id}:privateKey`))) {

@@ -5,8 +5,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [0.5.1]
+## [0.6.0]
 
+- Azure DevOps connections: add an organization with a personal access token in Settings; agents
+  push and pull through it (HTTPS remotes of that organization) and call its REST API with the new
+  `azure_devops_api` tool, e.g. to open pull requests. The token never reaches the agent and only
+  goes to the connection's own organization.
 - Credentials rule clarified: Symbio's own secrets stay off-limits to agents, but a project's own
   credentials (connection strings, `.env`…) and ones the human gives may be used for the task;
   agents must not copy them into anything committed or shared, and only read from systems the

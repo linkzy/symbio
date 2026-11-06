@@ -101,6 +101,14 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "and prefer commands that read it from the config file. If the human says a system is a read-only mirror or production, only " +
       "read from it unless they explicitly OK changes. If you refused such a task before, you can do it now.",
   },
+  {
+    id: "2026-11-06-azure-devops",
+    text:
+      "Azure DevOps connections: the human can now add an Azure DevOps organization (with a personal access token) in Settings and " +
+      "enable it per project. git_push and git_pull work with it (HTTPS remotes of that organization; SSH remotes must be switched to " +
+      "HTTPS), and the new azure_devops_api tool calls its REST API, e.g. to open a pull request after pushing the branch. Reading " +
+      "(GET) never needs approval. If a push or a pull request failed for lack of credentials, ask the human to add the connection.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */

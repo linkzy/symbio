@@ -233,7 +233,7 @@ function Connections({ project, onChanged }: { project: Project; onChanged: (p: 
         <div>
           <h2>Connections</h2>
           <p>
-            GitHub accounts and servers this project's agents may use. They act through Symbio and never see the credentials. With{" "}
+            GitHub accounts, Azure DevOps organizations and servers this project's agents may use. They act through Symbio and never see the credentials. With{" "}
             <strong>Ask me</strong>, every push, deploy or remote command waits for your approval.
           </p>
         </div>

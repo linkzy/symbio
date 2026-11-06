@@ -105,8 +105,9 @@ All agents:
 | `list_connections` | Connections the project may use and whether actions need approval |
 | `remote_exec` | Run a non-interactive command on a server over SSH |
 | `remote_upload` | Upload files from the working folder to a server |
-| `git_push` / `git_pull` | Push or pull with GitHub; Symbio applies the token |
+| `git_push` / `git_pull` | Push or pull with GitHub or Azure DevOps; Symbio applies the token |
 | `github_api` | Call the GitHub REST API (GET calls never need approval) |
+| `azure_devops_api` | Call the Azure DevOps REST API of the connection's organization, e.g. to open a pull request (GET calls never need approval) |
 
 core only:
 
@@ -129,8 +130,9 @@ a form the human answers.
 
 ## Remote actions
 
-Connections are GitHub accounts or SSH servers configured in Settings and enabled per project.
-Agents never see their credentials: they call `git_push`, `github_api`, `remote_exec` or
+Connections are GitHub accounts, Azure DevOps organizations or SSH servers configured in Settings
+and enabled per project.
+Agents never see their credentials: they call `git_push`, `github_api`, `azure_devops_api`, `remote_exec` or
 `remote_upload`, and Symbio runs the action itself. Credentials that belong to the project (its
 config files) or that the human gives are a different matter: agents may use them for the task, but
 never copy them into anything committed or shared (see [security.md](security.md#credentials)). A connection set to **Ask me** queues an

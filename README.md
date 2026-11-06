@@ -77,8 +77,8 @@ place. Here Symbio was restarted mid-task, and it told the helper to pick up whe
 - **You stay in control.** Questions, plan approvals, permission requests (like installing
   software) and deploy approvals collect in a **Needs you** inbox. Pause one team or everything at
   once.
-- **Connections without exposing secrets.** Give agents a GitHub account or an SSH server. They
-  ask Symbio to push, call the API or deploy, and Symbio does it with credentials the agents never
+- **Connections without exposing secrets.** Give agents a GitHub account, an Azure DevOps
+  organization or an SSH server. They ask Symbio to push, open pull requests, call the API or deploy, and Symbio does it with credentials the agents never
   see. Each connection can require your approval for every action.
 - **Resilient.** A supervisor restarts OpenCode if it crashes, a watchdog unsticks hung agents, and
   when a model fails (quota, outage) the agent switches to the next allowed model and carries on.
@@ -142,7 +142,7 @@ itself. Whoever gets in controls your agents, so keep the link and code to yours
    - **Folder:** browse for or paste a folder. An empty folder starts a new project; an existing
      one is studied first. Symbio offers to set up git if the folder doesn't have it.
    - **Setup:** choose where the project documentation goes (in the project, or private), and which
-     connections (GitHub, servers) the agents may use.
+     connections (GitHub, Azure DevOps, servers) the agents may use.
    - **Models:** pick the models agents may use, and the one core runs on (the crown).
 3. **Talk to core.** Describe what you want. core asks questions, proposes a plan, and waits for
    your approval in the **Plan** tab (it shows a *Review* badge).
@@ -159,7 +159,7 @@ itself. Whoever gets in controls your agents, so keep the link and code to yours
 | **core** | The project's lead agent. It plans, delegates, reviews and merges; it coordinates rather than doing the work itself. |
 | **Helper** | An agent core creates for a piece of work. It works in its own git worktree (branch `symbio/<name>`) or, if the project is set to, in the project folder itself. |
 | **Shared asset** | Something more than one agent could change. Access goes through core: request, grant, release. |
-| **Connection** | A GitHub account or SSH server agents can use through Symbio, without ever seeing its credentials. |
+| **Connection** | A GitHub account, Azure DevOps organization or SSH server agents can use through Symbio, without ever seeing its credentials. |
 | **Allowed models** | The models a project's agents may run on. If one fails, agents fall back to the next. |
 
 ## Where your data lives

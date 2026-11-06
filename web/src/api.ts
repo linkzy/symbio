@@ -48,6 +48,7 @@ interface ConnectionBase {
 
 export type ConnectionView =
   | (ConnectionBase & { type: "github"; account: string | null })
+  | (ConnectionBase & { type: "azure"; organization: string; account: string | null })
   | (ConnectionBase & {
       type: "server";
       host: string;

@@ -24,7 +24,7 @@ test("credentials aren't used in a repository whose config could leak them", asy
     ["include.path", "../elsewhere"],
   ]) {
     await git(dir, "config", key, value);
-    await assert.rejects(refuseRiskyGitConfig(dir), /Refusing to use GitHub credentials/, key);
+    await assert.rejects(refuseRiskyGitConfig(dir), /Refusing to use the connection's credentials/, key);
     await git(dir, "config", "--unset", key);
   }
 });
