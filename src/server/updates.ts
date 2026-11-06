@@ -90,6 +90,17 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "leave reviewing many images to a helper. If a conversation still becomes too large, Symbio moves that agent to a fresh " +
       "session with a handoff note instead of trying other models.",
   },
+  {
+    id: "2026-11-06-credentials",
+    text:
+      "Credentials, clarified: the old rule \"never look for credentials or put secrets in commands\" was meant for Symbio's own " +
+      "secrets (its vault, connections, SSH keys), and it stopped agents from doing legitimate work. Now: Symbio's secrets stay " +
+      "off-limits (use connections only through the tools). The project's own credentials (connection strings, .env, Web.config…) " +
+      "and credentials the human gives you may be used for the task, e.g. querying a database the work needs. Don't spread them: " +
+      "never put one into anything committed or shared (new files, docs, the rules register, the plan, messages to other agents), " +
+      "and prefer commands that read it from the config file. If the human says a system is a read-only mirror or production, only " +
+      "read from it unless they explicitly OK changes. If you refused such a task before, you can do it now.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */

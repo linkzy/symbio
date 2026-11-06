@@ -5,6 +5,14 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.1]
+
+- Credentials rule clarified: Symbio's own secrets stay off-limits to agents, but a project's own
+  credentials (connection strings, `.env`…) and ones the human gives may be used for the task;
+  agents must not copy them into anything committed or shared, and only read from systems the
+  human calls read-only or production. Agents had refused legitimate work (querying a database
+  with the app's connection string) under the old blanket rule.
+
 ## [0.5.0]
 
 - Docs tab: a folder tree instead of a flat list; search across all docs (any case or accent) that

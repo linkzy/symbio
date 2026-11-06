@@ -131,5 +131,7 @@ a form the human answers.
 
 Connections are GitHub accounts or SSH servers configured in Settings and enabled per project.
 Agents never see their credentials: they call `git_push`, `github_api`, `remote_exec` or
-`remote_upload`, and Symbio runs the action itself. A connection set to **Ask me** queues an
+`remote_upload`, and Symbio runs the action itself. Credentials that belong to the project (its
+config files) or that the human gives are a different matter: agents may use them for the task, but
+never copy them into anything committed or shared (see [security.md](security.md#credentials)). A connection set to **Ask me** queues an
 approval in the human's inbox; once approved, the result is delivered to the agent as a message.

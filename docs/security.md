@@ -80,6 +80,16 @@ project the connections it needs.
 - Secrets never leave the Symbio server process: the API doesn't return them, and agents never see
   them. Agents call `git_push`, `github_api`, `remote_exec` and `remote_upload`, and Symbio performs
   the action.
+- **The project's own credentials are different.** Connection strings, `.env` files and the like
+  that live in the project are part of the work: agents may use them for the task (connecting to a
+  database the work needs), as any developer on the project would, and so may credentials the human
+  gives them. What the briefs forbid is spreading them: putting one into anything committed or
+  shared (new files, docs, the rules register, the plan, messages to other agents) or printing it.
+  Systems the human calls read-only or production are only read unless the human OKs a change.
+  (An earlier blanket rule, "never look for credentials", made agents refuse such work.)
+- Symbio's own records stay on this machine: a project's `.symbio/` folder has its own
+  `.gitignore` (`*`), so the message log, plan and agent data are never committed. Anything typed
+  in a chat also lives in OpenCode's local database.
 - **GitHub pushes and pulls** happen in a repository the agent controls, so Symbio treats its config
   as untrusted. The token is passed only to git's HTTP layer, repository hooks are disabled, proxies
   and credential helpers are reset, pulls merge without the token, and Symbio refuses to use the
