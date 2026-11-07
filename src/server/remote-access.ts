@@ -43,7 +43,7 @@ export type RemoteDecision = "allow" | "deny" | "login-page" | "login-submit" | 
 
 // Never through the tunnel: the agents' tools, debugging, shutting Symbio down, starting a
 // tunnel, and the native folder dialog (it would open on this computer's screen).
-const NEVER_REMOTE = [/^\/mcp(\/|$)/, /^\/api\/debug(\/|$)/, /^\/api\/shutdown$/, /^\/api\/remote\/start$/, /^\/api\/pick-folder$/];
+const NEVER_REMOTE = [/^\/mcp(\/|$)/, /^\/api\/debug(\/|$)/, /^\/api\/shutdown$/, /^\/api\/remote\/start$/, /^\/api\/pick-folder$/, /^\/api\/update\/apply$/];
 
 /** What to do with a request that came through the tunnel. */
 export function remoteDecision(req: { method: string; path: string; hasSession: boolean; active: boolean }): RemoteDecision {

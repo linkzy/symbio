@@ -78,6 +78,7 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 | `connections.ts`, `secrets.ts` | GitHub, Azure DevOps and SSH connections, and the encrypted secret vault |
 | `remote.ts`, `ssh.ts` | Running remote actions for agents (SSH exec/upload, git push/pull, GitHub and Azure DevOps APIs) with approvals |
 | `providers.ts` | Listing, adding and removing OpenCode model providers |
+| `self-update.ts` | Checks npm for a newer version, applies it when allowed (the team idle, remote access off) and reports the result; the install itself runs in `bin/update-runner.mjs`, a separate process that waits for Symbio to exit, installs, keeps or restores the old version on failure, and starts Symbio again |
 | `remote-access.ts` | Optional remote access: Cloudflare quick tunnel, access code, remote sessions, the remote login page |
 | `folder-picker.ts` | Native "choose a folder" dialog on the machine running Symbio |
 | `opencode/runtime.ts` | Starts, supervises and restarts `opencode serve`; measures its memory |
@@ -166,8 +167,9 @@ Helpers' worktrees only contain *committed* files, so anything agents must read 
 
 Global data is in `~/.symbio/`: `config.json` (projects), `connections.json`, `secrets.enc`,
 `ui-token`, `prices.json` (model prices), `approvals/<project>.json` (remote-action approvals),
-`worktrees/`, `backups/<date>/`, `logs/symbio.log`, `bin/` (a downloaded `cloudflared`, for remote
-access) and `opencode.pid`.
+`worktrees/`, `backups/<date>/` (and `<date>-before-<version>/` before an update), `logs/symbio.log`
+and `logs/update.log`, `updates.json` and `update-result.json` (update setting and the last
+result), `bin/` (a downloaded `cloudflared`, for remote access) and `opencode.pid`.
 
 Conversations live in OpenCode's own database. A project opened on another machine keeps its docs
 and plan, but its agents' sessions would need to be re-created.

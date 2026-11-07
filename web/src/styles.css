@@ -645,3 +645,10 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); margi
 .rules-status.na { color: var(--text-3); }
 .rule-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--amber); display: inline-block; }
 .docs-body .rules ~ *, .docs-body:has(.rules) { padding-right: 24px; }
+
+/* ---------- Updates ---------- */
+.update-badge { color: var(--accent-text); }
+.update-available { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border: 1px solid var(--accent-soft); background: var(--accent-soft); border-radius: var(--r-lg); }
+.update-available svg { color: var(--accent-text); }
+.update-notes { display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow: auto; margin-top: 4px; }
+.update-notes ul { margin: 4px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--text-2); line-height: 1.5; }

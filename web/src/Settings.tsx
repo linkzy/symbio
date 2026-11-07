@@ -6,6 +6,7 @@ import { ConnIcon } from "./ConnectionsPicker";
 import { ProvidersSection } from "./Providers";
 import { PricesSection } from "./Usage";
 import { RemoteSection } from "./Remote";
+import { UpdatesSection } from "./Updates";
 import { Dialog, EmptyState } from "./ui";
 
 /** Back to the page the user came from (a project, the project list…), or the project list. */
@@ -140,6 +141,8 @@ export function Settings() {
       <PricesSection />
 
       <RemoteSection />
+
+      <UpdatesSection />
 
       <AnimatePresence>
         {editing && (

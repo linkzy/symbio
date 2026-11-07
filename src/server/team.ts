@@ -245,6 +245,31 @@ export class Team {
     }
   }
 
+  /**
+   * What would be interrupted by a restart right now (null = nothing): an agent working or waiting
+   * for an answer, a permission request, or activity in the last `quietMs`.
+   */
+  busyReason(quietMs: number): string | null {
+    const now = Date.now();
+    for (const project of this.store.list()) {
+      for (const agent of project.agents.filter(active)) {
+        if (agent.status === "busy" || agent.status === "stuck") return `${agent.name} in ${project.name} is working`;
+        if (agent.status === "waiting") return `${agent.name} in ${project.name} is waiting for an answer`;
+        if (now - agent.lastActivity < quietMs) return `${agent.name} in ${project.name} was active in the last ${Math.round(quietMs / 60_000)} minutes`;
+      }
+    }
+    if (this.permissions.size) return "a permission request is waiting for an answer";
+    return null;
+  }
+
+  /** A note for the human in every project's Messages (e.g. "Symbio was updated"). */
+  async announce(text: string) {
+    for (const project of this.store.list()) {
+      await this.log(project, { from: "symbio", to: "human", kind: "system", text });
+      bus.publish({ type: "project.updated", projectId: project.id });
+    }
+  }
+
   stopWatchdog() {
     if (this.watchdog) clearInterval(this.watchdog);
     if (this.recycler) clearInterval(this.recycler);

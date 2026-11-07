@@ -117,6 +117,10 @@ project the connections it needs.
   anything else (HTML, SVG…) is downloaded instead, so a file in the docs can't run script in
   Symbio's page. The page fetches it with its key, so the key never appears in a tab's address.
 
+- **Updates** come from the npm registry (`symbio@latest`), installed by npm like any global
+  package; releases are built and published by GitHub Actions with provenance. Applying an update
+  restarts Symbio, so it's never possible through remote access.
+
 ## Things to know
 
 - Agents work with your user's permissions. Run Symbio as a normal user, never as administrator or

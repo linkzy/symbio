@@ -5,6 +5,17 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.0]
+
+- Updates: `sym update` installs the latest version and restarts Symbio once the team is idle
+  (`--now` doesn't wait). Symbio also checks for new versions and, by default, updates itself while
+  no agent is working and remote access is off: it backs up first, keeps (or restores) the old
+  version if the install fails and doesn't retry it for a day, and tells you in Messages. Settings →
+  Updates: automatic, tell me, or off, and what's new; a badge in the top bar when a version is
+  available.
+- Docs brought up to date; the roadmap is now a priority list with collected ideas; `sym doctor`
+  prints Symbio's version.
+
 ## [0.6.0]
 
 - Azure DevOps connections: add an organization with a personal access token in Settings; agents

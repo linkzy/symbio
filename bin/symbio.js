@@ -9,9 +9,10 @@
 //   sym doctor     check that everything Symbio needs is in place
 //   sym run        run in the foreground (for debugging)
 //   sym remote     open a temporary link to use Symbio from another device (sym remote off to close it)
+//   sym update     install the latest version (waits for an idle team; --now doesn't)
 
-import { execFileSync, exec, spawn } from "node:child_process";
-import { existsSync, mkdirSync, openSync, readFileSync } from "node:fs";
+import { execFileSync, exec, spawn, spawnSync } from "node:child_process";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -33,8 +34,13 @@ const token = () => {
 };
 const link = () => `${BASE}/?token=${token()}`;
 
-async function api(method, p) {
-  const res = await fetch(BASE + p, { method, headers: { "x-symbio-token": token() }, signal: AbortSignal.timeout(3000) });
+async function api(method, p, body) {
+  const res = await fetch(BASE + p, {
+    method,
+    headers: { "x-symbio-token": token(), ...(body === undefined ? {} : { "content-type": "application/json" }) },
+    body: body === undefined ? undefined : JSON.stringify(body),
+    signal: AbortSignal.timeout(body === undefined ? 3000 : 30_000),
+  });
   return { status: res.status, body: await res.json().catch(() => null) };
 }
 
@@ -190,6 +196,82 @@ async function doctor() {
   if (!ok) process.exitCode = 1;
 }
 
+/**
+ * Installs the latest version. Running: Symbio hands over to its updater and restarts (waiting
+ * for an idle team unless --now). Stopped: the updater runs here, and Symbio stays stopped.
+ */
+async function update() {
+  const now = process.argv.includes("--now");
+  const self = await import(pathToFileURL(path.join(root, "dist", "server", "self-update.js")).href);
+  const install = self.installInfo(root);
+  if (install.kind === "dev") {
+    console.log(`This Symbio runs from a development folder (${install.root}). Update it there: git pull, npm install, npm run build.`);
+    return;
+  }
+  let latest;
+  try {
+    latest = await self.latestVersion();
+  } catch (err) {
+    console.error(`Couldn't check for updates: ${err.message}`);
+    process.exit(1);
+  }
+  if (self.compareVersions(latest, pkg.version) <= 0) return console.log(`Symbio ${pkg.version} is up to date.`);
+  console.log(`Symbio ${latest} is available (you have ${pkg.version}).`);
+  const resultFile = path.join(HOME, "update-result.json");
+  const before = existsSync(resultFile) ? readFileSync(resultFile, "utf8") : "";
+
+  if ((await state()) === "running") {
+    const st = (await api("GET", "/api/update")).body;
+    if (st?.busy && !now) {
+      console.log(`Not now: ${st.busy}.\nRun "sym update" again when the team is idle, or "sym update --now" (agents that are working are interrupted and continue after the restart).`);
+      process.exitCode = 1;
+      return;
+    }
+    const res = await api("POST", "/api/update/apply", { force: true });
+    if (res.status !== 200) {
+      console.error(res.body?.error ?? `Symbio answered ${res.status}`);
+      process.exit(1);
+    }
+    process.stdout.write("Updating: Symbio stops, installs the new version and starts again");
+    for (let i = 0; i < 300; i++) {
+      await sleep(1000);
+      const after = existsSync(resultFile) ? readFileSync(resultFile, "utf8") : "";
+      if (after && after !== before && (await state()) === "running") break;
+      if (i % 3 === 0) process.stdout.write(".");
+    }
+    console.log("");
+  } else {
+    // Not running: install right here, from a copy of the updater (npm replaces this folder).
+    const dir = mkdtempSync(path.join(os.tmpdir(), "symbio-update-"));
+    const runner = path.join(dir, "update-runner.mjs");
+    copyFileSync(path.join(root, "bin", "update-runner.mjs"), runner);
+    const job = path.join(dir, "job.json");
+    writeFileSync(
+      job,
+      JSON.stringify({
+        prefix: install.prefix,
+        spec: process.env.SYMBIO_UPDATE_SPEC ?? `symbio@${latest}`,
+        from: pkg.version,
+        to: latest,
+        root: install.root,
+        home: HOME,
+        port: PORT,
+        start: false,
+        resultFile,
+        logFile: path.join(HOME, "logs", "update.log"),
+      }),
+    );
+    console.log("Installing…");
+    spawnSync(process.execPath, [runner, job], { stdio: "inherit", windowsHide: true });
+  }
+  const result = existsSync(resultFile) ? JSON.parse(readFileSync(resultFile, "utf8")) : null;
+  if (result?.ok && result.to === latest) console.log(`Updated to ${latest}.${(await state()) === "running" ? ` Symbio is running: ${link()}` : ' Start it with "sym".'}`);
+  else {
+    console.error(`The update didn't complete${result?.error ? `: ${result.error}` : "."} Details: ${path.join(HOME, "logs", "update.log")}`);
+    process.exitCode = 1;
+  }
+}
+
 function help() {
   console.log(`Symbio ${pkg.version} — run a team of AI agents on your project, from your browser.
 
@@ -204,6 +286,7 @@ Usage: sym [command]
   run             run in the foreground (logs in this terminal)
   remote          open a temporary link + access code to use Symbio from another device
   remote off      close that link
+  update          install the latest version (when the team is idle; --now to not wait)
   --version       print the version
 
 Environment: SYMBIO_PORT (default 4310), SYMBIO_HOME (default ~/.symbio), SYMBIO_NO_OPEN=1.`);
@@ -230,6 +313,9 @@ switch (cmd) {
   case "--remote":
     if (process.argv[3] === "off") await remoteOff();
     else await remoteOn();
+    break;
+  case "update":
+    await update();
     break;
   case "logs":
     logs();

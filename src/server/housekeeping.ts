@@ -18,9 +18,19 @@ export const backupsDir = () => path.join(globalDir, "backups");
  * Returns the folder, or null when today's backup already exists.
  */
 export async function dailyBackup(projects: Project[], now = new Date()): Promise<string | null> {
-  const day = now.toISOString().slice(0, 10);
-  const dest = path.join(backupsDir(), day);
+  const dest = path.join(backupsDir(), now.toISOString().slice(0, 10));
   if (existsSync(dest)) return null;
+  return writeBackup(projects, dest);
+}
+
+/** A backup on demand, e.g. right before an update ("2026-11-06-before-0.7.0"); pruned like the daily ones. */
+export async function labeledBackup(projects: Project[], label: string, now = new Date()): Promise<string> {
+  const dest = path.join(backupsDir(), `${now.toISOString().slice(0, 10)}-${label.replace(/[^\w.-]+/g, "-")}`);
+  await fs.rm(dest, { recursive: true, force: true });
+  return writeBackup(projects, dest);
+}
+
+async function writeBackup(projects: Project[], dest: string): Promise<string> {
   const tmp = `${dest}.partial`;
   await fs.rm(tmp, { recursive: true, force: true });
   for (const p of projects) {
@@ -33,9 +43,10 @@ export async function dailyBackup(projects: Project[], now = new Date()): Promis
   }
   await fs.mkdir(tmp, { recursive: true });
   await fs.rename(tmp, dest);
-  // Keep the newest days only.
-  const days = (await fs.readdir(backupsDir())).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
-  for (const old of days.slice(0, Math.max(0, days.length - BACKUP_KEEP))) {
+  // Keep the last BACKUP_KEEP days that have backups (daily and labeled alike).
+  const entries = (await fs.readdir(backupsDir())).filter((d) => /^\d{4}-\d{2}-\d{2}(-[\w.-]+)?$/.test(d));
+  const keepDays = [...new Set(entries.map((d) => d.slice(0, 10)))].sort().slice(-BACKUP_KEEP);
+  for (const old of entries.filter((d) => !keepDays.includes(d.slice(0, 10)))) {
     await fs.rm(path.join(backupsDir(), old), { recursive: true, force: true }).catch(() => {});
   }
   return dest;

@@ -7,6 +7,7 @@ import { ProjectView } from "./ProjectView";
 import { Settings } from "./Settings";
 import { EmptyState, Logo } from "./ui";
 import { RemoteBanner } from "./Remote";
+import { UpdateBadge } from "./Updates";
 
 function useHashRoute() {
   const [hash, setHash] = useState(location.hash);
@@ -113,6 +114,7 @@ export function App() {
             <SettingsIcon size={15} />
             Settings
           </a>
+          <UpdateBadge />
           <RuntimeBadge runtime={runtime} />
         </div>
       </header>

@@ -117,6 +117,13 @@ docs/                  This documentation
    Settings → Trusted Publisher (GitHub Actions, user `linkzy`, repo `symbio`, workflow
    `release.yml`).
 
+**Updates reach users by themselves.** Installed copies check npm and update automatically (see
+`self-update.ts`), so a release goes out to everyone within hours: keep `CHANGELOG.md` current (its
+section for the version is shown in Settings → Updates). A copy running from a clone (`npm link`)
+never updates itself. To test updates without npm, install a packed version into a temporary
+prefix and point it at a stand-in registry: `SYMBIO_UPDATE_REGISTRY` (serves `/symbio/latest`),
+`SYMBIO_UPDATE_SPEC` (what to install, e.g. a `.tgz`) and `SYMBIO_UPDATE_CHANGELOG`.
+
 OpenCode is a pinned dependency (`@opencode/cli`, patch updates only). Moving to a newer minor
 version means re-verifying the APIs in [opencode-api.md](opencode-api.md) first.
 

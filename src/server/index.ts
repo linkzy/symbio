@@ -1,6 +1,6 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
-import { promises as fs, existsSync } from "node:fs";
+import { promises as fs, existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { exec } from "node:child_process";
@@ -16,6 +16,8 @@ import { OpencodeRuntime } from "./opencode/runtime.js";
 import { Store, globalDir } from "./store.js";
 import { Team } from "./team.js";
 import { removeOrphanWorkspaces } from "./workspaces.js";
+import { packageRoot, QUIET_MS, SelfUpdate, type UpdateMode } from "./self-update.js";
+import { labeledBackup } from "./housekeeping.js";
 
 // Background work (timers, event handlers) must never take the whole app down: an error there
 // (e.g. OpenCode restarting mid-call) is logged and the next tick tries again.
@@ -80,6 +82,24 @@ async function main() {
 
   const uiToken = loadUiToken(globalDir);
   const remote = new RemoteAccess(path.join(globalDir, "bin"));
+
+  // Updates: checked now and then; applied when allowed and the team is idle (see self-update.ts).
+  const version: string = JSON.parse(readFileSync(path.join(packageRoot, "package.json"), "utf8")).version;
+  const updates: SelfUpdate = new SelfUpdate({
+    version,
+    home: globalDir,
+    port: PORT,
+    busy: () => team.busyReason(QUIET_MS),
+    remoteActive: () => remote.active,
+    backup: async () => {
+      await labeledBackup(store.list(), `before-${updates.state().latest ?? "update"}`);
+    },
+    announce: (text) => team.announce(text),
+    shutdown: async () => {
+      await shutdown?.();
+    },
+  });
+  await updates.load();
   remote.onChange = () => bus.publish({ type: "remote.updated" });
   const remoteRequests = new WeakSet<Request>(); // requests that came through the tunnel
   const app = new Hono();
@@ -129,6 +149,23 @@ async function main() {
     setTimeout(() => void shutdown?.(), 200);
     return c.json({ ok: true });
   });
+  // Updates: state and settings for the UI; applying stops Symbio (never through remote access).
+  app.get("/api/update", (c) => c.json(updates.state()));
+  app.post("/api/update/check", async (c) => c.json(await updates.check()));
+  app.put("/api/update/settings", async (c) => {
+    const { mode } = await c.req.json<{ mode?: UpdateMode }>();
+    if (mode !== "auto" && mode !== "notify" && mode !== "off") return c.json({ error: "mode must be auto, notify or off" }, 400);
+    await updates.setMode(mode);
+    return c.json(updates.state());
+  });
+  app.post("/api/update/apply", async (c) => {
+    const { force } = await c.req.json<{ force?: boolean }>().catch(() => ({ force: false }));
+    try {
+      return c.json({ message: await updates.apply(force !== false) });
+    } catch (err) {
+      return c.json({ error: (err as Error).message }, 400);
+    }
+  });
   // Remote access: status for everyone (the code only locally), start locally, stop from anywhere.
   app.get("/api/remote", (c) => c.json(remote.status(!remoteRequests.has(c.req.raw))));
   app.post("/api/remote/start", async (c) => {
@@ -171,11 +208,13 @@ async function main() {
     .then(() => console.log(`OpenCode ${runtime.version} ready`))
     .catch((err) => console.error("OpenCode failed to start:", err.message));
   team.startWatchdog();
+  updates.start();
 
   shutdown = async () => {
     remote.stop("Symbio stopped");
     team.shuttingDown = true;
     team.stopWatchdog();
+    updates.stop();
     await runtime.stop();
     process.exit(0);
   };

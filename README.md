@@ -128,6 +128,12 @@ on your computer, including the agents, from using Symbio's API behind your back
 | `sym doctor` | Check Node.js, git, OpenCode, the port and model providers. |
 | `sym run` | Run in the foreground, with the log in the terminal. |
 | `sym remote` | Open a temporary link and access code to use Symbio from another device (see below). `sym remote off` closes it. |
+| `sym update` | Install the latest version and restart Symbio, once no agent is working (`--now` doesn't wait). |
+
+**Updates.** Symbio checks for new versions and, by default, installs them by itself while the team
+is idle: never while an agent is working or waiting for you, or while remote access is on. It backs
+up first, restarts in a minute or two, and tells you in Messages. In Settings → Updates you can
+choose to be only told instead, or turn checking off, and see what's new.
 
 **From another device.** `sym remote` opens a temporary Cloudflare link to your Symbio and prints it
 with an access code. Open the link anywhere (phone, another computer), enter the code, and you're
@@ -179,7 +185,8 @@ itself. Whoever gets in controls your agents, so keep the link and code to yours
 | `~/.symbio/approvals/` | Remote actions waiting for (or decided by) your approval |
 | `~/.symbio/prices.json` | Model prices used for cost estimates |
 | `~/.symbio/ui-token` | The key that unlocks the UI (it's in the link Symbio opens) |
-| `~/.symbio/logs/symbio.log` | Symbio's log when started in the background (`sym logs`) |
+| `~/.symbio/logs/symbio.log` | Symbio's log when started in the background (`sym logs`); `update.log` next to it for updates |
+| `~/.symbio/updates.json` | Your update setting (automatic, tell me, off) |
 | `<project>/.symbio/` | Project state: agents, plan, message log, shared assets (git-ignored automatically) |
 | `<project>/AGENTS.md`, `<project>/docs/` | Project documentation for agents (unless you chose *private*), and `docs/rules.json` if the rules register is on |
 | OpenCode's database | The conversations themselves. Every agent is an OpenCode session, so you can also open one with `opencode -s <session-id>`. |

@@ -326,6 +326,22 @@ export interface Price {
 
 export type PriceInfo = { price: Price | null; source: "yours" | "opencode" | "suggested" | "none"; from?: string };
 
+export type UpdateMode = "auto" | "notify" | "off";
+
+export interface UpdateState {
+  current: string;
+  latest: string | null;
+  available: boolean;
+  checkedAt: number | null;
+  error: string | null;
+  mode: UpdateMode;
+  install: "npm" | "dev";
+  busy: string | null;
+  waiting: string | null;
+  notes: { version: string; items: string[] }[];
+  lastResult: { from: string; to: string; ok: boolean; error: string | null; finishedAt: number } | null;
+}
+
 export interface RemoteStatus {
   active: boolean;
   url: string | null;
@@ -430,6 +446,10 @@ export const api = {
   history: (projectId: string, agentId: string) => call<any[]>("GET", `/projects/${projectId}/agents/${agentId}/history`),
   projectUsage: (projectId: string) => call<ProjectUsage>("GET", `/projects/${projectId}/usage`),
   prices: () => call<Record<string, PriceInfo>>("GET", "/prices"),
+  update: () => call<UpdateState>("GET", "/update"),
+  checkUpdate: () => call<UpdateState>("POST", "/update/check"),
+  setUpdateMode: (mode: UpdateMode) => call<UpdateState>("PUT", "/update/settings", { mode }),
+  applyUpdate: () => call<{ message: string }>("POST", "/update/apply", { force: true }),
   remote: () => call<RemoteStatus>("GET", "/remote"),
   startRemote: () => call<RemoteStatus>("POST", "/remote/start"),
   stopRemote: () => call<RemoteStatus>("POST", "/remote/stop"),
