@@ -12,24 +12,29 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 
 ## Next
 
-1. **Usable on phones.** The layout breaks on small screens (useful with remote access): the team
+1. **Attachments in the chat.** Upload, drag in or paste images and documents into a message, as
+   in other AI chats; the agent gets them as files it can open (images through `view_image`), and
+   each project keeps a gallery of everything sent, to find and resend later. Today the human has to
+   save files in a folder and tell core where to look. (Before the phone layout, which should start
+   from the final chat box.)
+2. **Usable on phones.** The layout breaks on small screens (useful with remote access): the team
    sidebar, tabs, chat and dialogs need a mobile layout.
-2. **Linux and macOS.** Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
+3. **Linux and macOS.** Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
    Keychain on macOS); headless Linux (a server or container) has no keyring, so it needs a
    fallback, such as a key file readable only by the user.
-3. **Switch projects from the breadcrumb.** A dropdown on the project name at the top
+4. **Switch projects from the breadcrumb.** A dropdown on the project name at the top
    (Symbio › Projects › *name*) to jump to another project. *(good first contribution)*
-4. **No focus outline on the chat box.** Remove the outline that appears when clicking into it, or
+5. **No focus outline on the chat box.** Remove the outline that appears when clicking into it, or
    make it subtle. *(good first contribution)*
-5. **Speech to text** in the chat box, using the browser's speech recognition where available.
-6. **Rules register on import.** When importing an existing project, offer to build the register
+6. **Speech to text** in the chat box, using the browser's speech recognition where available.
+7. **Rules register on import.** When importing an existing project, offer to build the register
    from the project and from sources the human points to (e-mails, meeting notes, manuals), marking
    rules found only in the work as unsourced.
-7. **Translations.** The UI in other languages, starting with Portuguese. *(good first
+8. **Translations.** The UI in other languages, starting with Portuguese. *(good first
    contribution, once the strings are extracted)*
-8. **A project site.** A GitHub Pages site that explains Symbio, with screenshots and a short video.
-9. **A public demo.** A container on a VPS with a light model, connections and other sensitive
-   options disabled, and visitors' data reset every few minutes (needs item 2's headless support).
+9. **A project site.** A GitHub Pages site that explains Symbio, with screenshots and a short video.
+10. **A public demo.** A container on a VPS with a light model, connections and other sensitive
+    options disabled, and visitors' data reset every few minutes (needs item 3's headless support).
 
 ## Ideas
 
