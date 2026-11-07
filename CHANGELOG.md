@@ -5,6 +5,15 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.7.1]
+
+- On a Node.js older than 22, `sym` says what to install instead of Symbio crashing at start
+  (npm installs it anyway and only warns).
+- Automatic updates and `sym update` don't install a version that needs a newer Node.js than the
+  machine has.
+- The image library loads when an agent first views an image, so a problem with it affects only
+  `view_image`, not Symbio's start.
+
 ## [0.7.0]
 
 - Updates: `sym update` installs the latest version and restarts Symbio once the team is idle

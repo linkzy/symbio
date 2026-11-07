@@ -4,13 +4,25 @@
 
 import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
-import sharp from "sharp";
+import type SharpModule from "sharp";
 import { IMAGE_EXTENSIONS, isSecretPath } from "./guard.js";
 import type { ToolResult } from "./mcp.js";
 
 export const DEFAULT_IMAGE_SIZE = 1024;
 const MAX_IMAGE_SIZE = 2048;
 const MAX_BYTES = 1_500_000; // what we send back, after scaling
+
+/**
+ * The image library is native and loaded on first use, so a problem with it (a platform without
+ * prebuilt binaries, an old Node) costs only view_image, not Symbio's startup.
+ */
+async function loadSharp(): Promise<typeof SharpModule> {
+  try {
+    return (await import("sharp")).default;
+  } catch (err) {
+    throw new Error(`Images can't be viewed on this machine: the image library didn't load (${(err as Error).message.split("\n")[0]}).`);
+  }
+}
 
 export async function viewImage(
   folder: string,
@@ -25,6 +37,7 @@ export async function viewImage(
   if (!existsSync(file)) throw new Error(`No such file: ${file}`);
 
   const size = Math.min(MAX_IMAGE_SIZE, Math.max(64, Math.round(Number(input.max_size) || DEFAULT_IMAGE_SIZE)));
+  const sharp = await loadSharp();
   let image = sharp(await fs.readFile(file), { animated: false }).rotate(); // apply EXIF orientation
   const meta = await image.metadata();
   const width = meta.autoOrient?.width ?? meta.width ?? 0;

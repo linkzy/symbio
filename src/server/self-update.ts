@@ -80,13 +80,26 @@ export function compareVersions(a: string, b: string): number {
 // Overridable for tests (a local registry and package file); never set in normal use.
 const REGISTRY = (process.env.SYMBIO_UPDATE_REGISTRY ?? "https://registry.npmjs.org").replace(/\/+$/, "");
 
-/** The version npm installs as `symbio@latest`. */
-export async function latestVersion(): Promise<string> {
+/** The version npm installs as `symbio@latest`, and the Node.js it needs. */
+export async function latestRelease(): Promise<{ version: string; node: string | null }> {
   const res = await fetch(`${REGISTRY}/symbio/latest`, { signal: AbortSignal.timeout(15_000), headers: { accept: "application/json" } });
   if (!res.ok) throw new Error(`npm registry answered ${res.status}`);
-  const data = (await res.json()) as { version?: string };
+  const data = (await res.json()) as { version?: string; engines?: { node?: string } };
   if (!data.version) throw new Error("npm registry gave no version");
-  return data.version;
+  return { version: data.version, node: data.engines?.node ?? null };
+}
+
+export async function latestVersion(): Promise<string> {
+  return (await latestRelease()).version;
+}
+
+/**
+ * Whether this Node.js meets a release's requirement (">=22", ">=20.9.0"; anything fancier is
+ * assumed met). npm only warns about it, and the new version would then fail to start.
+ */
+export function nodeSatisfies(range: string | null, version = process.versions.node): boolean {
+  const m = range && /^\s*>=\s*v?(\d+(?:\.\d+){0,2})\s*$/.exec(range);
+  return !m || compareVersions(version, m[1].split(".").concat(["0", "0"]).slice(0, 3).join(".")) >= 0;
 }
 
 /** Changelog entries newer than `current`, from the latest version's CHANGELOG.md (best effort). */
@@ -135,6 +148,8 @@ export interface SelfUpdateHost {
 
 export class SelfUpdate {
   private latest: string | null = null;
+  /** The Node.js the latest version needs (its package.json "engines"). */
+  private latestNode: string | null = null;
   private checkedAt: number | null = null;
   private error: string | null = null;
   private notes: { version: string; items: string[] }[] = [];
@@ -207,7 +222,9 @@ export class SelfUpdate {
   async check(): Promise<UpdateState> {
     if (this.mode === "off" && this.checkedAt) return this.state();
     try {
-      this.latest = await latestVersion();
+      const release = await latestRelease();
+      this.latest = release.version;
+      this.latestNode = release.node;
       this.error = null;
       this.notes = compareVersions(this.latest, this.host.version) > 0 ? await changesSince(this.host.version, this.latest) : [];
     } catch (err) {
@@ -220,6 +237,9 @@ export class SelfUpdate {
   /** Why the update can't be applied now (null = it can). `forced`: the human asked, so only hard blockers count. */
   private blocker(forced: boolean): string | null {
     if (this.install.kind === "dev") return "This Symbio runs from a development folder; update it with git pull, npm install and npm run build.";
+    if (!nodeSatisfies(this.latestNode)) {
+      return `Symbio ${this.latest} needs Node.js ${this.latestNode}, and this machine has ${process.versions.node}: update Node.js first (https://nodejs.org), then update Symbio.`;
+    }
     if (this.applying) return "Already updating.";
     if (!forced && this.mode === "notify") return "Updates are set to notify only: update from Settings or with `sym update`.";
     if (!forced && this.mode === "off") return "Automatic updates are off: update from Settings or with `sym update`.";

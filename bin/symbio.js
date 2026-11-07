@@ -19,6 +19,18 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
+
+// npm only warns when Node is older than package.json's "engines"; without this, Symbio would
+// crash on start with a syntax error from a dependency (seen with Node 18).
+const MIN_NODE = Number(/\d+/.exec(pkg.engines?.node ?? "22")?.[0] ?? 22);
+if (Number(process.versions.node.split(".")[0]) < MIN_NODE && !["-v", "--version", "version", "-h", "--help", "help"].includes(process.argv[2])) {
+  console.error(
+    `Symbio ${pkg.version} needs Node.js ${MIN_NODE} or newer, and this is Node.js ${process.versions.node}.\n` +
+      `Install the current LTS (https://nodejs.org, or on Windows: winget install OpenJS.NodeJS.LTS), open a new terminal,\n` +
+      `then reinstall Symbio on it: npm install -g symbio`,
+  );
+  process.exit(1);
+}
 const PORT = Number(process.env.SYMBIO_PORT ?? 4310);
 const HOME = process.env.SYMBIO_HOME ?? path.join(os.homedir(), ".symbio");
 const LOG = path.join(HOME, "logs", "symbio.log");
@@ -208,15 +220,20 @@ async function update() {
     console.log(`This Symbio runs from a development folder (${install.root}). Update it there: git pull, npm install, npm run build.`);
     return;
   }
-  let latest;
+  let release;
   try {
-    latest = await self.latestVersion();
+    release = await self.latestRelease();
   } catch (err) {
     console.error(`Couldn't check for updates: ${err.message}`);
     process.exit(1);
   }
+  const latest = release.version;
   if (self.compareVersions(latest, pkg.version) <= 0) return console.log(`Symbio ${pkg.version} is up to date.`);
   console.log(`Symbio ${latest} is available (you have ${pkg.version}).`);
+  if (!self.nodeSatisfies(release.node)) {
+    console.error(`It needs Node.js ${release.node}, and this is Node.js ${process.versions.node}. Update Node.js first (https://nodejs.org), then run "sym update".`);
+    process.exit(1);
+  }
   const resultFile = path.join(HOME, "update-result.json");
   const before = existsSync(resultFile) ? readFileSync(resultFile, "utf8") : "";
 

@@ -89,3 +89,27 @@ test("automatic updates wait for an idle team, remote access off, and skip a ver
     globalThis.fetch = realFetch;
   }
 });
+
+test("a release that needs a newer Node.js is never installed (npm would install it and it wouldn't start)", async () => {
+  const { nodeSatisfies } = await import("../src/server/self-update.js");
+  assert.equal(nodeSatisfies(">=22", "18.18.0"), false);
+  assert.equal(nodeSatisfies(">=22", "22.0.0"), true);
+  assert.equal(nodeSatisfies(">=20.9.0", "20.8.1"), false);
+  assert.equal(nodeSatisfies(null, "18.0.0"), true);
+  assert.equal(nodeSatisfies("^22 || ^24", "18.0.0"), true, "unknown forms are assumed met");
+
+  const home = mkdtempSync(path.join(os.tmpdir(), "sym-upd-node-"));
+  const host = { version: "0.6.0", home, port: 1, busy: () => null, remoteActive: () => false, backup: async () => {}, announce: async () => {}, shutdown: async () => {} };
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (url: any) =>
+    String(url).endsWith("/symbio/latest") ? new Response(JSON.stringify({ version: "9.0.0", engines: { node: ">=999" } })) : new Response("", { status: 404 })) as any;
+  try {
+    const up = new SelfUpdate(host as any, { kind: "npm", root: home, prefix: home });
+    await up.load();
+    await up.check();
+    assert.match(up.state().waiting!, /needs Node\.js >=999/);
+    await assert.rejects(up.apply(true), /update Node\.js first/, "not even when the human asks");
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
