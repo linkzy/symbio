@@ -19,19 +19,23 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 2. **Linux and macOS.** Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
    Keychain on macOS); headless Linux (a server or container) has no keyring, so it needs a
    fallback, such as a key file readable only by the user.
-3. **Switch projects from the breadcrumb.** A dropdown on the project name at the top
+3. **Create a project from a git repository.** In the New project dialog, an option to clone a
+   repository (GitHub, Azure DevOps or any git URL, using the matching connection when it's private)
+   into a folder and open it as a project, e.g. to continue on another computer. Tucked under an
+   advanced option, so it doesn't get in the way of people who don't use git.
+4. **Switch projects from the breadcrumb.** A dropdown on the project name at the top
    (Symbio › Projects › *name*) to jump to another project. *(good first contribution)*
-4. **No focus outline on the chat box.** Remove the outline that appears when clicking into it, or
+5. **No focus outline on the chat box.** Remove the outline that appears when clicking into it, or
    make it subtle. *(good first contribution)*
-5. **Speech to text** in the chat box, using the browser's speech recognition where available.
-6. **Rules register on import.** When importing an existing project, offer to build the register
+6. **Speech to text** in the chat box, using the browser's speech recognition where available.
+7. **Rules register on import.** When importing an existing project, offer to build the register
    from the project and from sources the human points to (e-mails, meeting notes, manuals), marking
    rules found only in the work as unsourced.
-7. **Translations.** The UI in other languages, starting with Portuguese. *(good first
+8. **Translations.** The UI in other languages, starting with Portuguese. *(good first
    contribution, once the strings are extracted)*
-8. **A project site.** A GitHub Pages site that explains Symbio, with screenshots and a short video.
-9. **A public demo.** A container on a VPS with a light model, connections and other sensitive
-   options disabled, and visitors' data reset every few minutes (needs item 2's headless support).
+9. **A project site.** A GitHub Pages site that explains Symbio, with screenshots and a short video.
+10. **A public demo.** A container on a VPS with a light model, connections and other sensitive
+    options disabled, and visitors' data reset every few minutes (needs item 2's headless support).
 
 ## Ideas
 
@@ -49,6 +53,8 @@ Collected, not sorted or promised yet.
 - **Eyes for agents.** Screenshots of what they build, routed to vision-capable models (agents can
   already look at images with `view_image`).
 - **Per-task model routing.** Cheap models for simple tasks, strong ones for hard ones.
+- **Installing without Node.js.** An installer or a single download for people who don't have
+  Node.js and npm (today Symbio needs Node 22+ and `npm install -g symbio`).
 
 ## Done
 
@@ -72,6 +78,13 @@ Newest first; details per version in [CHANGELOG.md](../CHANGELOG.md).
   and existing folders; the team (core and helpers, messages, git worktrees, shared assets with core
   as gatekeeper, model fallback); the plan and its live kanban; the *Needs you* inbox; GitHub and
   SSH connections with an encrypted vault and approvals; model providers from Settings.
+
+## Known issues
+
+Small bugs, not urgent, to fix eventually. *(good first contributions)*
+
+- **Removing a project shows "project not found".** After removing the project you're looking at,
+  the page stays on its address and says it doesn't exist; it should go back to the projects list.
 
 ## Known limitations
 
