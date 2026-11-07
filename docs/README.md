@@ -10,7 +10,7 @@ enough.
 | [opencode-api.md](opencode-api.md) | You're calling OpenCode: the endpoints Symbio uses and the behaviors verified against 2.1.4 |
 | [development.md](development.md) | You're setting up, running, testing or debugging Symbio, or want the code conventions |
 | [security.md](security.md) | You're touching anything around agent permissions, credentials or the local API |
-| [roadmap.md](roadmap.md) | You want to know what's done, what's next and the known limitations |
+| [roadmap.md](roadmap.md) | You want to know what's being worked on, what's next in priority order, collected ideas, what's done and the known limitations |
 
 Keep these documents true: when a change makes one of them wrong, update it in the same pull
 request.

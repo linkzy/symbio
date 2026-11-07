@@ -1,49 +1,73 @@
 # Roadmap
 
-## Done (0.6)
+What we're working on, what comes next and ideas we've collected, in priority order rather than
+by date: priorities change as people use Symbio, and items move up or down. Suggestions are
+welcome (open an issue). Items marked *(good first contribution)* are small and self-contained.
 
-1. **Core runtime.** Private OpenCode server, projects, core's session, streaming chat, watchdog,
-   crash recovery, memory recycling.
-2. **Onboarding.** Folder inspection, new and existing projects, project study with confirmation,
-   `AGENTS.md`/`docs/` or private docs.
-3. **Team.** MCP tools, message delivery that wakes agents, git worktrees, shared assets with core
-   as gatekeeper, helpers, model fallback, forms for agents' questions, stop and restart.
-4. **Plan.** `submit_plan`, approval, the animated kanban, automatic task moves, mid-turn message
-   handover.
-5. **Human inbox.** *Needs you*: questions, plan approval, permission requests, remote-action
-   approvals, alerts. Pause and resume per project or globally.
-6. **Connections.** GitHub, Azure DevOps and SSH servers with an encrypted vault and per-connection
-   approval; agents never see the credentials.
-7. **Providers.** Add and remove OpenCode model providers from Settings; per-agent model switching.
-8. **Packaging.** `npm i -g symbio` with a bundled, pinned OpenCode; `sym` start/stop/status/logs/doctor;
-   first-run guidance.
-9. **Remote access.** `sym remote`: a temporary Cloudflare link with an access code, lockout, a banner
-   and a button to turn it off.
-10. **Shared project folder.** Helpers can work in the project folder instead of their own branch,
-    for step-by-step work; processes belong to the agent that started them.
-11. **Documentation for humans.** The Docs tab with a folder tree, search, links between docs and
-    numbered text sources; an optional rules register with sources, excerpts and status, shown as
-    a filterable index whose citations open the cited place.
-12. **Conversation size.** Images only through scaled-down copies (`view_image`); a conversation
-    too large to send continues in a fresh session.
-13. **Long-running teams.** Fresh sessions with a handoff note, daily backups and housekeeping
-    checks, token and cost tracking per agent and model.
-14. **Credentials.** Symbio's own secrets stay off-limits to agents; a project's own credentials
-    may be used for the task but never spread.
+## Now
+
+- **Easy updates.** A `sym update` command that stops Symbio (waiting for agents to be idle),
+  installs the latest version and starts it again; then, if it can be done safely, automatic
+  updates (check for a new version, update when the team is idle, never mid-work).
 
 ## Next
 
-- **Rules register on import.** When importing an existing project, offer to build the register
-  from the project and from sources the human points to (e-mails, meeting notes, manuals), marking
-  rules found only in the work as unsourced.
+1. **Usable on phones.** The layout breaks on small screens (useful with remote access): the team
+   sidebar, tabs, chat and dialogs need a mobile layout.
+2. **Linux and macOS.** Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
+   Keychain on macOS); headless Linux (a server or container) has no keyring, so it needs a
+   fallback, such as a key file readable only by the user.
+3. **Switch projects from the breadcrumb.** A dropdown on the project name at the top
+   (Symbio › Projects › *name*) to jump to another project. *(good first contribution)*
+4. **No focus outline on the chat box.** Remove the outline that appears when clicking into it, or
+   make it subtle. *(good first contribution)*
+5. **Speech to text** in the chat box, using the browser's speech recognition where available.
+6. **Rules register on import.** When importing an existing project, offer to build the register
+   from the project and from sources the human points to (e-mails, meeting notes, manuals), marking
+   rules found only in the work as unsourced.
+7. **Translations.** The UI in other languages, starting with Portuguese. *(good first
+   contribution, once the strings are extracted)*
+8. **A project site.** A GitHub Pages site that explains Symbio, with screenshots and a short video.
+9. **A public demo.** A container on a VPS with a light model, connections and other sensitive
+   options disabled, and visitors' data reset every few minutes (needs item 2's headless support).
 
+## Ideas
+
+Collected, not sorted or promised yet.
+
+- **Other agent CLIs.** Run teams on other agent runtimes besides OpenCode, and switch between them
+  (e.g. from the OpenCode menu at the top). Big: Symbio is built on OpenCode's HTTP API (sessions,
+  tools, permissions, events), so each runtime would need an adapter.
+- **Richer answers in the chat.** Show results visually when they fit: a chart for numbers, steps
+  for a procedure, a live counter while tests run.
+- **Agent graph.** A live view of agents and the messages flowing between them.
 - **Moving projects between machines.** Docs and plan travel with the folder, but agent sessions
   live in the local OpenCode database; reopening a project elsewhere should re-create its agents
   cleanly.
-- **Agent graph.** A live view of agents and the messages flowing between them.
 - **Eyes for agents.** Screenshots of what they build, routed to vision-capable models (agents can
   already look at images with `view_image`).
 - **Per-task model routing.** Cheap models for simple tasks, strong ones for hard ones.
+
+## Done
+
+Newest first; details per version in [CHANGELOG.md](../CHANGELOG.md).
+
+- **0.6** — Azure DevOps connections (push, pull, pull requests); a clearer credentials rule:
+  Symbio's own secrets stay off-limits, a project's own credentials may be used but never spread.
+- **0.5** — The Docs tab (folder tree, search, links between docs, numbered text sources); an
+  optional rules register with sources, excerpts and status, whose citations open the cited place;
+  images only through scaled-down copies (`view_image`); a conversation too large to send continues
+  in a fresh session; helpers' deleted folders are recreated.
+- **0.4** — Helpers can share the project folder instead of their own branch (for step-by-step
+  work); processes belong to the agent that started them.
+- **0.3** — Remote access: `sym remote` opens a temporary Cloudflare link with an access code.
+- **0.2** — `npm install -g symbio` with a bundled OpenCode; `sym` start, stop, status, logs,
+  doctor; fresh sessions with a handoff note, daily backups and housekeeping checks, token and cost
+  tracking.
+- **0.1** — The core: OpenCode runtime with crash recovery and memory recycling; onboarding of new
+  and existing folders; the team (core and helpers, messages, git worktrees, shared assets with core
+  as gatekeeper, model fallback); the plan and its live kanban; the *Needs you* inbox; GitHub and
+  SSH connections with an encrypted vault and approvals; model providers from Settings.
 
 ## Known limitations
 

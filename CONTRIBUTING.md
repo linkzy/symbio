@@ -3,6 +3,9 @@
 Thanks for your interest! Bug reports, ideas, documentation and code are all welcome, whether you
 write them yourself or with an AI agent.
 
+Looking for something to work on? [docs/roadmap.md](docs/roadmap.md) lists what's next in priority
+order and collected ideas; items marked *(good first contribution)* are small and self-contained.
+
 ## Reporting bugs and suggesting features
 
 Open an issue using one of the templates. For a bug, include:
