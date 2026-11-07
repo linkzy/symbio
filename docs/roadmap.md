@@ -1,6 +1,6 @@
 # Roadmap
 
-## Done (0.5)
+## Done (0.6)
 
 1. **Core runtime.** Private OpenCode server, projects, core's session, streaming chat, watchdog,
    crash recovery, memory recycling.
@@ -12,7 +12,8 @@
    handover.
 5. **Human inbox.** *Needs you*: questions, plan approval, permission requests, remote-action
    approvals, alerts. Pause and resume per project or globally.
-6. **Connections.** GitHub and SSH servers with an encrypted vault and per-connection approval.
+6. **Connections.** GitHub, Azure DevOps and SSH servers with an encrypted vault and per-connection
+   approval; agents never see the credentials.
 7. **Providers.** Add and remove OpenCode model providers from Settings; per-agent model switching.
 8. **Packaging.** `npm i -g symbio` with a bundled, pinned OpenCode; `sym` start/stop/status/logs/doctor;
    first-run guidance.
@@ -25,6 +26,10 @@
     a filterable index whose citations open the cited place.
 12. **Conversation size.** Images only through scaled-down copies (`view_image`); a conversation
     too large to send continues in a fresh session.
+13. **Long-running teams.** Fresh sessions with a handoff note, daily backups and housekeeping
+    checks, token and cost tracking per agent and model.
+14. **Credentials.** Symbio's own secrets stay off-limits to agents; a project's own credentials
+    may be used for the task but never spread.
 
 ## Next
 

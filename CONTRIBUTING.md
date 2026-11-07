@@ -8,7 +8,8 @@ write them yourself or with an AI agent.
 Open an issue using one of the templates. For a bug, include:
 
 - what you did, what you expected, and what happened instead;
-- your OS, Node.js version, OpenCode version (`opencode --version`) and Symbio version;
+- your OS, Node.js version and Symbio version, and the OpenCode version Symbio uses (`sym doctor`
+  prints both);
 - relevant errors from the browser console or the terminal running Symbio.
 
 Please don't paste API keys, tokens or private project content. For security issues, follow

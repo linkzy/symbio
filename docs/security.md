@@ -63,8 +63,9 @@ Every agent session gets permission rules from `src/server/guard.ts`:
 | Rule | Why |
 |---|---|
 | **Deny** killing processes by name or PID (`taskkill`, `Stop-Process`, `kill`, `pkill`, `killall`, `wmic … process`…) | Your terminals, editors and Symbio itself run the same executables. An agent once ran `taskkill /F /IM node.exe /T` and closed all of them. Agents stop what they started with `stop_process`. |
-| **Deny** reading or editing `~/.ssh`, Symbio's secret store, the UI key, the approvals store, Symbio's backups and OpenCode's provider logins (`auth.json`), and shell commands that mention them or private key files | Servers and GitHub are reached through Symbio's connection tools instead |
+| **Deny** reading or editing `~/.ssh`, Symbio's secret store, the UI key, the approvals store, Symbio's backups and OpenCode's provider logins (`auth.json`), and shell commands that mention them or private key files | Servers, GitHub and Azure DevOps are reached through Symbio's connection tools instead |
 | **Ask** before installing software (`winget`, `choco`, `npm -g`, `pip install`…) and "download and run" commands (`… \| sh`, `… \| bash -s`, `… \| sudo bash`, `… \| iex`) | You approve installs from the *Needs you* inbox |
+| **Refuse** reading image files (png, jpg, gif, webp, bmp) with the read tool; Symbio answers with a pointer to `view_image` | A full-size image stays in the conversation and is re-sent every turn; a few large ones made one too big to send |
 
 These are pattern rules, not a sandbox: an agent can still do damage with commands the patterns
 don't catch, and any program running as your user, agents included, could in principle read the OS
@@ -78,8 +79,8 @@ project the connections it needs.
   Manager, macOS Keychain, Secret Service). If that key can't be read, Symbio stops with an error
   instead of replacing it.
 - Secrets never leave the Symbio server process: the API doesn't return them, and agents never see
-  them. Agents call `git_push`, `github_api`, `remote_exec` and `remote_upload`, and Symbio performs
-  the action.
+  them. Agents call `git_push`, `git_pull`, `github_api`, `azure_devops_api`, `remote_exec` and
+  `remote_upload`, and Symbio performs the action.
 - **The project's own credentials are different.** Connection strings, `.env` files and the like
   that live in the project are part of the work: agents may use them for the task (connecting to a
   database the work needs), as any developer on the project would, and so may credentials the human

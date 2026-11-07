@@ -82,6 +82,11 @@ place. Here Symbio was restarted mid-task, and it told the helper to pick up whe
   see. Each connection can require your approval for every action.
 - **Resilient.** A supervisor restarts OpenCode if it crashes, a watchdog unsticks hung agents, and
   when a model fails (quota, outage) the agent switches to the next allowed model and carries on.
+- **Long-running teams stay healthy.** Agents can continue in a fresh session with a handoff note
+  (when you ask, after each finished task, or automatically when a conversation grows too large to
+  send). A daily check backs up Symbio's state and tells you and core about work that exists only
+  on this machine and build outputs filling the disk.
+- **Costs in view.** Tokens and estimated cost per agent and model, with prices you can set.
 - **Safety rails.** Agents can't kill processes by name (which would take down your terminals and
   editors), can't read your SSH keys or Symbio's secret store, and must ask before installing
   software. They look at images through scaled-down copies, so a few large pictures can't make a
@@ -171,8 +176,12 @@ itself. Whoever gets in controls your agents, so keep the link and code to yours
 | `~/.symbio/secrets.enc` | Connection secrets, encrypted with a key kept in your OS credential store |
 | `~/.symbio/worktrees/` | Helpers' working copies |
 | `~/.symbio/backups/` | Daily backups of Symbio's state (the last 7 days) |
+| `~/.symbio/approvals/` | Remote actions waiting for (or decided by) your approval |
+| `~/.symbio/prices.json` | Model prices used for cost estimates |
+| `~/.symbio/ui-token` | The key that unlocks the UI (it's in the link Symbio opens) |
+| `~/.symbio/logs/symbio.log` | Symbio's log when started in the background (`sym logs`) |
 | `<project>/.symbio/` | Project state: agents, plan, message log, shared assets (git-ignored automatically) |
-| `<project>/AGENTS.md`, `<project>/docs/` | Project documentation for agents (unless you chose *private*) |
+| `<project>/AGENTS.md`, `<project>/docs/` | Project documentation for agents (unless you chose *private*), and `docs/rules.json` if the rules register is on |
 | OpenCode's database | The conversations themselves. Every agent is an OpenCode session, so you can also open one with `opencode -s <session-id>`. |
 
 Symbio never deletes your project files. Removing a project from Symbio only forgets it, and can
@@ -193,13 +202,17 @@ All optional, set as environment variables:
 | `SYMBIO_STUCK_MINUTES` | `10` | Silence before the watchdog interrupts a working agent |
 | `SYMBIO_RECYCLE_MB` | `1500` | Restart OpenCode above this memory use once every agent is idle |
 | `SYMBIO_RECYCLE_HARD_MB` | `3000` | Restart OpenCode above this memory use regardless (agents resume) |
+| `SYMBIO_MEMORY_CHECK_SECONDS` | `60` | How often OpenCode's memory use is checked |
+| `SYMBIO_BACKUP_DAYS` | `7` | How many daily backups of Symbio's state to keep |
+| `SYMBIO_BUILD_ALERT_GB` | `2` | Build outputs in a helper's folder above this size are reported by the daily check |
 
 ## Status
 
-Symbio is young (version 0.1) and changing quickly. The core workflow works end to end: projects,
-core and helpers, messaging, plan and kanban, shared assets, connections, providers, and recovery.
-Planned next: npm packaging with first-run checks, an agent graph, and screenshots for agents so
-they can see what they build. See [docs/roadmap.md](docs/roadmap.md).
+Symbio is young and changing quickly, shaped by people using it for real work. The core workflow
+works end to end: projects, core and helpers, messaging, plan and kanban, shared assets, docs and
+the rules register, connections (GitHub, Azure DevOps, servers), providers, costs and recovery.
+What's planned and what's open for help is in [docs/roadmap.md](docs/roadmap.md); what changed in
+each version is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Documentation
 

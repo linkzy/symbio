@@ -14,8 +14,9 @@ helps, and you watch and steer everything from the browser.
   Symbio's own records, never from asking a model what happened.
 - **The human is never bypassed.** Questions, plan approval, permission requests, remote actions and
   model failures surface in the UI; nothing waits silently.
-- **Plain files.** State is JSON/JSONL on disk, easy to inspect. The only native dependency is the
-  OS keyring binding used for the secret vault.
+- **Plain files.** State is JSON/JSONL on disk, easy to inspect. The native dependencies are the OS
+  keyring binding (secret vault) and `sharp` (scaling images for `view_image`), both with prebuilt
+  binaries.
 
 Non-goals for now: multiple users, remote hosting, runtimes other than OpenCode.
 
@@ -54,12 +55,16 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 |---|---|
 | `index.ts` | Startup: store, connections, OpenCode runtime, team, HTTP server, static UI, shutdown |
 | `api.ts` | REST routes for the UI |
-| `bus.ts` | In-process event bus feeding the UI's SSE stream |
+| `bus.ts` | In-process event bus feeding the UI's SSE stream (and the polling fallback) |
+| `origin.ts` | Host/Origin checks on every request (against DNS rebinding and cross-site requests) |
+| `ui-token.ts` | The UI key (`~/.symbio/ui-token`) every API request must carry |
 | `store.ts` | Projects and agents on disk (`~/.symbio/config.json`, `<project>/.symbio/`) and the message log |
 | `team.ts` | The heart: creating agents, delivery, status, plan/asset bookkeeping, watchdog, model fallback, memory recycling, crash recovery, pause/resume, stop/restart |
 | `tools.ts` | The MCP tools agents call (worker and coordinator sets) |
 | `mcp.ts` | Minimal MCP server (Streamable HTTP, JSON responses) |
 | `prompts.ts` | The briefs given to core and helpers |
+| `updates.ts` | Agent-facing notes about what changed in Symbio, given once to each coordinator after an update |
+| `housekeeping.ts` | Daily: backups of Symbio's state (`~/.symbio/backups`), commits no remote has, build outputs piling up in helpers' folders |
 | `plan.ts` | The plan and its tasks (`plan.json`) |
 | `costs.ts` | Token usage per agent and model, model prices (`~/.symbio/prices.json`) and estimated cost |
 | `assets.ts` | Shared-asset register: holders, queues, history, merge-time checks (`assets.json`) |
@@ -80,7 +85,10 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 
 The UI (`web/src/`) is React + Vite with Motion for animation and lucide icons. `api.ts` is its
 client; `ProjectView.tsx` holds the project screen (team sidebar and tabs), `Chat.tsx` renders a
-live session, `Kanban.tsx` the plan, and `Settings.tsx`/`Providers.tsx` the global settings.
+live session, `Kanban.tsx` the plan, `Messages.tsx` the message log, `Docs.tsx` the Docs tab and
+`Rules.tsx` the rules register in it, `Inbox.tsx` the *Needs you* drawer, `Usage.tsx` tokens and
+costs, `Housekeeping.tsx` the daily check, `Remote.tsx` remote access, and
+`Settings.tsx`/`Providers.tsx` the global settings.
 
 ## Lifecycle of a project
 
@@ -151,12 +159,15 @@ live session, `Kanban.tsx` the plan, and `Settings.tsx`/`Providers.tsx` the glob
 | Plan and tasks | `.symbio/plan.json` | no |
 | Shared-asset register | `.symbio/assets.json` | no |
 | Private docs (if chosen) | `.symbio/docs/` | no |
+| Rules register (if on) | `docs/rules.json` (`.symbio/docs/rules.json` with private docs) | yes (no, with private docs) |
 
 Helpers' worktrees only contain *committed* files, so anything agents must read has to be committed
 (or delivered by Symbio, as with private docs, which are injected as instructions).
 
 Global data is in `~/.symbio/`: `config.json` (projects), `connections.json`, `secrets.enc`,
-`worktrees/` and `opencode.pid`.
+`ui-token`, `prices.json` (model prices), `approvals/<project>.json` (remote-action approvals),
+`worktrees/`, `backups/<date>/`, `logs/symbio.log`, `bin/` (a downloaded `cloudflared`, for remote
+access) and `opencode.pid`.
 
 Conversations live in OpenCode's own database. A project opened on another machine keeps its docs
 and plan, but its agents' sessions would need to be re-created.

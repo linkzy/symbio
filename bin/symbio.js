@@ -164,6 +164,7 @@ async function doctor() {
     console.log(`${pass ? "✔" : "✘"} ${label}${!pass && fix ? `\n    → ${fix}` : ""}`);
     if (!pass) ok = false;
   };
+  console.log(`Symbio ${pkg.version}`);
   const [major] = process.versions.node.split(".").map(Number);
   check(major >= 22, `Node.js ${process.versions.node}`, "Symbio needs Node.js 22 or newer: https://nodejs.org");
   let gitVersion = "";

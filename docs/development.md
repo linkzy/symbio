@@ -5,13 +5,15 @@ first.
 
 ## Setup
 
-Requirements: Node.js 22+, OpenCode 2.x (`npm i -g @opencode/cli`) with at least one provider
-connected, and git.
+Requirements: Node.js 22+ and git. OpenCode comes with `npm install` (`@opencode/cli`, pinned to
+2.1.x); it needs at least one model provider connected (in Symbio's Settings, or with
+`opencode auth login`). Native modules (the OS keyring binding and `sharp`) install prebuilt
+binaries; nothing compiles.
 
 ```sh
 npm install
-npm run build      # UI into dist/web, server into dist/server
-npm start          # http://127.0.0.1:4310
+npm run build              # UI into dist/web, server into dist/server
+node bin/symbio.js run     # foreground, http://127.0.0.1:4310
 ```
 
 ## Scripts
@@ -19,10 +21,16 @@ npm start          # http://127.0.0.1:4310
 | Command | What it does |
 |---|---|
 | `npm run dev` | Server in watch mode (tsx) plus the Vite UI with hot reload on http://localhost:5173 (it proxies `/api` to the server) |
+| `npm run dev:server` / `npm run dev:web` | The two halves of `npm run dev`, separately |
 | `npm run build` | Production build: Vite for the UI, `tsc` for the server |
-| `npm start` | Runs the built app (`bin/symbio.js` → `dist/server/index.js`) |
+| `npm start` | Same as `sym`: starts the built app in the background and opens the browser (`node bin/symbio.js run` runs it in the foreground) |
 | `npm test` | Unit tests (`node:test` via tsx, `tests/*.test.ts`) |
 | `npm run typecheck` | Type-checks the server and the UI |
+| `prepublishOnly` | Runs typecheck, tests and build before `npm publish` |
+
+CI (`.github/workflows/ci.yml`) runs typecheck, tests and build on every push and pull request.
+Releases (`.github/workflows/release.yml`) publish to npm when a `vX.Y.Z` tag is pushed (versions
+with a `-` go to the `next` tag); the tag must match `package.json`.
 
 **Keep your real data separate while developing.** The dev server uses the same port and data
 folder as a normal Symbio. To run both side by side:
@@ -68,7 +76,10 @@ docs/                  This documentation
   they receive, what Symbio does on their behalf), add an entry to `src/server/updates.ts`. On the
   next start, each project's coordinator gets the entries it hasn't seen as a note (without being
   woken up), and the human sees them in Messages. New projects start with them marked as seen.
-- **Keep state in plain files.** JSON/JSONL under `.symbio/` or `~/.symbio/`, written through `store.ts`.
+- **Keep state in plain files.** JSON/JSONL under `.symbio/` or `~/.symbio/`. Each module owns its
+  file and writes it atomically (temporary file, then rename): `store.ts` for projects and the
+  message log, and `plan.ts`, `assets.ts`, `rules.ts`, `costs.ts`, `connections.ts`, `remote.ts`
+  for their own data.
 
 ## Testing
 
