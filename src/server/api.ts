@@ -331,7 +331,15 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       renewSessions?: "manual" | "after-task";
       helperWorkspace?: HelperWorkspace;
       rulesRegister?: boolean;
+      subRepositories?: boolean;
     }>();
+    if (typeof body.subRepositories === "boolean") {
+      try {
+        await team.useSubRepositories(project, body.subRepositories, "the human");
+      } catch (err) {
+        return c.json({ error: (err as Error).message }, 400);
+      }
+    }
     if (typeof body.rulesRegister === "boolean") await team.setRulesRegister(project, body.rulesRegister);
     if (body.helperWorkspace === "own" || body.helperWorkspace === "shared") await team.setHelperWorkspace(project, body.helperWorkspace);
     if (body.name?.trim()) project.name = body.name.trim();

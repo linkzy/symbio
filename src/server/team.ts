@@ -21,7 +21,7 @@ import { accountChildUsage, accountUsage, emptyUsage, sessionUsage } from "./cos
 import { AGENT_UPDATES, unseenUpdates, updatesNote } from "./updates.js";
 import { cleanBuildOutputs, dailyBackup, gb, helperFolders, lastBackup, unpushedWork, type FolderUsage, type UnpushedBranch } from "./housekeeping.js";
 import { coordinatorTools, workerTools, type ToolContext } from "./tools.js";
-import { projectRepositories, repoRoot, resolveRepository } from "./repos.js";
+import { describeOuterRepository, listRepositories, projectRepositories, repoRoot, resolveRepository, swallowedRepositories } from "./repos.js";
 import { changedFiles, createWorkspace, inProjectFolder, isGitRepo, leaveWorkspace, mergeWorkspace, reattachWorkspace, removeWorkspace, restoreWorkspace, syncWorkspace } from "./workspaces.js";
 
 const STUCK_AFTER_MS = Number(process.env.SYMBIO_STUCK_MINUTES ?? 10) * 60_000;
@@ -319,6 +319,41 @@ export class Team {
   }
 
   /** The human turned the rules register on or off; every brief mentions it, and core is told. */
+  /**
+   * Works in the inner repositories of a repository created over them (on), or back in the outer
+   * one (off). Refused while active helpers have copies of the repository being left: their work
+   * would have nowhere to be merged.
+   */
+  async useSubRepositories(project: Project, on: boolean, by: "the coordinator" | "the human"): Promise<string> {
+    if (!!project.subRepositories === on) {
+      return on ? "Symbio already works in the inner repositories." : "Symbio already works in the outer repository.";
+    }
+    if (on && !listRepositories(project.directory).length) throw new Error("The project folder doesn't contain other git repositories.");
+    const leaving = project.agents.filter((a) => a.role === "worker" && a.status !== "stopped" && a.branch && (on ? !a.repo : !!a.repo));
+    if (leaving.length) {
+      throw new Error(
+        `${leaving.map((a) => a.name).join(", ")} ${leaving.length === 1 ? "has its" : "have their"} own copy of ${on ? "the outer repository" : "an inner repository"}. ` +
+          `Merge their work, then move them to the project folder (${by === "the human" ? "from their chat" : "move_to_project_folder"}) or stop them, and switch again.`,
+      );
+    }
+    project.subRepositories = on;
+    await this.store.update(project);
+    bus.publish({ type: "project.updated", projectId: project.id });
+    for (const agent of project.agents.filter(active)) await this.refreshInstructions(project, agent).catch(() => {});
+    const repos = listRepositories(project.directory);
+    await this.log(project, {
+      from: "symbio",
+      to: "human",
+      kind: "system",
+      text: on
+        ? `Symbio now works in this project's repositories (${repos.join(", ")}) instead of the repository on top of them (switched by ${by}). Nothing on disk changed; Settings → Team switches back.`
+        : `Symbio works in the project folder's own repository again (switched by ${by}).`,
+    });
+    return on
+      ? `Done: helpers' own copies now come from one of ${repos.join(", ")} (spawn_agent repo), merges and pushes go there. Your instructions were updated.`
+      : "Done: Symbio works in the outer repository again. Your instructions were updated.";
+  }
+
   async setRulesRegister(project: Project, on: boolean): Promise<void> {
     if (!!project.rulesRegister === on) return;
     project.rulesRegister = on;
@@ -1477,6 +1512,11 @@ export class Team {
     await this.log(project, { from: "symbio", to: coordinator.id, kind: "system", text: note });
     project.updatesSeen = [...(project.updatesSeen ?? []), ...updates.map((u) => u.id)];
     await this.store.update(project);
+    // Some changes ask for action in the projects they apply to: those wake core up with a task.
+    for (const u of updates) {
+      const task = await u.task?.(project).catch(() => null);
+      if (task) await this.system(project, coordinator, task);
+    }
   }
 
   /** Private docs aren't visible to OpenCode on its own; inject them, but only when they changed. */

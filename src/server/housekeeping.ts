@@ -5,7 +5,7 @@
 import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 import { git } from "./git.js";
-import { listRepositories } from "./repos.js";
+import { projectRepositoriesSync } from "./repos.js";
 import { globalDir, type Agent, type Project } from "./store.js";
 
 // ---------------------------------------------------------------- backups
@@ -69,11 +69,15 @@ export interface UnpushedBranch {
 
 /** The project's current branch and the helpers' branches, with commits that exist only here. */
 export async function unpushedWork(project: Project): Promise<{ remote: string | null; branches: UnpushedBranch[] }> {
-  if (existsSync(path.join(project.directory, ".git"))) return unpushedIn(project.directory, "");
-  // A folder of several repositories: each one against its own remote, branches named "repo: branch".
+  // Several repositories: each one against its own remote, branches named "repo: branch".
+  const repos = projectRepositoriesSync(project);
+  if (!repos.length) {
+    if (existsSync(path.join(project.directory, ".git"))) return unpushedIn(project.directory, "");
+    return { remote: null, branches: [] };
+  }
   const remotes = new Set<string>();
   const branches: UnpushedBranch[] = [];
-  for (const repo of listRepositories(project.directory)) {
+  for (const repo of repos) {
     const found = await unpushedIn(path.join(project.directory, ...repo.split("/")), `${repo}: `);
     if (!found.remote) continue;
     remotes.add(found.remote);

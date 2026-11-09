@@ -15,8 +15,11 @@ versions follow [Semantic Versioning](https://semver.org/).
   New project dialog shows them and no longer offers to create a repository on top, which hid
   their files from helpers. Each helper works in a copy of one of them (`repo` on `spawn_agent`),
   merges go back to that repository, `git_push` / `git_pull` take `repo`, and the daily check looks
-  for unpushed work in each. A project that already has a repository on top of others is pointed
-  out (in the dialog and to core), with how to undo it.
+  for unpushed work in each.
+- Projects added with an earlier version over a folder of repositories (Symbio created one on top
+  of them): after the update, core checks the project and switches it to the inner repositories on
+  its own when the outer one is Symbio's and has no remote, or asks you otherwise. Nothing on disk
+  changes, and Settings → Team switches back.
 
 ## [0.7.1]
 

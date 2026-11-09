@@ -328,8 +328,8 @@ function NewProjectDialog({ onClose }: { onClose: () => void }) {
               This folder is a git repository that contains other repositories ({inspection.swallowed.inner.join(", ")}) without
               tracking their files
               {inspection.swallowed.createdBySymbio ? ", created on top of them by an earlier version of Symbio" : ""}. Agents would
-              commit to the outer one. To work in each repository instead, remove the outer repository's <code>.git</code> folder
-              (only the outer one: commits made in it are lost, so first copy any work you need into the inner repositories) before adding the project.
+              commit to the outer one. core can switch the project to work in each inner repository instead (nothing on disk changes),
+              and Settings → Team switches it back.
             </div>
           )}
           {inspection && !inspection.isGit && !inspection.repos.length && !inspection.gitAvailable && (

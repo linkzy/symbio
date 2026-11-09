@@ -8,7 +8,7 @@ import type { Agent, MessageKind, Project } from "./store.js";
 import { CONFIRMATIONS, listRules, saveArea, saveRule, saveSource, STATUSES } from "./rules.js";
 import { DEFAULT_IMAGE_SIZE, viewImage } from "./images.js";
 import { readDocument } from "./documents.js";
-import { gitRepoFor } from "./repos.js";
+import { describeOuterRepository, gitRepoFor } from "./repos.js";
 import type { Team } from "./team.js";
 
 export interface ToolContext {
@@ -666,7 +666,20 @@ const COMMON = [
   listProcesses,
   stopProcess,
 ];
+const subRepositories: Tool = {
+  name: "sub_repositories",
+  description:
+    "For a project folder that is a git repository containing other repositories (often created on top of them by an older Symbio): " +
+    "check the situation, switch to working in the inner repositories (use), or back to the outer one (stop). Switching changes nothing on disk.",
+  inputSchema: obj({ action: { type: "string", enum: ["check", "use", "stop"], description: "check (default), use or stop" } }),
+  async run({ action }, { team, project }) {
+    if (action === "use" || action === "stop") return team.useSubRepositories(project, action === "use", "the coordinator");
+    return describeOuterRepository(project);
+  },
+};
+
 const COORDINATOR_ONLY = [
+  subRepositories,
   submitPlan,
   addTask,
   assignTask,

@@ -20,7 +20,10 @@ There are no predefined roles like "frontend" or "writer". There are only two ki
   git, helpers always share the project folder. In a folder of several repositories (not one
   itself; `repos.ts`), an "own" helper needs `repo` on `spawn_agent`: its worktree comes from
   that repository, and its work is merged there; shared helpers may get a `repo` as their default
-  for pushes. One helper is the default; each extra helper must be justified by
+  for pushes. A project folder that is itself a repository holding others (older Symbio versions
+  created one on top) can be switched to the inner ones (`subRepositories`): after the update,
+  Symbio wakes core in such projects to check and switch on its own when the outer repository is
+  Symbio's and has no remote, or ask the human otherwise. One helper is the default; each extra helper must be justified by
   independent work. Idle helpers cost nothing and keep their context, so they're reused for
   follow-ups and stopped only when their area is finished.
 
@@ -124,6 +127,7 @@ core only:
 | `stop_agent` | Stop a helper; its assets are released |
 | `clean_build_outputs` | Delete an idle helper's git-ignored build folders (bin, obj, node_modules…) to free disk space |
 | `merge_work` | Merge a helper's committed work; refuses ungranted asset changes unless forced |
+| `sub_repositories` | For a project folder that is a repository holding other repositories (one an older Symbio created on top of them): check the situation, switch to working in the inner repositories (`use`) or back (`stop`). Nothing on disk changes |
 | `move_to_project_folder` | Move an idle helper whose work is merged from its own copy into the project folder (fresh session, handoff note) |
 | `declare_asset` | Declare or update a shared asset |
 | `grant_asset` / `deny_asset` | Answer an asset request |

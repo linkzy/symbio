@@ -36,11 +36,17 @@ export const findRepositories = async (dir: string, depth = 2) => listRepositori
 
 export const isGitDir = (dir: string) => existsSync(path.join(dir, ".git"));
 
-/** A project's repositories when the folder isn't one itself (empty for a single repository, or no git). */
-export async function projectRepositories(project: Project): Promise<string[]> {
-  if (isGitDir(project.directory)) return [];
-  return findRepositories(project.directory);
+/**
+ * The repositories a project works in, when there are several: the subfolders' repositories when
+ * the folder isn't one itself, or when the project was switched to them (subRepositories). Empty
+ * for a single repository, or no git.
+ */
+export function projectRepositoriesSync(project: Project): string[] {
+  if (isGitDir(project.directory) && !project.subRepositories) return [];
+  return listRepositories(project.directory);
 }
+
+export const projectRepositories = async (project: Project) => projectRepositoriesSync(project);
 
 /** The repository an agent's git work happens in: its chosen sub-repository, or the project folder. */
 export function repoRoot(project: Project, agent: Pick<Agent, "repo">): string {
@@ -96,4 +102,40 @@ export async function gitRepoFor(project: Project, agent: Pick<Agent, "directory
   if (!repos.length) return null;
   if (agent.repo) return agent.repo;
   throw new Error(`This project is made of several repositories (${repos.join(", ")}); say which one with repo.`);
+}
+
+/**
+ * What the coordinator needs to decide whether to switch a project to its inner repositories:
+ * who created the outer one, whether it has a remote, its history, and helpers working in copies of it.
+ */
+export async function describeOuterRepository(project: Project): Promise<string> {
+  const dir = project.directory;
+  const { inner, createdBySymbio } = await swallowedRepositories(dir);
+  if (!inner.length) {
+    return project.subRepositories
+      ? "Symbio works in this project's inner repositories, but none were found now."
+      : "The project folder doesn't contain other git repositories (or tracks them as submodules): nothing to switch.";
+  }
+  const remotes = (await git(dir, "remote").catch(() => "")).split("\n").map((r) => r.trim()).filter(Boolean);
+  const count = Number(await git(dir, "rev-list", "--count", "HEAD").catch(() => "0")) || 0;
+  const recent = (await git(dir, "log", "-5", "--format=%s").catch(() => "")).split("\n").filter(Boolean);
+  const copies = project.agents.filter((a) => a.role === "worker" && a.status !== "stopped" && a.branch && !a.repo);
+  return [
+    `The project folder is a git repository that contains ${inner.length} other repositories (${inner.join(", ")}) without tracking ` +
+      "their files (bare pointers, not submodules).",
+    createdBySymbio
+      ? "The outer repository was created by Symbio when the project was added (its first commit is Symbio's snapshot)."
+      : "The outer repository was not created by Symbio: someone made it on purpose.",
+    remotes.length ? `Its remotes: ${remotes.join(", ")}.` : "It has no remote.",
+    `Its history: ${count} commit(s)${recent.length ? `; latest: ${recent.map((s) => `"${s}"`).join(", ")}` : ""}.`,
+    copies.length
+      ? `Helpers with their own copy of the outer repository: ${copies.map((a) => `${a.name} (${a.status})`).join(", ")}.`
+      : "No active helper has its own copy of the outer repository.",
+    project.subRepositories
+      ? "Now: Symbio works in the inner repositories and leaves the outer one alone."
+      : "Now: Symbio works in the outer repository, so helpers' own copies have the inner repositories as empty folders.",
+    "Switching (action use) changes nothing on disk: the outer .git and every file stay where they are. From then on a helper's own " +
+      "copy comes from one inner repository (spawn_agent repo), merges and pushes go to it, and the outer repository is left alone. " +
+      "Action stop switches back.",
+  ].join("\n");
 }

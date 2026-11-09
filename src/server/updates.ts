@@ -3,12 +3,18 @@
 // (it isn't woken up for it), and the human sees the same list in Messages.
 //
 // Add an entry whenever a change affects how agents work: tools, rules, messages they
-// receive, what Symbio does on their behalf. Ids never change; keep the newest last.
+// receive, what Symbio does on their behalf. Ids never change; keep the newest last. An entry
+// whose change asks for action in some projects can add a task: those coordinators are woken with it.
+
+import { swallowedRepositories } from "./repos.js";
+import type { Project } from "./store.js";
 
 export interface AgentUpdate {
   id: string;
   /** For the coordinator: what changed and what it means for its work. */
   text: string;
+  /** When the change asks for action in this project: a message that wakes the coordinator up with it. */
+  task?: (project: Project) => Promise<string | null>;
 }
 
 export const AGENT_UPDATES: AgentUpdate[] = [
@@ -123,8 +129,24 @@ export const AGENT_UPDATES: AgentUpdate[] = [
     text:
       "Folders of several git repositories (e.g. client/ and server/, each with its own remote, in a folder that isn't a repository " +
       "itself) are now handled as such: spawn_agent takes repo (the helper gets its own copy of that repository, and merge_work merges " +
-      "into it), and git_push / git_pull from the project folder take repo. Never git init the project folder over them. If this " +
-      "project is a repository that contains other repositories, your brief now says so: helpers' own copies don't have their files.",
+      "into it), and git_push / git_pull from the project folder take repo. Never git init the project folder over them.",
+    async task(project) {
+      if (project.subRepositories !== undefined) return null;
+      const { inner, createdBySymbio } = await swallowedRepositories(project.directory);
+      if (!inner.length) return null;
+      return (
+        `Symbio update, for this project: the project folder is a git repository that contains other repositories (${inner.join(", ")}) ` +
+        `without their files${createdBySymbio ? " (Symbio created it on top of them when the project was added)" : ""}. So far helpers' own ` +
+        "copies had those repositories as empty folders, their commits went to the outer repository, and pushes had no remote of their own. " +
+        "Symbio can now work in each inner repository instead.\n\n" +
+        "Look at it with sub_repositories (action check). If the outer repository was created by Symbio and has no remote, switch on " +
+        "your own (action use): nothing on disk changes and it can be switched back. Before switching, bring any unmerged work of helpers " +
+        "with their own copy of the outer repository into the project (merge_work), then move them to the project folder or stop them. " +
+        "Don't interrupt work in progress: if helpers are busy, do it once they've finished. Then tell the human in a sentence or two what " +
+        "changed for them. If instead the outer repository has a remote or wasn't created by Symbio, someone may rely on it: explain the " +
+        "situation to the human briefly and ask whether to switch."
+      );
+    },
   },
 ];
 

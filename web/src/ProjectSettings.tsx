@@ -173,6 +173,7 @@ function Team({ project, onChanged }: { project: Project; onChanged: (p: Project
             core can still choose per helper. Existing helpers stay where they are; move one from its chat. Only applies to git projects: without git, helpers always share the folder.
           </span>
         </div>
+        {project.subRepositories !== undefined && <RepositoriesChoice project={project} onChanged={onChanged} />}
         <div className="field">
           <span>Fresh sessions for helpers</span>
           <div className="seg">
@@ -210,6 +211,39 @@ function Team({ project, onChanged }: { project: Project; onChanged: (p: Project
         }}
       />
     </section>
+  );
+}
+
+/** Shown once core (or the human) decided about a repository created on top of others. Applies at once. */
+function RepositoriesChoice({ project, onChanged }: { project: Project; onChanged: (p: Project) => void }) {
+  const [busy, setBusy] = useState(false);
+  async function choose(on: boolean) {
+    if (on === !!project.subRepositories) return;
+    setBusy(true);
+    try {
+      onChanged(await api.updateProject(project.id, { subRepositories: on }));
+    } catch (e) {
+      alert((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="field">
+      <span>Git repositories</span>
+      <div className="seg">
+        <button className={project.subRepositories ? "on" : ""} disabled={busy} onClick={() => choose(true)}>
+          Each repository inside
+        </button>
+        <button className={!project.subRepositories ? "on" : ""} disabled={busy} onClick={() => choose(false)}>
+          The project folder's repository
+        </button>
+      </div>
+      <span className="hint">
+        The project folder is a git repository with other repositories inside it. "Each repository inside": helpers get a copy of one of
+        them, and merges and pushes go to it; the outer repository is left alone. Nothing on disk changes when you switch.
+      </span>
+    </div>
   );
 }
 

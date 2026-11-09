@@ -108,3 +108,36 @@ test("a repository created on top of others is recognized", async () => {
   assert.deepEqual(i.repos, []);
   assert.deepEqual(i.swallowed?.inner, ["apps/admin", "client", "server"]);
 });
+
+test("a repository on top of others: the update wakes core with a task, and the project can switch to the inner ones", async () => {
+  const { describeOuterRepository, projectRepositoriesSync } = await import("../src/server/repos.js");
+  const { AGENT_UPDATES } = await import("../src/server/updates.js");
+  const dir = await folderOfRepos();
+  await initRepository(dir);
+  const project: any = { id: "prj_sw", name: "game", directory: dir, allowedModels: ["a/b"], connections: [], agents: [
+    { name: "writer", role: "worker", status: "idle", branch: "symbio/writer", directory: "x" },
+  ] };
+
+  const update = AGENT_UPDATES.find((u) => u.id === "2026-11-09-multi-repo")!;
+  const task = await update.task!(project);
+  assert.match(task!, /contains other repositories \(apps\/admin, client, server\)/);
+  assert.match(task!, /Symbio created it on top of them/);
+  assert.match(task!, /sub_repositories \(action check\)/);
+  assert.equal(await update.task!({ ...project, subRepositories: false }), null, "already decided");
+  assert.equal(await update.task!({ ...project, directory: await folderOfRepos() }), null, "not this situation");
+
+  const report = await describeOuterRepository(project);
+  assert.match(report, /created by Symbio/);
+  assert.match(report, /It has no remote/);
+  assert.match(report, /own copy of the outer repository: writer \(idle\)/);
+
+  assert.deepEqual(projectRepositoriesSync(project), []);
+  assert.match(coordinatorBrief(project), /check with sub_repositories/);
+  project.subRepositories = true;
+  assert.deepEqual(projectRepositoriesSync(project), ["apps/admin", "client", "server"]);
+  assert.match(coordinatorBrief(project), /repository created on top of them earlier; leave it alone/);
+  await assert.rejects(gitRepoFor(project, { directory: dir }), /say which one with repo/);
+  const ws = await createWorkspace(project, "api-dev", "own", "server");
+  assert.equal(await git(ws.directory, "remote").catch(() => ""), "");
+  assert.ok(existsSync(path.join(ws.directory, "README.md")), "the copy comes from the inner repository, with its files");
+});

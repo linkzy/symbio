@@ -90,6 +90,12 @@ export interface Project {
    * the next sees at once (pipelines). Unset = "own". Projects without git always share.
    */
   helperWorkspace?: HelperWorkspace;
+  /**
+   * The project folder is a repository created over other repositories (older Symbio versions did
+   * this): work in those inner repositories instead, and leave the outer one alone. Nothing on disk
+   * changes. Unset = never decided (see repos.ts, the sub_repositories tool).
+   */
+  subRepositories?: boolean;
   /** Keep a rules register (rules.json next to the docs, shown in the Docs tab). Unset = off. */
   rulesRegister?: boolean;
   /** Agent-facing Symbio updates (updates.ts) the coordinator has been told about. */

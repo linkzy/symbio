@@ -5,7 +5,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { docsPaths } from "./docs.js";
 import { PROCESS_RULES } from "./guard.js";
-import { listRepositories } from "./repos.js";
+import { listRepositories, projectRepositoriesSync } from "./repos.js";
 import type { Agent, Project } from "./store.js";
 
 // Seen live: a coordinator read eight 2–4 MB images, its conversation reached 25 MB and the
@@ -158,9 +158,9 @@ ${KEEP_CONVERSATION_SMALL}
 
 /** Where helpers work, for the coordinator's tool list. */
 function helperFolders(project: Project): string {
+  const repos = projectRepositoriesSync(project);
+  if (repos.length) return multiRepoFolders(project, repos);
   if (!existsSync(path.join(project.directory, ".git"))) {
-    const repos = listRepositories(project.directory);
-    if (repos.length) return multiRepoFolders(project, repos);
     return "  Helpers work directly in the project folder, alongside you.";
   }
   const def = project.helperWorkspace === "shared" ? "shared" : "own";
@@ -186,11 +186,11 @@ function innerRepositories(project: Project): string {
   return `
   Note: inside the project are other git repositories (${inner.map((r) => `\`${r}\``).join(", ")}),
   with their own history. Their files aren't part of the project's repository, so
-  helpers' own copies don't have them, and commits in them don't belong to it. For
-  work in them, use **shared** helpers. If the human wants to work in each of these
-  repositories (each helper its own copy of one), tell them: remove the outer
-  \`.git\` folder (only the outer one, once its work is safe elsewhere), and Symbio
-  then treats the project as several repositories.`;
+  helpers' own copies don't have them, and commits in them don't belong to it.
+  Symbio can work in each of these repositories instead (each helper its own copy
+  of one): check with sub_repositories. If the outer repository was created by
+  Symbio and has no remote, switch (action use) and tell the human; otherwise ask
+  them first.`;
 }
 
 /** A folder that isn't a repository itself but holds several (e.g. client/, server/, each with its own remote). */
@@ -198,7 +198,11 @@ function multiRepoFolders(project: Project, repos: string[]): string {
   const def = project.helperWorkspace === "shared" ? "shared" : "own";
   return `  This project is made of **${repos.length} git repositories**, each with its own
   history and remote: ${repos.map((r) => `\`${r}\``).join(", ")}. The project folder itself
-  is not a repository; never create one on top of them (\`git init\` there).
+  ${
+    project.subRepositories
+      ? "is a repository created on top of them earlier; leave it alone (don't commit\n  there)."
+      : "is not a repository; never create one on top of them (\`git init\` there)."
+  }
   Where a helper works (\`workspace\`; this project's default is **${def}**):
   - **own** with \`repo\`: its own copy of that one repository, on its own branch.
     It only sees that repository's **committed** files; you merge its work into
