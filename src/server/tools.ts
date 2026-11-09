@@ -7,6 +7,7 @@ import { describeTask, TASK_STATUSES } from "./plan.js";
 import type { Agent, MessageKind, Project } from "./store.js";
 import { CONFIRMATIONS, listRules, saveArea, saveRule, saveSource, STATUSES } from "./rules.js";
 import { DEFAULT_IMAGE_SIZE, viewImage } from "./images.js";
+import { readDocument } from "./documents.js";
 import type { Team } from "./team.js";
 
 export interface ToolContext {
@@ -501,6 +502,23 @@ function registerOn(project: Project) {
 
 // ---- images
 
+const readDocumentTool: Tool = {
+  name: "read_document",
+  description:
+    "Read the text of a document: PDF (by pages), Word (.docx, .odt), Excel (.xlsx, every sheet as tab-separated rows), " +
+    "PowerPoint (.pptx, by slide) or a long text file. Returns a part at a time and says how to get the next one. " +
+    "Reading PDFs with the read tool is blocked (it would put the whole file in your conversation), and Office files are binary to it.",
+  inputSchema: obj(
+    {
+      path: str("The document (absolute, or relative to your folder)"),
+      pages: str('PDF pages to read, e.g. "1-10" or "7" (default: from the first page, as many as fit)'),
+      from: { type: "integer", description: "For other documents: the character to start from (given in the previous answer)" },
+    },
+    ["path"],
+  ),
+  run: (args, { agent }) => readDocument(agent.directory, args),
+};
+
 const viewImageTool: Tool = {
   name: "view_image",
   description:
@@ -608,6 +626,7 @@ const saveRuleSourceTool: Tool = {
 
 const COMMON = [
   viewImageTool,
+  readDocumentTool,
   listRulesTool,
   saveRuleTool,
   saveRuleAreaTool,

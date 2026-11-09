@@ -219,6 +219,7 @@ export type UiEvent =
   | { type: "project.updated"; projectId: string }
   | { type: "prices.updated" }
   | { type: "remote.updated" }
+  | { type: "attachments.updated"; projectId: string }
   | { type: "assets.updated"; projectId: string }
   | { type: "plan.updated"; projectId: string }
   | { type: "approvals.updated"; projectId: string }
@@ -281,28 +282,88 @@ const token = (() => {
  * PDFs; types a browser can't show are downloaded. Fetched with the key, so it never sits in a URL.
  */
 export function openDocFile(projectId: string, path: string, page?: number) {
+  openFile(`/api/projects/${projectId}/docs/raw?path=${encodeURIComponent(path)}`, path.split("/").pop() ?? "file", { page });
+}
+
+/** Opens a file Symbio serves (shown in a new tab when the browser can, else downloaded), fetched with the key. */
+function openFile(url: string, name: string, opts: { page?: number; download?: boolean } = {}) {
   // Open the tab now, while the click still counts: after the download, a popup would be blocked.
-  const win = window.open("", "_blank");
-  fetch(`/api/projects/${projectId}/docs/raw?path=${encodeURIComponent(path)}`, { headers: { "x-symbio-token": token } })
+  const win = opts.download ? null : window.open("", "_blank");
+  fetch(url, { headers: { "x-symbio-token": token } })
     .then(async (res) => {
       if (!res.ok) throw new Error(((await res.json().catch(() => null)) as { error?: string } | null)?.error ?? res.statusText);
       const inline = (res.headers.get("content-disposition") ?? "").startsWith("inline");
-      const url = URL.createObjectURL(await res.blob());
+      const blobUrl = URL.createObjectURL(await res.blob());
       if (inline && win) {
-        win.location.href = url + (page ? `#page=${page}` : "");
+        win.location.href = blobUrl + (opts.page ? `#page=${opts.page}` : "");
         return;
       }
       win?.close();
       const a = document.createElement("a");
-      a.href = url;
-      a.download = path.split("/").pop() ?? "file";
+      a.href = blobUrl;
+      a.download = name;
       a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
     })
     .catch((err) => {
       win?.close();
-      alert(`Couldn't open ${path}: ${(err as Error).message}`);
+      alert(`Couldn't open ${name}: ${(err as Error).message}`);
     });
+}
+
+export interface Attachment {
+  id: string;
+  name: string;
+  mime: string;
+  size: number;
+  addedAt: number;
+  sentTo: { agentId: string; at: number }[];
+}
+
+export const attachmentUrl = (projectId: string, id: string) => `/api/projects/${projectId}/attachments/${id}/file`;
+
+export function openAttachment(projectId: string, a: { id: string; name: string }, download = false) {
+  openFile(attachmentUrl(projectId, a.id), a.name, { download });
+}
+
+// Thumbnails: the file fetched once with the key, then shown from memory.
+const thumbs = new Map<string, Promise<string>>();
+export function attachmentBlob(projectId: string, id: string): Promise<string> {
+  let p = thumbs.get(id);
+  if (!p) {
+    p = fetch(attachmentUrl(projectId, id), { headers: { "x-symbio-token": token } }).then(async (res) => {
+      if (!res.ok) throw new Error(res.statusText);
+      return URL.createObjectURL(await res.blob());
+    });
+    p.catch(() => thumbs.delete(id));
+    thumbs.set(id, p);
+  }
+  return p;
+}
+
+/** Uploads files to the project's gallery, reporting progress (0–1). */
+export function uploadAttachments(projectId: string, files: File[], onProgress?: (fraction: number) => void): Promise<Attachment[]> {
+  return new Promise((resolve, reject) => {
+    const form = new FormData();
+    for (const f of files) form.append("files", f, f.name || "pasted.png");
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `/api/projects/${projectId}/attachments`);
+    xhr.setRequestHeader("x-symbio-token", token);
+    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded / e.total);
+    xhr.onload = () => {
+      const data = (() => {
+        try {
+          return JSON.parse(xhr.responseText);
+        } catch {
+          return {};
+        }
+      })();
+      if (xhr.status >= 200 && xhr.status < 300) resolve(data as Attachment[]);
+      else reject(new Error(data.error ?? `Upload failed (${xhr.status})`));
+    };
+    xhr.onerror = () => reject(new Error("Upload failed (connection)"));
+    xhr.send(form);
+  });
 }
 
 /** Fired when the server rejects our key; the app shows how to get back in. */
@@ -463,8 +524,10 @@ export const api = {
       `/projects/${projectId}/agents/${agentId}/history?limit=${limit}${before ? `&before=${encodeURIComponent(before)}` : ""}${session ? `&session=${encodeURIComponent(session)}` : ""}`,
     ),
   renewSession: (projectId: string, agentId: string) => call<Project>("POST", `/projects/${projectId}/agents/${agentId}/renew`),
-  send: (projectId: string, agentId: string, text: string, urgent = false) =>
-    call<{ ok: true }>("POST", `/projects/${projectId}/agents/${agentId}/messages`, { text, urgent }),
+  send: (projectId: string, agentId: string, text: string, urgent = false, attachments: string[] = []) =>
+    call<{ ok: true }>("POST", `/projects/${projectId}/agents/${agentId}/messages`, { text, urgent, attachments }),
+  attachments: (projectId: string) => call<Attachment[]>("GET", `/projects/${projectId}/attachments`),
+  deleteAttachment: (projectId: string, id: string) => call<{ ok: true }>("DELETE", `/projects/${projectId}/attachments/${id}`),
   interrupt: (projectId: string, agentId: string) =>
     call<{ ok: true }>("POST", `/projects/${projectId}/agents/${agentId}/interrupt`),
   renameAgent: (projectId: string, agentId: string, name: string) =>

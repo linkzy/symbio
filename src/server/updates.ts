@@ -109,6 +109,15 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "HTTPS), and the new azure_devops_api tool calls its REST API, e.g. to open a pull request after pushing the branch. Reading " +
       "(GET) never needs approval. If a push or a pull request failed for lack of credentials, ask the human to add the connection.",
   },
+  {
+    id: "2026-11-09-attachments",
+    text:
+      "Attachments and documents: the human can now attach files to a message (upload, drag and drop, paste). They arrive as full " +
+      "paths below the message and are kept in the project (.symbio/attachments; the human sees them in the Files tab), so you can " +
+      "come back to them. Look at images with view_image; read documents (PDF, Word, Excel, PowerPoint) with the new read_document " +
+      "tool, which returns their text a part at a time. Reading PDFs with the read tool is now refused like images: it would put the " +
+      "whole file in your conversation.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */

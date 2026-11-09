@@ -14,6 +14,7 @@ import { pickFolder } from "./folder-picker.js";
 import { beginOauth, cancelOauth, completeOauth, connectWithKey, listProviders, oauthStatus, removeLogin } from "./providers.js";
 import { docsRoot, listDocs, rawDoc, readDoc, searchDocs, writeDoc } from "./docs.js";
 import { readRegister } from "./rules.js";
+import { addAttachment, attachmentNote, getAttachments, listAttachments, markSent, removeAttachment } from "./attachments.js";
 import type { Team } from "./team.js";
 import type { Connections } from "./connections.js";
 import { PriceBook, projectUsage, resolvePrices, type Price } from "./costs.js";
@@ -660,10 +661,72 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
   api.post("/projects/:id/agents/:agentId/messages", async (c) => {
     const project = withProject(c.req.param("id"));
     const agent = withAgent(project, c.req.param("agentId"));
-    const body = await c.req.json<{ text?: string; urgent?: boolean }>();
-    if (!body.text?.trim()) return c.json({ error: "text is required" }, 400);
-    await team.sendFromHuman(project, agent, body.text.trim(), !!body.urgent);
+    const body = await c.req.json<{ text?: string; urgent?: boolean; attachments?: string[] }>();
+    const ids = Array.isArray(body.attachments) ? body.attachments.map(String) : [];
+    if (!body.text?.trim() && !ids.length) return c.json({ error: "text is required" }, 400);
+    let files;
+    try {
+      files = await getAttachments(project, ids);
+    } catch (err) {
+      return c.json({ error: (err as Error).message }, 400);
+    }
+    const text = (body.text?.trim() || (files.length === 1 ? "Here's a file." : "Here are some files.")) + attachmentNote(files);
+    await team.sendFromHuman(project, agent, text, !!body.urgent);
+    if (ids.length) {
+      await markSent(project, ids, agent.id);
+      bus.publish({ type: "attachments.updated", projectId: project.id });
+    }
     return c.json({ ok: true });
+  });
+
+  // ---- attachments: files the human sends in the chat, and the project's gallery of them
+  api.get("/projects/:id/attachments", async (c) => {
+    const project = withProject(c.req.param("id"));
+    // Paths stay on the server: the browser gets names, sizes and who received each file.
+    const list = await listAttachments(project);
+    return c.json(list.map(({ file: _file, ...rest }) => rest).reverse());
+  });
+
+  api.post("/projects/:id/attachments", async (c) => {
+    const project = withProject(c.req.param("id"));
+    const form = await c.req.parseBody({ all: true }).catch(() => null);
+    const files = ([] as unknown[]).concat(form?.files ?? form?.file ?? []).filter((f): f is File => f instanceof File);
+    if (!files.length) return c.json({ error: "Send the files as multipart form data (field \"files\")." }, 400);
+    try {
+      const added = [];
+      for (const f of files) added.push(await addAttachment(project, f.name || "pasted", new Uint8Array(await f.arrayBuffer()), f.type));
+      bus.publish({ type: "attachments.updated", projectId: project.id });
+      return c.json(added.map(({ file: _file, ...rest }) => rest));
+    } catch (err) {
+      return c.json({ error: (err as Error).message }, 400);
+    }
+  });
+
+  api.get("/projects/:id/attachments/:aid/file", async (c) => {
+    const project = withProject(c.req.param("id"));
+    const [a] = await getAttachments(project, [c.req.param("aid")]).catch(() => [null]);
+    if (!a) throw new HttpError(404, "attachment not found");
+    // Shown inline only for types a browser displays safely; anything else downloads.
+    const inline = /^(image\/(png|jpe?g|gif|webp|bmp)|application\/pdf|text\/plain)$/.test(a.mime);
+    return new Response(new Uint8Array(await fs.readFile(a.file)), {
+      headers: {
+        "content-type": inline ? a.mime : "application/octet-stream",
+        "content-disposition": `${inline ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(a.name)}`,
+        "x-content-type-options": "nosniff",
+        "content-security-policy": "default-src 'none'; img-src 'self' blob: data:; style-src 'unsafe-inline'",
+      },
+    });
+  });
+
+  api.delete("/projects/:id/attachments/:aid", async (c) => {
+    const project = withProject(c.req.param("id"));
+    try {
+      await removeAttachment(project, c.req.param("aid"));
+      bus.publish({ type: "attachments.updated", projectId: project.id });
+      return c.json({ ok: true });
+    } catch (err) {
+      return c.json({ error: (err as Error).message }, 404);
+    }
   });
 
   api.post("/projects/:id/agents/:agentId/interrupt", async (c) => {

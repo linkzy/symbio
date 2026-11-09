@@ -71,6 +71,8 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 | `workspaces.ts` | Where helpers work: git worktrees (create, merge, sync, remove, restore) or the shared project folder |
 | `git.ts` | Thin git wrapper |
 | `inspect.ts` | Deterministic folder inspection for onboarding (no model cost) |
+| `attachments.ts` | Files the human attaches in the chat: stored in `.symbio/attachments` with an index (the Files tab), and the note telling the agent where they are and how to open them |
+| `documents.ts` | `read_document`: text from PDF (`unpdf`), Word, Excel, PowerPoint and OpenDocument files (unzipped with `fflate`), a part at a time |
 | `images.ts` | `view_image`: scaled-down copies of images (or full-resolution crops) for agents |
 | `rules.ts` | The rules register (`docs/rules.json`, or `rules.json` in private docs): validated writes, one at a time, ids that are never reused |
 | `docs.ts` | Project documentation (in the project, or private under `.symbio/docs`): list, read, write, search |
@@ -86,7 +88,7 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 
 The UI (`web/src/`) is React + Vite with Motion for animation and lucide icons. `api.ts` is its
 client; `ProjectView.tsx` holds the project screen (team sidebar and tabs), `Chat.tsx` renders a
-live session, `Kanban.tsx` the plan, `Messages.tsx` the message log, `Docs.tsx` the Docs tab and
+live session, `Kanban.tsx` the plan, `Messages.tsx` the message log, `Attachments.tsx` attachments in the chat and the Files tab, `Docs.tsx` the Docs tab and
 `Rules.tsx` the rules register in it, `Inbox.tsx` the *Needs you* drawer, `Usage.tsx` tokens and
 costs, `Housekeeping.tsx` the daily check, `Remote.tsx` remote access, and
 `Settings.tsx`/`Providers.tsx` the global settings.
@@ -160,6 +162,7 @@ costs, `Housekeeping.tsx` the daily check, `Remote.tsx` remote access, and
 | Plan and tasks | `.symbio/plan.json` | no |
 | Shared-asset register | `.symbio/assets.json` | no |
 | Private docs (if chosen) | `.symbio/docs/` | no |
+| Files attached in chats, and their index | `.symbio/attachments/`, `.symbio/attachments.json` | no |
 | Rules register (if on) | `docs/rules.json` (`.symbio/docs/rules.json` with private docs) | yes (no, with private docs) |
 
 Helpers' worktrees only contain *committed* files, so anything agents must read has to be committed

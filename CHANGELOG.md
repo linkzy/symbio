@@ -5,6 +5,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Attach files to a message: the paperclip, drag and drop onto the chat, or paste a screenshot.
+  Agents get each file's path with how to open it; the sent message shows the files. Each project
+  has a **Files** tab with everything sent (preview, open, download, resend to an agent, delete).
+- `read_document`: agents read PDFs (by pages), Word, Excel, PowerPoint and OpenDocument text a part
+  at a time. Reading PDFs with the read tool is refused like images, since it put the whole file in
+  the conversation.
+
 ## [0.7.1]
 
 - On a Node.js older than 22, `sym` says what to install instead of Symbio crashing at start

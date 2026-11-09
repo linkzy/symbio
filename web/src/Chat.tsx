@@ -5,6 +5,7 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { api, subscribe, type Agent, type Project } from "./api";
 import { PendingForms } from "./FormCard";
+import { AttachButton, DropOverlay, MessageAttachments, PendingFiles, splitAttachmentNote, usePendingFiles } from "./Attachments";
 import { Avatar, statusText } from "./ui";
 
 type Block =
@@ -171,6 +172,8 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
   const [sending, setSending] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const [renewing, setRenewing] = useState(false);
+  const pending = usePendingFiles(project.id);
+  const [dragging, setDragging] = useState(false);
   const [moving, setMoving] = useState(false);
   // null = the current session; otherwise an earlier one (read-only), after a renewal.
   const [viewSession, setViewSession] = useState<string | null>(null);
@@ -263,12 +266,14 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
 
   async function send() {
     const text = draft.trim();
-    if (!text) return;
+    const files = pending.ready;
+    if ((!text && !files.length) || pending.uploading) return;
     setSending(true);
     setDraft("");
     stickToBottom.current = true;
     try {
-      await api.send(project.id, agent.id, text);
+      await api.send(project.id, agent.id, text, false, files);
+      pending.clear();
       void loadHistory();
     } catch (e) {
       setFailure((e as Error).message);
@@ -279,9 +284,29 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
   }
 
   const busy = agent.status === "busy" || agent.status === "stuck";
+  // Files dropped anywhere on the chat (or pasted into the box) go with the next message.
+  const drop = viewSession
+    ? {}
+    : {
+        onDragOver: (e: React.DragEvent) => {
+          if (e.dataTransfer.types.includes("Files")) {
+            e.preventDefault();
+            setDragging(true);
+          }
+        },
+        onDragLeave: (e: React.DragEvent) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false);
+        },
+        onDrop: (e: React.DragEvent) => {
+          e.preventDefault();
+          setDragging(false);
+          pending.add([...e.dataTransfer.files]);
+        },
+      };
 
   return (
-    <div className="chat">
+    <div className="chat" {...drop}>
+      {dragging && <DropOverlay label={`Drop to attach to your message to ${agent.name}`} />}
       <div className="chat-head">
         <Avatar name={agent.name} status={agent.status} size="lg" />
         <div className="grow">
@@ -439,7 +464,7 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
             </div>
           )}
           <AnimatePresence initial={false}>
-            {history?.map((m) => <HistoryItem key={m.id} message={m} />)}
+            {history?.map((m) => <HistoryItem key={m.id} message={m} projectId={project.id} />)}
             {live.length > 0 && (
               <motion.div key="live" className="msg-assistant" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                 {live.map((b) => (
@@ -471,10 +496,19 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
       ) : (
       <div className="composer-wrap">
         <div className="composer">
+          <PendingFiles projectId={project.id} files={pending.files} onRemove={pending.remove} />
           <textarea
             value={draft}
             placeholder={busy ? `${agent.name} is working — your message will be queued` : `Message ${agent.name}…`}
             onChange={(e) => setDraft(e.target.value)}
+            onPaste={(e) => {
+              // A screenshot or copied files (not text that happens to come with an image).
+              const files = [...e.clipboardData.files];
+              if (files.length && !e.clipboardData.getData("text/plain")) {
+                e.preventDefault();
+                pending.add(files);
+              }
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -484,6 +518,7 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
             rows={Math.min(10, Math.max(1, draft.split("\n").length))}
           />
           <div className="composer-bar">
+            <AttachButton onFiles={pending.add} />
             <span className="composer-hint">
               <span className="kbd">Enter</span> to send · <span className="kbd">Shift</span>+<span className="kbd">Enter</span> for a new line
             </span>
@@ -494,7 +529,7 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
                 Stop
               </button>
             )}
-            <button className="btn primary icon sm" onClick={send} disabled={!draft.trim() || sending} title="Send" aria-label="Send">
+            <button className="btn primary icon sm" onClick={send} disabled={(!draft.trim() && !pending.ready.length) || pending.uploading || sending} title={pending.uploading ? "Waiting for the files to upload" : "Send"} aria-label="Send">
               <ArrowUp size={15} />
             </button>
           </div>
@@ -505,7 +540,7 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
   );
 }
 
-function HistoryItem({ message: m }: { message: any }) {
+function HistoryItem({ message: m, projectId }: { message: any; projectId: string }) {
   const anim = { initial: { opacity: 0, y: 4 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.15 } };
 
   if (m.type === "user" || m.type === "synthetic") {
@@ -527,9 +562,11 @@ function HistoryItem({ message: m }: { message: any }) {
       );
     }
     if (fromAgent) {
+      const { body, files } = splitAttachmentNote(text.slice(fromAgent[0].length));
       return (
         <motion.div className="msg-user" {...anim}>
-          {text.slice(fromAgent[0].length)}
+          {body}
+          <MessageAttachments projectId={projectId} files={files} />
         </motion.div>
       );
     }
@@ -543,9 +580,11 @@ function HistoryItem({ message: m }: { message: any }) {
         </motion.div>
       );
     }
+    const { body, files } = splitAttachmentNote(text);
     return (
       <motion.div className="msg-user" {...anim}>
-        {text}
+        {body}
+        <MessageAttachments projectId={projectId} files={files} />
       </motion.div>
     );
   }

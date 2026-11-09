@@ -65,7 +65,7 @@ Every agent session gets permission rules from `src/server/guard.ts`:
 | **Deny** killing processes by name or PID (`taskkill`, `Stop-Process`, `kill`, `pkill`, `killall`, `wmic … process`…) | Your terminals, editors and Symbio itself run the same executables. An agent once ran `taskkill /F /IM node.exe /T` and closed all of them. Agents stop what they started with `stop_process`. |
 | **Deny** reading or editing `~/.ssh`, Symbio's secret store, the UI key, the approvals store, Symbio's backups and OpenCode's provider logins (`auth.json`), and shell commands that mention them or private key files | Servers, GitHub and Azure DevOps are reached through Symbio's connection tools instead |
 | **Ask** before installing software (`winget`, `choco`, `npm -g`, `pip install`…) and "download and run" commands (`… \| sh`, `… \| bash -s`, `… \| sudo bash`, `… \| iex`) | You approve installs from the *Needs you* inbox |
-| **Refuse** reading image files (png, jpg, gif, webp, bmp) with the read tool; Symbio answers with a pointer to `view_image` | A full-size image stays in the conversation and is re-sent every turn; a few large ones made one too big to send |
+| **Refuse** reading image files (png, jpg, gif, webp, bmp) and PDFs with the read tool; Symbio answers with a pointer to `view_image` or `read_document` | The read tool puts the whole file in the conversation, re-sent every turn; a few large ones made one too big to send |
 
 These are pattern rules, not a sandbox: an agent can still do damage with commands the patterns
 don't catch, and any program running as your user, agents included, could in principle read the OS
@@ -117,6 +117,9 @@ project the connections it needs.
   anything else (HTML, SVG…) is downloaded instead, so a file in the docs can't run script in
   Symbio's page. The page fetches it with its key, so the key never appears in a tab's address.
 
+- **Attachments** are stored in the project's `.symbio/attachments` (git-ignored), up to 50 MB each,
+  with names made safe for every OS. The browser opens them through the API with its key; only
+  images, PDFs and plain text are shown inline, everything else downloads.
 - **Updates** come from the npm registry (`symbio@latest`), installed by npm like any global
   package; releases are built and published by GitHub Actions with provenance. Applying an update
   restarts Symbio, so it's never possible through remote access.

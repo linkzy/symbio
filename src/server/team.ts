@@ -6,7 +6,7 @@ import { randomBytes } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { AssetRegister } from "./assets.js";
-import { AGENT_PERMISSIONS, imageReadRefusal, wildcardMatch } from "./guard.js";
+import { AGENT_PERMISSIONS, readRefusal, wildcardMatch } from "./guard.js";
 import { bus } from "./bus.js";
 import { privateDocsInstruction } from "./docs.js";
 import type { McpResolver } from "./mcp.js";
@@ -1093,7 +1093,7 @@ export class Team {
     const action = String(req.action ?? "");
     const resources: string[] = Array.isArray(req.resources) ? req.resources.map(String) : [];
     // Image files: refused at once, with what to use instead (never a question for the human).
-    const refusal = imageReadRefusal(action, resources);
+    const refusal = readRefusal(action, resources);
     if (refusal) {
       await this.client()
         .request("POST", `/api/session/${agent.sessionId}/permission/${req.id}/reply`, { decision: "reject", message: refusal })

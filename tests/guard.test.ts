@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { AGENT_PERMISSIONS, imageReadRefusal, wildcardMatch } from "../src/server/guard.js";
+import { AGENT_PERMISSIONS, readRefusal, wildcardMatch } from "../src/server/guard.js";
 import { sumProcessTree } from "../src/server/opencode/runtime.js";
 
 test("wildcard matching (OpenCode semantics)", () => {
@@ -62,8 +62,16 @@ test("agents can't read image files directly (they use view_image), in either ca
   };
   for (const file of [String.raw`C:\proj\docs\visuals\board.png`, "/proj/shot.JPG", "/proj/a.jpeg", "/proj/a.webp", "/proj/a.gif"]) {
     assert.equal(effect("read", file), "ask", file);
-    assert.match(imageReadRefusal("read", [file]) ?? "", /view_image/, "and Symbio refuses it with what to use instead");
+    assert.match(readRefusal("read", [file]) ?? "", /view_image/, "and Symbio refuses it with what to use instead");
   }
   assert.equal(effect("read", "/proj/src/main.ts"), "default");
   assert.equal(effect("edit", "/proj/board.png"), "default", "writing images is still allowed");
+});
+
+test("PDFs are read with read_document, not the read tool (which would put the whole file in the conversation)", () => {
+  const ask = AGENT_PERMISSIONS.filter((r) => r.action === "read" && r.effect === "ask" && wildcardMatch(r.resource, "/proj/docs/manual.PDF"));
+  assert.ok(ask.length > 0);
+  assert.match(readRefusal("read", ["/proj/docs/manual.pdf"]) ?? "", /read_document/);
+  assert.equal(readRefusal("read", ["/proj/notes.md"]), null);
+  assert.equal(readRefusal("edit", ["/proj/a.pdf"]), null, "only reading is refused");
 });

@@ -10,6 +10,7 @@ import {
   LockOpen,
   MessageSquare,
   MessagesSquare,
+  Paperclip,
   Pause,
   Play,
   Settings2,
@@ -18,6 +19,7 @@ import { UsageLine } from "./Usage";
 import { api, formatTokens, subscribe, usageTokens, type Agent, type Asset, type Plan, type Project } from "./api";
 import { Chat } from "./Chat";
 import { Docs } from "./Docs";
+import { FilesView } from "./Attachments";
 import { InboxDrawer, useInbox } from "./Inbox";
 import { Kanban } from "./Kanban";
 import { Messages, useProjectLog } from "./Messages";
@@ -25,7 +27,7 @@ import { ProjectMenu } from "./ProjectMenu";
 import { ProjectSettings } from "./ProjectSettings";
 import { Avatar, EmptyState, statusText } from "./ui";
 
-type Tab = "chat" | "plan" | "messages" | "docs" | "settings";
+type Tab = "chat" | "plan" | "messages" | "docs" | "files" | "settings";
 
 export function ProjectView({ projectId }: { projectId: string }) {
   const [project, setProject] = useState<Project | null>(null);
@@ -118,6 +120,7 @@ export function ProjectView({ projectId }: { projectId: string }) {
     },
     { id: "messages", label: "Messages", icon: <MessagesSquare size={14} /> },
     { id: "docs", label: "Docs", icon: <BookOpen size={14} /> },
+    { id: "files", label: "Files", icon: <Paperclip size={14} /> },
     { id: "settings", label: "Settings", icon: <Settings2 size={14} /> },
   ];
 
@@ -255,6 +258,8 @@ export function ProjectView({ projectId }: { projectId: string }) {
         <div className="main-body">
           {tab === "docs" ? (
             <Docs project={project} />
+          ) : tab === "files" ? (
+            <FilesView project={project} />
           ) : tab === "plan" ? (
             <Kanban project={project} plan={plan} />
           ) : tab === "messages" ? (

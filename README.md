@@ -64,6 +64,10 @@ place. Here Symbio was restarted mid-task, and it told the helper to pick up whe
   database, a spreadsheet) can be declared a *shared asset*. Agents request it from core, wait for
   the grant and release it when done. Changes to an asset an agent wasn't granted are flagged at
   merge.
+- **Attach files to a message.** Upload, drag in or paste images and documents into the chat, as in
+  other AI chats. Agents get them as files they can open (images as scaled-down copies, PDF, Word,
+  Excel and PowerPoint as text), and each project's **Files** tab keeps everything sent, to open,
+  resend or delete.
 - **Documentation you can find your way in.** core keeps the project's docs up to date, and the
   Docs tab shows them as a folder tree with search across every doc, links between docs that open
   in place, an outline of long docs, and plain-text sources (e-mails, transcripts) with line
@@ -187,7 +191,7 @@ itself. Whoever gets in controls your agents, so keep the link and code to yours
 | `~/.symbio/ui-token` | The key that unlocks the UI (it's in the link Symbio opens) |
 | `~/.symbio/logs/symbio.log` | Symbio's log when started in the background (`sym logs`); `update.log` next to it for updates |
 | `~/.symbio/updates.json` | Your update setting (automatic, tell me, off) |
-| `<project>/.symbio/` | Project state: agents, plan, message log, shared assets (git-ignored automatically) |
+| `<project>/.symbio/` | Project state: agents, plan, message log, shared assets, and the files attached in chats (`attachments/`) — git-ignored automatically |
 | `<project>/AGENTS.md`, `<project>/docs/` | Project documentation for agents (unless you chose *private*), and `docs/rules.json` if the rules register is on |
 | OpenCode's database | The conversations themselves. Every agent is an OpenCode session, so you can also open one with `opencode -s <session-id>`. |
 

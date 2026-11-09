@@ -12,8 +12,12 @@ import type { Agent, Project } from "./store.js";
 const KEEP_CONVERSATION_SMALL = `- Keep your conversation small: whatever you read stays in it and is sent to
   the model again on every turn, until it becomes too large to send. Look at
   images with Symbio's \`view_image\` tool (a scaled-down copy; ask for a crop to
-  see details) — reading image files directly is blocked. For a big file, read
-  the part you need. Reviewing many images is work for a helper.`;
+  see details) and read documents (PDF, Word, Excel, PowerPoint) with
+  \`read_document\` — reading images and PDFs directly is blocked. For a big file,
+  read the part you need. Reviewing many images is work for a helper.
+- Files the human attaches to a message arrive as full paths below it; open
+  them with the tools above. They're kept in the project, so you can come back
+  to them later.`;
 
 // OpenCode's code mode posts "tool catalog changed" notices that list only its own tools and
 // say the catalog is complete; Symbio's tools still work (seen live: a coordinator kept using

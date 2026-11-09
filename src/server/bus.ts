@@ -7,6 +7,7 @@ export type UiEvent =
   | { type: "project.updated"; projectId: string }
   | { type: "prices.updated" }
   | { type: "remote.updated" }
+  | { type: "attachments.updated"; projectId: string }
   | { type: "assets.updated"; projectId: string }
   | { type: "plan.updated"; projectId: string }
   | { type: "approvals.updated"; projectId: string }

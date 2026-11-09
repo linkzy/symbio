@@ -117,15 +117,30 @@ const SECRET_SHELL = [
 // Patterns are case-sensitive, hence both spellings.
 export const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "gif", "webp", "bmp"];
 const IMAGE_PATHS = IMAGE_EXTENSIONS.flatMap((ext) => [`*.${ext}`, `*.${ext.toUpperCase()}`]);
+// PDFs the same way (the read tool attaches the whole file as data; verified with OpenCode 2.1.4):
+// agents read their text with read_document, a part at a time.
+const PDF_PATHS = ["*.pdf", "*.PDF"];
 
-/** A read Symbio refuses on the agent's behalf (an image file), with what to do instead. */
-export function imageReadRefusal(action: string, resources: string[]): string | null {
-  if (action !== "read" || !resources.length || !resources.every((r) => IMAGE_PATHS.some((p) => wildcardMatch(p, r)))) return null;
-  return (
-    "Symbio blocks reading image files directly: a full-size image stays in your conversation and is sent again on every " +
-    `turn. Use Symbio's view_image tool instead (in code mode: tools.symbio.view_image({ path: ${JSON.stringify(resources[0])} })); ` +
-    "it returns a scaled-down copy, and a crop shows details at full resolution."
-  );
+/** A read Symbio refuses on the agent's behalf (an image or a PDF), with what to do instead. */
+export function readRefusal(action: string, resources: string[]): string | null {
+  if (action !== "read" || !resources.length) return null;
+  const all = (patterns: string[]) => resources.every((r) => patterns.some((p) => wildcardMatch(p, r)));
+  const file = JSON.stringify(resources[0]);
+  if (all(IMAGE_PATHS)) {
+    return (
+      "Symbio blocks reading image files directly: a full-size image stays in your conversation and is sent again on every " +
+      `turn. Use Symbio's view_image tool instead (in code mode: tools.symbio.view_image({ path: ${file} })); ` +
+      "it returns a scaled-down copy, and a crop shows details at full resolution."
+    );
+  }
+  if (all(PDF_PATHS)) {
+    return (
+      "Symbio blocks reading PDFs directly: the whole file would stay in your conversation and be sent again on every turn. " +
+      `Use Symbio's read_document tool instead (in code mode: tools.symbio.read_document({ path: ${file} })); ` +
+      'it returns the text, a few pages at a time (pages: "3-8").'
+    );
+  }
+  return null;
 }
 
 const rules = (action: string, effect: PermissionRule["effect"], patterns: string[]): PermissionRule[] =>
@@ -135,7 +150,7 @@ const rules = (action: string, effect: PermissionRule["effect"], patterns: strin
 // so they also win under "last match wins".
 export const AGENT_PERMISSIONS: PermissionRule[] = [
   ...rules("shell", "ask", INSTALL_PATTERNS),
-  ...rules("read", "ask", IMAGE_PATHS), // refused by Symbio with a message (imageReadRefusal)
+  ...rules("read", "ask", [...IMAGE_PATHS, ...PDF_PATHS]), // refused by Symbio with a message (readRefusal)
   ...rules("shell", "deny", KILL_PATTERNS),
   ...rules("shell", "deny", SECRET_SHELL),
   ...rules("read", "deny", SECRET_PATHS),
