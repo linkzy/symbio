@@ -11,6 +11,14 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
   project keeps a gallery of everything sent, to find and resend later. Today the human has to save
   files in a folder and tell core where to look. (Before the phone layout, which should start from
   the final chat box.)
+- **Folders of several git repositories.** E.g. a `game/` folder with `client/`, `server/`, `admin/`
+  and `api/`, each its own repository with its own remote. Today the New project dialog only looks at
+  the top folder and offers to initialize git there (checked by default); git then records the
+  sub-repositories only as pointers, helpers' copies of that new repository have each sub-project as
+  an empty folder, their commits go to it, and pushes have no remote of their own (they fall back to
+  a GitHub connection). Symbio should respect the existing repositories: no top-level repository
+  when subfolders are repositories, helpers working inside each one (copies, merges and pushes per
+  repository, with its own remote), and each checked for work that hasn't been pushed.
 
 ## Next
 
@@ -46,6 +54,10 @@ Collected, not sorted or promised yet.
   tools, permissions, events), so each runtime would need an adapter.
 - **Richer answers in the chat.** Show results visually when they fit: a chart for numbers, steps
   for a procedure, a live counter while tests run.
+- **Files from agents, in the chat.** When an agent produces a file (an image, a report, a
+  spreadsheet), show it in the chat (images inline) with a link to download it, instead of the
+  human going to find it in a folder; and keep it in the project's gallery next to the files the
+  human sent.
 - **Agent graph.** A live view of agents and the messages flowing between them.
 - **Moving projects between machines.** Docs and plan travel with the folder, but agent sessions
   live in the local OpenCode database; reopening a project elsewhere should re-create its agents
@@ -83,15 +95,6 @@ Newest first; details per version in [CHANGELOG.md](../CHANGELOG.md).
 
 Problems people ran into, to fix. Those marked *(good first contribution)* are small.
 
-- **A folder of several git repositories gets a repository of its own.** E.g. a `game/` folder with
-  `client/`, `server/`, `admin/` and `api/`, each its own repository with its own remote. The New
-  project dialog only looks at the top folder, so it offers to initialize git there (checked by
-  default); git then records the sub-repositories only as pointers, helpers' copies of that new
-  repository have each sub-project as an empty folder, their commits go to it, and pushes have no
-  remote of their own to go to (they fall back to a GitHub connection). Symbio should respect the
-  existing repositories: not offer a top-level repository when subfolders are repositories, let
-  helpers work inside each one (their copies, merges and pushes per repository, using its own
-  remote), and check each for work that hasn't been pushed.
 - **A question from core gets lost in a busy chat.** When core asks a multiple-choice question and
   more messages come in, the question scrolls out of sight; *Needs you* only says core asked
   something, so the human has to ask core to repeat it. The inbox should show the question itself,
