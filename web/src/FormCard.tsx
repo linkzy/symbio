@@ -45,8 +45,10 @@ interface Form {
 export function PendingForms({ project, agent }: { project: Project; agent: Agent }) {
   const [forms, setForms] = useState<Form[]>([]);
 
+  // Also while "busy": a question can be open while the status says otherwise.
+  const open = agent.status === "waiting" || agent.status === "busy" || agent.status === "stuck";
   useEffect(() => {
-    if (agent.status !== "waiting") {
+    if (!open) {
       setForms([]);
       return;
     }
@@ -62,7 +64,7 @@ export function PendingForms({ project, agent }: { project: Project; agent: Agen
       alive = false;
       clearInterval(timer);
     };
-  }, [project.id, agent.id, agent.status]);
+  }, [project.id, agent.id, open]);
 
   return (
     <>

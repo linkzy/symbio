@@ -225,3 +225,38 @@ test("a conversation too large to send gets one fresh session, then an alert ins
   const log = await store.readMessages(project);
   assert.ok(log.some((m: any) => m.kind === "alert" && /too large to send/.test(m.text)), "the human is told");
 });
+
+test("a question stays open while messages arrive, and the watchdog never interrupts it", async () => {
+  const { project, team, calls, core, writer } = await setup();
+  const runtime = (team as any).runtime;
+  // Earlier tests' projects share the data folder (and "ses_core"): this core needs its own session.
+  core.sessionId = "ses_core_question";
+  runtime.client.interrupt = async (session: string) => calls.push({ method: "INTERRUPT", path: session });
+  const interrupts = () => calls.filter((c) => c.method === "INTERRUPT").length;
+  core.status = "busy";
+  runtime.emit("event", { type: "session.tool.input.started", data: { sessionID: "ses_core_question", name: "question", id: "prt_q" } });
+  assert.equal(core.status, "waiting");
+
+  // What happened in a real project: a helper's report arrived while core waited on the human.
+  await team.deliver(project, writer, core, "task-review", "T1 done");
+  assert.equal(core.status, "waiting", "still waiting: the question stays visible");
+
+  core.lastActivity = Date.now() - 60 * 60_000;
+  await (team as any).checkStuck();
+  assert.equal(core.status, "waiting");
+  assert.equal(interrupts(), 0, "not interrupted");
+
+  // Answered: back to work.
+  runtime.emit("event", { type: "session.tool.success", data: { sessionID: "ses_core_question", id: "prt_q" } });
+  assert.equal(core.status, "busy");
+
+  // A question Symbio didn't see start (missed event): the watchdog finds it instead of interrupting.
+  const client = runtime.client;
+  const request = client.request;
+  client.request = async (method: string, p: string, body?: any) =>
+    p.endsWith("/form") ? { data: [{ id: "frm_1", fields: [] }] } : request(method, p, body);
+  core.lastActivity = Date.now() - 60 * 60_000;
+  await (team as any).checkStuck();
+  assert.equal(core.status, "waiting");
+  assert.equal(interrupts(), 0);
+});

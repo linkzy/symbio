@@ -1727,10 +1727,18 @@ export class Team {
 
   private setStatus(project: Project, agent: Agent, status: Agent["status"]) {
     if (agent.status === status) return;
+    // A message arriving while the agent waits on the human (a question, a permission request) is
+    // queued until it's answered. Turning "busy" here hid the question from the chat and let the
+    // watchdog interrupt it as a hang ten minutes later.
+    if (status === "busy" && agent.status === "waiting" && this.waitsOnHuman(project, agent)) return;
     agent.status = status;
     agent.lastActivity = Date.now();
     bus.publish({ type: "agent.status", projectId: project.id, agentId: agent.id, status });
     void this.store.update(project);
+  }
+
+  private waitsOnHuman(project: Project, agent: Agent): boolean {
+    return this.pendingQuestion.has(agent.id) || this.permissionRequests(project).some((p) => p.agentId === agent.id);
   }
 
   /** An agent that has been "busy" without any event for too long is hung: interrupt and nudge it. */
@@ -1740,6 +1748,13 @@ export class Team {
     for (const project of this.store.list()) {
       for (const agent of project.agents) {
         if (agent.status !== "busy" || now - agent.lastActivity < STUCK_AFTER_MS) continue;
+        // Silent because it's waiting for the human's answer (an event may have been missed): not a hang.
+        const forms = await this.forms(agent).catch(() => []);
+        if (forms.length) {
+          if (forms[0]?.id) this.pendingQuestion.set(agent.id, String(forms[0].id));
+          this.setStatus(project, agent, "waiting");
+          continue;
+        }
         const minutes = Math.round((now - agent.lastActivity) / 60_000);
         console.warn(`[watchdog] ${project.name}/${agent.name} silent for ${minutes} min, interrupting`);
         this.setStatus(project, agent, "stuck");

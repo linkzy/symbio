@@ -37,6 +37,8 @@ Nothing in progress; the top of Next is what comes up.
 
 Collected, not sorted or promised yet.
 
+- **Answer questions from *Needs you*.** The inbox says an agent asked something; it could show the
+  question itself, to answer right there instead of in the agent's chat.
 - **Other agent CLIs.** Run teams on other agent runtimes besides OpenCode, and switch between them
   (e.g. from the OpenCode menu at the top). Big: Symbio is built on OpenCode's HTTP API (sessions,
   tools, permissions, events), so each runtime would need an adapter.
@@ -62,7 +64,8 @@ Newest first; details per version in [CHANGELOG.md](../CHANGELOG.md).
 
 - **0.8** — Attachments in the chat (upload, drag in or paste), with a Files tab per project, and
   `read_document` for PDF, Word, Excel and PowerPoint; folders of several git repositories, each
-  kept as it is, with helpers' copies, merges and pushes per repository.
+  kept as it is, with helpers' copies, merges and pushes per repository; questions no longer
+  vanish when messages arrive while they wait for an answer.
 - **0.7** — Updates: `sym update`, and automatic updates while the team is idle (backup first,
   the old version kept if the install fails), with a setting and what's new in Settings → Updates.
 - **0.6** — Azure DevOps connections (push, pull, pull requests); a clearer credentials rule:
@@ -86,10 +89,6 @@ Newest first; details per version in [CHANGELOG.md](../CHANGELOG.md).
 
 Problems people ran into, to fix. Those marked *(good first contribution)* are small.
 
-- **A question from core gets lost in a busy chat.** When core asks a multiple-choice question and
-  more messages come in, the question scrolls out of sight; *Needs you* only says core asked
-  something, so the human has to ask core to repeat it. The inbox should show the question itself,
-  to answer right there (or at least jump to it in the chat).
 - **Removing a project shows "project not found".** After removing the project you're looking at,
   the page stays on its address and says it doesn't exist; it should go back to the projects list.
   *(good first contribution)*
