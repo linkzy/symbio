@@ -286,7 +286,8 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     const directory = body.directory.trim();
     await fs.mkdir(directory, { recursive: true });
     let inspection = await inspectFolder(directory);
-    if (body.initGit && !inspection.isGit) {
+    // A folder of repositories keeps them as they are: one on top would swallow them.
+    if (body.initGit && !inspection.isGit && !inspection.repos.length) {
       await initRepository(directory);
       inspection = { ...inspection, isGit: true };
     }

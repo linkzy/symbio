@@ -3,6 +3,7 @@
 
 import { promises as fs, existsSync } from "node:fs";
 import path from "node:path";
+import { findRepositories, swallowedRepositories } from "./repos.js";
 
 export type ContentKind =
   | "documents"
@@ -20,6 +21,14 @@ export interface FolderInspection {
   exists: boolean;
   empty: boolean;
   isGit: boolean;
+  /** When the folder isn't a repository itself: subfolders that are (a project made of several repositories). */
+  repos: string[];
+  /**
+   * When the folder is a repository that holds other repositories as bare pointers (not
+   * submodules): usually one created on top of them by an older Symbio. Agents' commits would go
+   * to the top one.
+   */
+  swallowed?: { inner: string[]; createdBySymbio: boolean };
   fileCount: number;
   totalBytes: number;
   /** True when the walk stopped early; counts are then lower bounds. */
@@ -77,6 +86,7 @@ export async function inspectFolder(input: string): Promise<FolderInspection> {
     exists: false,
     empty: true,
     isGit: false,
+    repos: [],
     fileCount: 0,
     totalBytes: 0,
     truncated: false,
@@ -90,6 +100,11 @@ export async function inspectFolder(input: string): Promise<FolderInspection> {
   if (!stat?.isDirectory()) return result;
   result.exists = true;
   result.isGit = existsSync(path.join(directory, ".git"));
+  if (!result.isGit) result.repos = await findRepositories(directory);
+  else {
+    const swallowed = await swallowedRepositories(directory);
+    if (swallowed.inner.length) result.swallowed = swallowed;
+  }
 
   const top = await fs.readdir(directory, { withFileTypes: true }).catch(() => []);
   const visibleTop = top.filter((e) => e.name !== ".symbio");
@@ -155,7 +170,11 @@ export function describeInspection(i: FolderInspection): string {
     `Most common extensions: ${i.topExtensions.map((e) => `${e.ext} (${e.count})`).join(", ") || "none"}.`,
     `Top level: ${i.topLevel.join(", ")}.`,
     i.guidance.length ? `Existing guidance: ${i.guidance.join(", ")}.` : "No README, AGENTS.md or docs folder.",
-    i.isGit ? "It is a git repository." : "It is not a git repository.",
+    i.isGit
+      ? "It is a git repository."
+      : i.repos.length
+        ? `It is not a git repository itself; it holds ${i.repos.length} git repositories: ${i.repos.join(", ")}.`
+        : "It is not a git repository.",
   ];
   return lines.join("\n");
 }

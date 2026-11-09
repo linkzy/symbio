@@ -11,6 +11,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 - `read_document`: agents read PDFs (by pages), Word, Excel, PowerPoint and OpenDocument text a part
   at a time. Reading PDFs with the read tool is refused like images, since it put the whole file in
   the conversation.
+- Folders of several git repositories (e.g. `client/` and `server/` with their own remotes): the
+  New project dialog shows them and no longer offers to create a repository on top, which hid
+  their files from helpers. Each helper works in a copy of one of them (`repo` on `spawn_agent`),
+  merges go back to that repository, `git_push` / `git_pull` take `repo`, and the daily check looks
+  for unpushed work in each. A project that already has a repository on top of others is pointed
+  out (in the dialog and to core), with how to undo it.
 
 ## [0.7.1]
 

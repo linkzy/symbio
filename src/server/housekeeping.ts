@@ -5,6 +5,7 @@
 import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 import { git } from "./git.js";
+import { listRepositories } from "./repos.js";
 import { globalDir, type Agent, type Project } from "./store.js";
 
 // ---------------------------------------------------------------- backups
@@ -68,18 +69,31 @@ export interface UnpushedBranch {
 
 /** The project's current branch and the helpers' branches, with commits that exist only here. */
 export async function unpushedWork(project: Project): Promise<{ remote: string | null; branches: UnpushedBranch[] }> {
-  if (!existsSync(path.join(project.directory, ".git"))) return { remote: null, branches: [] };
-  const remote = (await git(project.directory, "remote").catch(() => "")).split("\n")[0]?.trim() || null;
+  if (existsSync(path.join(project.directory, ".git"))) return unpushedIn(project.directory, "");
+  // A folder of several repositories: each one against its own remote, branches named "repo: branch".
+  const remotes = new Set<string>();
+  const branches: UnpushedBranch[] = [];
+  for (const repo of listRepositories(project.directory)) {
+    const found = await unpushedIn(path.join(project.directory, ...repo.split("/")), `${repo}: `);
+    if (!found.remote) continue;
+    remotes.add(found.remote);
+    branches.push(...found.branches);
+  }
+  return { remote: remotes.size === 0 ? null : remotes.size === 1 ? [...remotes][0] : "each repository's remote", branches };
+}
+
+async function unpushedIn(dir: string, label: string): Promise<{ remote: string | null; branches: UnpushedBranch[] }> {
+  const remote = (await git(dir, "remote").catch(() => "")).split("\n")[0]?.trim() || null;
   if (!remote) return { remote: null, branches: [] };
-  const current = await git(project.directory, "rev-parse", "--abbrev-ref", "HEAD").catch(() => "");
-  const helpers = (await git(project.directory, "branch", "--list", "symbio/*", "--format=%(refname:short)").catch(() => ""))
+  const current = await git(dir, "rev-parse", "--abbrev-ref", "HEAD").catch(() => "");
+  const helpers = (await git(dir, "branch", "--list", "symbio/*", "--format=%(refname:short)").catch(() => ""))
     .split("\n")
     .map((b) => b.trim())
     .filter(Boolean);
   const branches: UnpushedBranch[] = [];
   for (const branch of [...new Set([current, ...helpers].filter((b) => b && b !== "HEAD"))]) {
-    const commits = Number(await git(project.directory, "rev-list", "--count", branch, "--not", "--remotes").catch(() => "0")) || 0;
-    if (commits > 0) branches.push({ branch, commits, latest: await git(project.directory, "log", "-1", "--format=%s", branch).catch(() => "") });
+    const commits = Number(await git(dir, "rev-list", "--count", branch, "--not", "--remotes").catch(() => "0")) || 0;
+    if (commits > 0) branches.push({ branch: label + branch, commits, latest: await git(dir, "log", "-1", "--format=%s", branch).catch(() => "") });
   }
   return { remote, branches };
 }

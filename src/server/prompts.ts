@@ -5,6 +5,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { docsPaths } from "./docs.js";
 import { PROCESS_RULES } from "./guard.js";
+import { listRepositories } from "./repos.js";
 import type { Agent, Project } from "./store.js";
 
 // Seen live: a coordinator read eight 2–4 MB images, its conversation reached 25 MB and the
@@ -158,6 +159,8 @@ ${KEEP_CONVERSATION_SMALL}
 /** Where helpers work, for the coordinator's tool list. */
 function helperFolders(project: Project): string {
   if (!existsSync(path.join(project.directory, ".git"))) {
+    const repos = listRepositories(project.directory);
+    if (repos.length) return multiRepoFolders(project, repos);
     return "  Helpers work directly in the project folder, alongside you.";
   }
   const def = project.helperWorkspace === "shared" ? "shared" : "own";
@@ -169,7 +172,42 @@ function helperFolders(project: Project): string {
   - **shared**: the project folder itself. What it writes is there at once for
     you and the next helper; nothing to merge, and it doesn't commit. For steps
     that produce or check files others use next (pipelines, reviews of outputs).
-    Helpers in the project folder claim the files they write as shared assets.`;
+    Helpers in the project folder claim the files they write as shared assets.${innerRepositories(project)}`;
+}
+
+/**
+ * Repositories inside a project that is a repository itself. Often an outer one was created on
+ * top of them (older Symbio versions did): their files aren't in it, so helpers' copies lack them.
+ */
+function innerRepositories(project: Project): string {
+  if (existsSync(path.join(project.directory, ".gitmodules"))) return "";
+  const inner = listRepositories(project.directory);
+  if (!inner.length) return "";
+  return `
+  Note: inside the project are other git repositories (${inner.map((r) => `\`${r}\``).join(", ")}),
+  with their own history. Their files aren't part of the project's repository, so
+  helpers' own copies don't have them, and commits in them don't belong to it. For
+  work in them, use **shared** helpers. If the human wants to work in each of these
+  repositories (each helper its own copy of one), tell them: remove the outer
+  \`.git\` folder (only the outer one, once its work is safe elsewhere), and Symbio
+  then treats the project as several repositories.`;
+}
+
+/** A folder that isn't a repository itself but holds several (e.g. client/, server/, each with its own remote). */
+function multiRepoFolders(project: Project, repos: string[]): string {
+  const def = project.helperWorkspace === "shared" ? "shared" : "own";
+  return `  This project is made of **${repos.length} git repositories**, each with its own
+  history and remote: ${repos.map((r) => `\`${r}\``).join(", ")}. The project folder itself
+  is not a repository; never create one on top of them (\`git init\` there).
+  Where a helper works (\`workspace\`; this project's default is **${def}**):
+  - **own** with \`repo\`: its own copy of that one repository, on its own branch.
+    It only sees that repository's **committed** files; you merge its work into
+    that repository with merge_work. One helper per repository at a time is
+    simplest; for a change across repositories, give each part to its own helper.
+  - **shared**: the project folder with every repository, nothing to merge. Give
+    it a \`repo\` too when its work is in one of them: git_push / git_pull then
+    default to it.
+  git_push and git_pull from the project folder take \`repo\` (which repository).`;
 }
 
 function onboarding(project: Project): string {
@@ -282,14 +320,20 @@ assets. Your tasks come from the coordinator.
   the coordinator instead of doing it.
 - ${
     isolated
-      ? `You work in your own isolated copy of the project, on branch \`${agent.branch}\`.
+      ? `You work in your own isolated copy of ${agent.repo ? `the "${agent.repo}" repository (one of the project's several repositories)` : "the project"}, on branch \`${agent.branch}\`.
   Commit your work there with clear messages; never merge or push — the
   coordinator merges your work into the project.`
       : `You work directly in the project folder, alongside the coordinator and other
   agents: what you write is there for them at once, and theirs for you. Before
   writing files others may also write, claim them as a shared asset (below).
   Don't commit, merge or push unless the coordinator asks; don't touch files or
-  processes that aren't yours.`
+  processes that aren't yours.${
+    agent.repo
+      ? `
+  The project folder holds several git repositories; yours is \`${agent.repo}\`. Commit
+  inside it (never \`git init\` the project folder); git_push / git_pull use it by default.`
+      : ""
+  }`
   }
 - When you finish a task, or are blocked, report it once: with \`update_task\`
   for plan tasks (see below), otherwise with \`send_message\` to the coordinator

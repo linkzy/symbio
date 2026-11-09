@@ -18,6 +18,11 @@ export interface Agent {
   sessionId: string;
   /** Working folder: the project root (coordinator, shared helpers), or the helper's own git worktree. */
   directory: string;
+  /**
+   * In a project made of several git repositories (subfolders, see repos.ts): the one this helper
+   * works in, relative to the project folder. Its worktree, merges and pushes are in that repository.
+   */
+  repo?: string;
   /** Worktree branch, or null when working directly in the project folder. */
   branch?: string | null;
   /** Commit the worker's current work is based on (updated after each merge). */

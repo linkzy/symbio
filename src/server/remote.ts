@@ -19,8 +19,9 @@ const run = promisify(execFile);
 export type RemoteAction =
   | { kind: "remote_exec"; connectionId: string; command: string }
   | { kind: "remote_upload"; connectionId: string; localPath: string; remotePath: string }
-  | { kind: "git_push"; connectionId: string; remote: string | null; branch: string | null }
-  | { kind: "git_pull"; connectionId: string; remote: string | null; branch: string | null }
+  // repo: a repository inside the agent's folder (projects made of several repositories), or the folder itself.
+  | { kind: "git_push"; connectionId: string; remote: string | null; branch: string | null; repo?: string | null }
+  | { kind: "git_pull"; connectionId: string; remote: string | null; branch: string | null; repo?: string | null }
   | { kind: "github_api"; connectionId: string; method: string; path: string; body?: unknown }
   | { kind: "azure_devops_api"; connectionId: string; method: string; path: string; body?: unknown };
 
@@ -179,9 +180,9 @@ export class RemoteOps {
       case "remote_upload":
         return `upload ${a.localPath} to ${conn.name}:${a.remotePath}`;
       case "git_push":
-        return `git push ${a.remote ?? "origin"} ${a.branch ?? "(current branch)"} from ${agent.name}'s workspace using ${conn.name}`;
+        return `git push ${a.remote ?? "origin"} ${a.branch ?? "(current branch)"} from ${a.repo ? `the ${a.repo} repository` : `${agent.name}'s workspace`} using ${conn.name}`;
       case "git_pull":
-        return `git pull ${a.remote ?? "origin"} ${a.branch ?? "(current branch)"} into ${agent.name}'s workspace using ${conn.name}`;
+        return `git pull ${a.remote ?? "origin"} ${a.branch ?? "(current branch)"} into ${a.repo ? `the ${a.repo} repository` : `${agent.name}'s workspace`} using ${conn.name}`;
       case "github_api":
         return `GitHub API ${a.method.toUpperCase()} ${a.path} using ${conn.name}`;
       case "azure_devops_api":
@@ -227,12 +228,13 @@ export class RemoteOps {
         const gitConn = conn as GithubConnection | AzureConnection;
         const token = await this.connections.githubToken(gitConn);
         const remote = a.remote ?? "origin";
-        const url = remote.startsWith("https://") ? remote : await gitOut(agent.directory, ["remote", "get-url", remote]);
+        const cwd = a.repo ? path.join(agent.directory, ...a.repo.split("/")) : agent.directory;
+        const url = remote.startsWith("https://") ? remote : await gitOut(cwd, ["remote", "get-url", remote]);
         const auth = gitAuth(gitConn, url, token);
-        const branch = a.branch ?? (await gitOut(agent.directory, ["rev-parse", "--abbrev-ref", "HEAD"]));
+        const branch = a.branch ?? (await gitOut(cwd, ["rev-parse", "--abbrev-ref", "HEAD"]));
         // The agent controls this repository, so its config and hooks are untrusted: a hook
         // would see the token, a proxy or URL rewrite would send it elsewhere.
-        await refuseRiskyGitConfig(agent.directory);
+        await refuseRiskyGitConfig(cwd);
         const noHooks = path.join(os.tmpdir(), `symbio-no-hooks-${randomUUID()}`); // never exists
         const safe = ["-c", `core.hooksPath=${noHooks}`, "-c", "http.proxy=", "-c", "http.sslVerify=true", "-c", "credential.helper="];
         // The token goes in an HTTP header via environment-only git config: never in
@@ -240,7 +242,7 @@ export class RemoteOps {
         const { headerKey, header } = auth;
         const git = (args: string[], withToken: boolean) =>
           run("git", [...safe, ...args], {
-            cwd: agent.directory,
+            cwd,
             windowsHide: true,
             timeout: 5 * 60_000,
             env: {

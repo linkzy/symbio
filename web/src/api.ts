@@ -7,6 +7,8 @@ export interface Agent {
   purpose?: string;
   sessionId: string;
   directory: string;
+  /** Its repository, in a project made of several. */
+  repo?: string;
   branch?: string | null;
   model: string;
   status: AgentStatus;
@@ -147,6 +149,8 @@ export interface Inspection {
   exists: boolean;
   empty: boolean;
   isGit: boolean;
+  repos: string[];
+  swallowed?: { inner: string[]; createdBySymbio: boolean };
   fileCount: number;
   totalBytes: number;
   truncated: boolean;

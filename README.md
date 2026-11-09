@@ -27,7 +27,9 @@ Budget*, run on free models: the conversations, plan and messages were produced 
 mocked.
 
 **1. Start from a folder.** Pick an empty folder for something new, or an existing one for core to
-study first. Symbio can set up version history so helpers can work side by side.
+study first. Symbio can set up version history so helpers can work side by side; a folder that
+holds several git repositories (say `client/` and `server/`) is kept as it is, and helpers work
+inside each one.
 
 ![New project dialog](docs/images/new-project.png)
 

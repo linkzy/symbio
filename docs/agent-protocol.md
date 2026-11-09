@@ -17,7 +17,10 @@ There are no predefined roles like "frontend" or "writer". There are only two ki
   ("own": parallel work, merged by core) or in the project folder itself ("shared": what it
   writes is there at once for the next step, nothing to merge, no commits). The project setting
   (Settings → Team, default "own") decides unless core passes `workspace` to `spawn_agent`; without
-  git, helpers always share the project folder. One helper is the default; each extra helper must be justified by
+  git, helpers always share the project folder. In a folder of several repositories (not one
+  itself; `repos.ts`), an "own" helper needs `repo` on `spawn_agent`: its worktree comes from
+  that repository, and its work is merged there; shared helpers may get a `repo` as their default
+  for pushes. One helper is the default; each extra helper must be justified by
   independent work. Idle helpers cost nothing and keep their context, so they're reused for
   follow-ups and stopped only when their area is finished.
 
@@ -106,7 +109,7 @@ All agents:
 | `list_connections` | Connections the project may use and whether actions need approval |
 | `remote_exec` | Run a non-interactive command on a server over SSH |
 | `remote_upload` | Upload files from the working folder to a server |
-| `git_push` / `git_pull` | Push or pull with GitHub or Azure DevOps; Symbio applies the token |
+| `git_push` / `git_pull` | Push or pull with GitHub or Azure DevOps; Symbio applies the token. From the project folder of a folder of several repositories, `repo` says which |
 | `github_api` | Call the GitHub REST API (GET calls never need approval) |
 | `azure_devops_api` | Call the Azure DevOps REST API of the connection's organization, e.g. to open a pull request (GET calls never need approval) |
 
@@ -117,7 +120,7 @@ core only:
 | `submit_plan` | Propose (or revise) the plan for approval |
 | `add_task` | Add a task to the approved plan |
 | `assign_task` | Give a task to an existing helper |
-| `spawn_agent` | Create a helper with a name, purpose, first task, and optionally a model and where it works (`workspace`: own / shared) |
+| `spawn_agent` | Create a helper with a name, purpose, first task, and optionally a model, where it works (`workspace`: own / shared) and, in a folder of several repositories, which one (`repo`) |
 | `stop_agent` | Stop a helper; its assets are released |
 | `clean_build_outputs` | Delete an idle helper's git-ignored build folders (bin, obj, node_modules…) to free disk space |
 | `merge_work` | Merge a helper's committed work; refuses ungranted asset changes unless forced |

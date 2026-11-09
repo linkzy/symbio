@@ -118,6 +118,14 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "tool, which returns their text a part at a time. Reading PDFs with the read tool is now refused like images: it would put the " +
       "whole file in your conversation.",
   },
+  {
+    id: "2026-11-09-multi-repo",
+    text:
+      "Folders of several git repositories (e.g. client/ and server/, each with its own remote, in a folder that isn't a repository " +
+      "itself) are now handled as such: spawn_agent takes repo (the helper gets its own copy of that repository, and merge_work merges " +
+      "into it), and git_push / git_pull from the project folder take repo. Never git init the project folder over them. If this " +
+      "project is a repository that contains other repositories, your brief now says so: helpers' own copies don't have their files.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */

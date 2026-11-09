@@ -21,6 +21,7 @@ import { accountChildUsage, accountUsage, emptyUsage, sessionUsage } from "./cos
 import { AGENT_UPDATES, unseenUpdates, updatesNote } from "./updates.js";
 import { cleanBuildOutputs, dailyBackup, gb, helperFolders, lastBackup, unpushedWork, type FolderUsage, type UnpushedBranch } from "./housekeeping.js";
 import { coordinatorTools, workerTools, type ToolContext } from "./tools.js";
+import { projectRepositories, repoRoot, resolveRepository } from "./repos.js";
 import { changedFiles, createWorkspace, inProjectFolder, isGitRepo, leaveWorkspace, mergeWorkspace, reattachWorkspace, removeWorkspace, restoreWorkspace, syncWorkspace } from "./workspaces.js";
 
 const STUCK_AFTER_MS = Number(process.env.SYMBIO_STUCK_MINUTES ?? 10) * 60_000;
@@ -166,9 +167,9 @@ export class Team {
     const parts: string[] = [];
     if (branches.length) {
       parts.push(
-        `Work that exists only on this machine (not on the remote "${remote}"):\n` +
+        `Work that exists only on this machine (not on ${remote === "each repository's remote" ? "each repository's remote" : `the remote "${remote}"`}):\n` +
           branches.map((b) => `- ${b.branch}: ${b.commits} commit(s), latest "${b.latest}"`).join("\n") +
-          `\nIf it's ready to share, push it (git push ${remote} <branch>); if a branch shouldn't go to the remote, tell the human.`,
+          `\nIf it's ready to share, push it (git_push; in a project of several repositories, with repo); if a branch shouldn't go to the remote, tell the human.`,
       );
     }
     if (buildBytes > BUILD_ALERT_BYTES) {
@@ -562,7 +563,7 @@ export class Team {
   async spawnWorker(
     project: Project,
     coordinator: Agent,
-    opts: { name: string; purpose: string; task?: string; taskId?: string; model?: string; workspace?: HelperWorkspace },
+    opts: { name: string; purpose: string; task?: string; taskId?: string; model?: string; workspace?: HelperWorkspace; repo?: string },
   ): Promise<string> {
     if (!opts.task && !opts.taskId) throw new Error("Give the helper a task: a plan task_id, or a task description.");
     if (opts.taskId) {
@@ -587,7 +588,17 @@ export class Team {
       throw new Error(`Model "${model}" is not allowed for this project. Allowed: ${project.allowedModels.join(", ")}`);
     }
 
-    const workspace = await createWorkspace(project, name, opts.workspace ?? project.helperWorkspace ?? "own");
+    // A folder of several repositories: an own copy comes from one of them, so it must be named.
+    const mode = opts.workspace ?? project.helperWorkspace ?? "own";
+    const repo = opts.repo?.trim() ? await resolveRepository(project, opts.repo) : undefined;
+    const repos = await projectRepositories(project);
+    if (repos.length && mode === "own" && !repo) {
+      throw new Error(
+        `This project is made of several repositories (${repos.join(", ")}). Say which one the helper works in with repo ` +
+          "(it gets its own copy of that repository), or use workspace \"shared\" to have it work in the project folder.",
+      );
+    }
+    const workspace = await createWorkspace(project, name, mode, repo);
     const client = this.client();
     await this.registerTools(project, workspace.directory);
     const session = await client.createSession({
@@ -603,6 +614,7 @@ export class Team {
       purpose: opts.purpose,
       sessionId: session.id,
       directory: workspace.directory,
+      ...(repo ? { repo } : {}),
       branch: workspace.branch,
       base: workspace.base,
       workSince: Date.now(),
@@ -619,8 +631,8 @@ export class Team {
     if (opts.taskId) await this.assignTask(project, coordinator, opts.taskId, agent, opts.task);
     else await this.deliver(project, coordinator, agent, "request", opts.task!, { protocol: true });
     const where = workspace.branch
-      ? `It works in its own copy of the project on branch ${workspace.branch} (${workspace.directory}); merge its work with merge_work.`
-      : (await isGitRepo(project.directory))
+      ? `It works in its own copy of ${repo ? `the "${repo}" repository` : "the project"} on branch ${workspace.branch} (${workspace.directory}); merge its work with merge_work.`
+      : (await isGitRepo(project.directory)) || repos.length
         ? "It works in the project folder itself, alongside you: what it writes is there at once, and there is nothing to merge. " +
           "Shared-asset grants keep it from colliding with others; it doesn't commit unless you ask."
         : "It works directly in the project folder (no git), so rely on shared-asset grants to avoid conflicts.";
@@ -851,7 +863,9 @@ export class Team {
   async mergeWork(project: Project, agent: Agent, force: boolean): Promise<string> {
     const { committed, uncommitted } = await changedFiles(agent);
     const reg = await this.assets(project);
-    const violations = reg.violations([...committed, ...uncommitted], agent.id, agent.workSince ?? agent.createdAt);
+    // Asset patterns are relative to the project folder; a sub-repository's paths are relative to it.
+    const inProject = (f: string) => (agent.repo ? `${agent.repo}/${f}` : f);
+    const violations = reg.violations([...committed, ...uncommitted].map(inProject), agent.id, agent.workSince ?? agent.createdAt);
     if (violations.length && !force) {
       const list = violations.map((v) => `- "${v.asset.name}": ${v.files.join(", ")}`).join("\n");
       return `Not merged: ${agent.name} changed shared assets it was not granted:\n${list}\nReview the changes, then grant the asset and merge again, ask ${agent.name} to revert them, or merge with force=true.`;
@@ -1073,7 +1087,8 @@ export class Team {
     }
     if (project.agents.some((a) => a.branch)) {
       await fs.rm(path.join(globalDir, "worktrees", project.id), { recursive: true, force: true }).catch(() => {});
-      await git(project.directory, "worktree", "prune").catch(() => {});
+      const roots = new Set(project.agents.filter((a) => a.branch).map((a) => repoRoot(project, a)));
+      for (const root of roots) await git(root, "worktree", "prune").catch(() => {});
     }
     this.registers.delete(project.id);
     this.plans.delete(project.id);

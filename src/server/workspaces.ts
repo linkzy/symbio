@@ -1,11 +1,14 @@
 // Worker workspaces. In a git project a worker gets its own worktree on its own
 // branch (isolated copy of the committed files), unless it is set to share the
 // project folder. Without git, workers always share it. Workers in the project
-// folder rely on shared-asset grants alone.
+// folder rely on shared-asset grants alone. In a project made of several repositories
+// (repos.ts), a helper's worktree comes from the repository it was given (agent.repo), and its
+// merges happen there.
 
 import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 import { git } from "./git.js";
+import { repoRoot } from "./repos.js";
 import { globalDir, type Agent, type HelperWorkspace, type Project } from "./store.js";
 
 export interface Workspace {
@@ -29,8 +32,10 @@ export async function createWorkspace(
   project: Project,
   agentName: string,
   mode: HelperWorkspace = "own",
+  repo?: string,
 ): Promise<Workspace & { warning?: string }> {
-  if (mode === "shared" || !(await isGitRepo(project.directory))) {
+  const root = repoRoot(project, { repo });
+  if (mode === "shared" || !(await isGitRepo(root))) {
     return { directory: project.directory, branch: null, base: null };
   }
   const slug = agentName.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || "agent";
@@ -39,17 +44,17 @@ export async function createWorkspace(
   if (existsSync(directory)) throw new Error(`A workspace for "${agentName}" already exists.`);
   await fs.mkdir(path.dirname(directory), { recursive: true });
 
-  const base = await git(project.directory, "rev-parse", "HEAD").catch(() => "");
-  if (!base) throw new Error("The project's git repository has no commits yet; commit the current files first.");
-  const branchExists = await git(project.directory, "rev-parse", "--verify", "--quiet", branch).then(
+  const base = await git(root, "rev-parse", "HEAD").catch(() => "");
+  if (!base) throw new Error(`The ${repo ? `"${repo}" ` : "project's "}git repository has no commits yet; commit the current files first.`);
+  const branchExists = await git(root, "rev-parse", "--verify", "--quiet", branch).then(
     () => true,
     () => false,
   );
-  await git(project.directory, "worktree", "add", ...(branchExists ? [directory, branch] : ["-b", branch, directory, base]));
+  await git(root, "worktree", "add", ...(branchExists ? [directory, branch] : ["-b", branch, directory, base]));
 
-  const dirty = await git(project.directory, "status", "--porcelain").catch(() => "");
+  const dirty = await git(root, "status", "--porcelain").catch(() => "");
   const warning = dirty
-    ? "The project folder has uncommitted changes; the new agent's workspace does not include them. Commit first if the agent needs them."
+    ? `The ${repo ? `"${repo}" repository` : "project folder"} has uncommitted changes; the new agent's workspace does not include them. Commit first if the agent needs them.`
     : undefined;
   return { directory, branch, base, warning };
 }
@@ -88,18 +93,20 @@ export async function mergeWorkspace(project: Project, agent: Agent): Promise<Me
     };
   }
   if (committed.length === 0) return { ok: false, reason: `${agent.name} has no committed changes to merge.` };
-  const mainDirty = await git(project.directory, "status", "--porcelain").catch(() => "");
+  const root = repoRoot(project, agent);
+  const where = agent.repo ? `The "${agent.repo}" repository` : "The project folder";
+  const mainDirty = await git(root, "status", "--porcelain").catch(() => "");
   if (mainDirty) {
-    return { ok: false, reason: "The project folder has uncommitted changes. Commit or stash them before merging." };
+    return { ok: false, reason: `${where} has uncommitted changes. Commit or stash them before merging.` };
   }
   try {
-    await git(project.directory, "merge", "--no-ff", "--no-edit", "-m", `Merge work from ${agent.name} (Symbio)`, agent.branch);
+    await git(root, "merge", "--no-ff", "--no-edit", "-m", `Merge work from ${agent.name} (Symbio)`, agent.branch);
   } catch (err) {
-    const conflicts = (await git(project.directory, "diff", "--name-only", "--diff-filter=U").catch(() => ""))
+    const conflicts = (await git(root, "diff", "--name-only", "--diff-filter=U").catch(() => ""))
       .split("\n")
       .filter(Boolean);
-    await git(project.directory, "merge", "--abort").catch(() => {});
-    const main = await git(project.directory, "rev-parse", "--abbrev-ref", "HEAD").catch(() => "the main branch");
+    await git(root, "merge", "--abort").catch(() => {});
+    const main = await git(root, "rev-parse", "--abbrev-ref", "HEAD").catch(() => "the main branch");
     return {
       ok: false,
       reason: conflicts.length
@@ -116,7 +123,7 @@ export async function mergeWorkspace(project: Project, agent: Agent): Promise<Me
 /** After a merge, move the worker's branch to the new project state so it continues from there. */
 export async function syncWorkspace(project: Project, agent: Agent): Promise<string | null> {
   if (!agent.branch) return null;
-  const head = await git(project.directory, "rev-parse", "HEAD");
+  const head = await git(repoRoot(project, agent), "rev-parse", "HEAD");
   await git(agent.directory, "merge", "--ff-only", head).catch(() => {});
   return head;
 }
@@ -130,11 +137,12 @@ export async function restoreWorkspace(project: Project, agent: Agent): Promise<
   if (!agent.branch || existsSync(agent.directory)) {
     return { directory: agent.directory, branch: agent.branch ?? null, base: agent.base ?? null, reset: false };
   }
-  const base = await git(project.directory, "rev-parse", "HEAD");
-  await git(project.directory, "worktree", "prune").catch(() => {});
-  await git(project.directory, "branch", "-f", agent.branch, base);
+  const root = repoRoot(project, agent);
+  const base = await git(root, "rev-parse", "HEAD");
+  await git(root, "worktree", "prune").catch(() => {});
+  await git(root, "branch", "-f", agent.branch, base);
   await fs.mkdir(path.dirname(agent.directory), { recursive: true });
-  await git(project.directory, "worktree", "add", agent.directory, agent.branch);
+  await git(root, "worktree", "add", agent.directory, agent.branch);
   return { directory: agent.directory, branch: agent.branch, base, reset: true };
 }
 
@@ -144,20 +152,21 @@ export async function restoreWorkspace(project: Project, agent: Agent): Promise<
  * moved. Returns false when there was nothing to do.
  */
 export async function reattachWorkspace(project: Project, agent: Agent): Promise<boolean> {
-  if (!agent.branch || existsSync(agent.directory) || !(await isGitRepo(project.directory))) return false;
-  await git(project.directory, "worktree", "prune").catch(() => {});
-  const branchExists = await git(project.directory, "rev-parse", "--verify", "--quiet", agent.branch).then(
+  const root = repoRoot(project, agent);
+  if (!agent.branch || existsSync(agent.directory) || !(await isGitRepo(root))) return false;
+  await git(root, "worktree", "prune").catch(() => {});
+  const branchExists = await git(root, "rev-parse", "--verify", "--quiet", agent.branch).then(
     () => true,
     () => false,
   );
   await fs.mkdir(path.dirname(agent.directory), { recursive: true });
-  await git(project.directory, "worktree", "add", ...(branchExists ? [agent.directory, agent.branch] : ["-b", agent.branch, agent.directory, "HEAD"]));
+  await git(root, "worktree", "add", ...(branchExists ? [agent.directory, agent.branch] : ["-b", agent.branch, agent.directory, "HEAD"]));
   return true;
 }
 
 export async function removeWorkspace(project: Project, agent: Agent): Promise<void> {
   if (!agent.branch) return;
-  await git(project.directory, "worktree", "remove", "--force", agent.directory).catch(() => {});
+  await git(repoRoot(project, agent), "worktree", "remove", "--force", agent.directory).catch(() => {});
 }
 
 /**
@@ -175,9 +184,10 @@ export async function leaveWorkspace(project: Project, agent: Agent): Promise<vo
         "Merge it (or discard it) first.",
     );
   }
-  await git(project.directory, "worktree", "remove", "--force", agent.directory).catch(() => {});
-  await git(project.directory, "worktree", "prune").catch(() => {});
-  await git(project.directory, "branch", "-d", agent.branch).catch(() => {});
+  const root = repoRoot(project, agent);
+  await git(root, "worktree", "remove", "--force", agent.directory).catch(() => {});
+  await git(root, "worktree", "prune").catch(() => {});
+  await git(root, "branch", "-d", agent.branch).catch(() => {});
 }
 
 /**

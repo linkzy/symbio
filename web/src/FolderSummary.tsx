@@ -41,6 +41,12 @@ export function FolderSummary({ inspection: i }: { inspection: Inspection }) {
             git
           </span>
         )}
+        {i.repos.length > 0 && (
+          <span className="tag" title={i.repos.join("\n")}>
+            <GitBranch />
+            {i.repos.length === 1 ? "1 repository inside" : `${i.repos.length} repositories inside`}
+          </span>
+        )}
         {i.guidance.map((g) => (
           <span key={g} className="tag">
             <FileText />

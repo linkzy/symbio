@@ -8,6 +8,7 @@ import type { Agent, MessageKind, Project } from "./store.js";
 import { CONFIRMATIONS, listRules, saveArea, saveRule, saveSource, STATUSES } from "./rules.js";
 import { DEFAULT_IMAGE_SIZE, viewImage } from "./images.js";
 import { readDocument } from "./documents.js";
+import { gitRepoFor } from "./repos.js";
 import type { Team } from "./team.js";
 
 export interface ToolContext {
@@ -69,7 +70,7 @@ const listTeam: Tool = {
     return project.agents
       .map(
         (a) =>
-          `- ${a.name} (${a.role}${a.status === "stopped" ? ", stopped" : `, ${a.status}`}) — ${a.purpose ?? "coordinates the project"} · model ${a.model}`,
+          `- ${a.name} (${a.role}${a.status === "stopped" ? ", stopped" : `, ${a.status}`}) — ${a.purpose ?? "coordinates the project"}${a.repo ? ` · repository ${a.repo}` : ""} · model ${a.model}`,
       )
       .join("\n");
   },
@@ -134,12 +135,14 @@ const spawnAgent: Tool = {
       task: str("Its first task as text (when there is no plan task), or extra instructions for task_id"),
       model: str("Optional provider/model from the allowed list; defaults to your own model"),
       workspace: { type: "string", enum: ["own", "shared"], description: "Where it works (git projects); defaults to the project's setting" },
+      repo: str("In a project made of several repositories: the one it works in (e.g. 'server'); its own copy comes from it"),
     },
     ["name", "purpose"],
   ),
   async run(args, { team, project, agent }) {
     return team.spawnWorker(project, agent, {
       workspace: args.workspace === "own" || args.workspace === "shared" ? args.workspace : undefined,
+      repo: args.repo ? String(args.repo) : undefined,
       name: String(args.name),
       purpose: String(args.purpose),
       task: args.task ? String(args.task) : undefined,
@@ -412,6 +415,7 @@ const gitFields = {
   connection: str("GitHub or Azure DevOps connection name"),
   remote: str("Remote name or HTTPS URL (github.com, dev.azure.com) (default: origin)"),
   branch: str("Branch (default: your current branch)"),
+  repo: str("In a project made of several repositories, working in the project folder: which one (e.g. 'server')"),
   reason: reasonField,
 };
 
@@ -420,11 +424,17 @@ const gitPush: Tool = {
   description:
     "Push committed work from your working folder to GitHub or Azure DevOps (the token is applied by Symbio; plain `git push` may have no credentials).",
   inputSchema: obj(gitFields, ["connection", "reason"]),
-  run: ({ connection, remote, branch, reason }, { team, project, agent }) =>
+  run: async ({ connection, remote, branch, repo, reason }, { team, project, agent }) =>
     team.remote.request(
       project,
       agent,
-      { kind: "git_push", connectionId: String(connection), remote: remote ? String(remote) : null, branch: branch ? String(branch) : null },
+      {
+        kind: "git_push",
+        connectionId: String(connection),
+        remote: remote ? String(remote) : null,
+        branch: branch ? String(branch) : null,
+        repo: await gitRepoFor(project, agent, repo ? String(repo) : undefined),
+      },
       String(reason),
     ),
 };
@@ -433,11 +443,17 @@ const gitPull: Tool = {
   name: "git_pull",
   description: "Pull from GitHub or Azure DevOps into your working folder (merge, no rebase).",
   inputSchema: obj(gitFields, ["connection", "reason"]),
-  run: ({ connection, remote, branch, reason }, { team, project, agent }) =>
+  run: async ({ connection, remote, branch, repo, reason }, { team, project, agent }) =>
     team.remote.request(
       project,
       agent,
-      { kind: "git_pull", connectionId: String(connection), remote: remote ? String(remote) : null, branch: branch ? String(branch) : null },
+      {
+        kind: "git_pull",
+        connectionId: String(connection),
+        remote: remote ? String(remote) : null,
+        branch: branch ? String(branch) : null,
+        repo: await gitRepoFor(project, agent, repo ? String(repo) : undefined),
+      },
       String(reason),
     ),
 };

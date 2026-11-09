@@ -69,6 +69,7 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 | `costs.ts` | Token usage per agent and model, model prices (`~/.symbio/prices.json`) and estimated cost |
 | `assets.ts` | Shared-asset register: holders, queues, history, merge-time checks (`assets.json`) |
 | `workspaces.ts` | Where helpers work: git worktrees (create, merge, sync, remove, restore) or the shared project folder |
+| `repos.ts` | Folders of several git repositories: finding them, which one a helper or a push works in, and a repository created on top of others |
 | `git.ts` | Thin git wrapper |
 | `inspect.ts` | Deterministic folder inspection for onboarding (no model cost) |
 | `attachments.ts` | Files the human attaches in the chat: stored in `.symbio/attachments` with an index (the Files tab), and the note telling the agent where they are and how to open them |
@@ -97,7 +98,8 @@ costs, `Housekeeping.tsx` the daily check, `Remote.tsx` remote access, and
 
 1. **Create.** The user picks a folder. `inspect.ts` reports whether it's empty, whether it's a git
    repo, what kinds of files it holds and any existing guidance (`README`, `AGENTS.md`, `docs/`).
-   Symbio offers to initialize git. Project state goes to `<project>/.symbio/` (git-ignored).
+   Symbio offers to initialize git, unless subfolders are repositories (a folder of several
+   repositories is kept as it is). Project state goes to `<project>/.symbio/` (git-ignored).
 2. **Start.** Symbio registers its tools for the project folder and creates core's session with the
    coordinator brief, the inspection summary and the project settings.
 3. **Onboarding.** For an existing folder, core studies it, writes up its understanding, confirms
@@ -105,7 +107,8 @@ costs, `Housekeeping.tsx` the daily check, `Remote.tsx` remote access, and
 4. **Plan.** core calls `submit_plan`; the Plan tab shows it for approval. The human approves or
    asks for changes.
 5. **Work.** core spawns helpers (`spawn_agent`) on tasks. Each helper gets its own session, the
-   worker brief, and a folder: a worktree on branch `symbio/<name>`, or the project folder itself
+   worker brief, and a folder: a worktree on branch `symbio/<name>` (of the repository it was
+   given, in a folder of several repositories), or the project folder itself
    (project setting `helperWorkspace`, or core's `workspace` choice). A helper moved into the
    project folder continues in a fresh session there, since OpenCode ties a session to its folder. Helpers report with `update_task`, talk
    to core and to each other with `send_message`, and request shared assets.

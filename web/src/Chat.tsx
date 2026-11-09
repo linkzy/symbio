@@ -332,13 +332,13 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
             {agent.branch ? (
               <>
                 {" · "}
-                <GitBranch size={11} style={{ verticalAlign: -1 }} /> {agent.branch}
+                <GitBranch size={11} style={{ verticalAlign: -1 }} /> {agent.repo ? `${agent.repo} · ${agent.branch}` : agent.branch}
               </>
             ) : (
               agent.role !== "coordinator" && (
                 <span title={`Works in the project folder itself: ${project.directory}`}>
                   {" · "}
-                  <Folder size={11} style={{ verticalAlign: -1 }} /> project folder
+                  <Folder size={11} style={{ verticalAlign: -1 }} /> project folder{agent.repo ? ` · ${agent.repo}` : ""}
                 </span>
               )
             )}

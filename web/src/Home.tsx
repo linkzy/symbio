@@ -177,7 +177,8 @@ function NewProjectDialog({ onClose }: { onClose: () => void }) {
   }, [directory]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const conflict = inspection?.existingProject;
-  const offerGit = inspection && !inspection.isGit && inspection.gitAvailable;
+  // A folder of repositories keeps them as they are; helpers work inside each one.
+  const offerGit = inspection && !inspection.isGit && !inspection.repos.length && inspection.gitAvailable;
   const stepValid = [!!(name.trim() && inspection && !conflict), true, !!coordinator][step];
 
   // The dialog opens on the machine running Symbio (browsers can't reveal full paths).
@@ -315,7 +316,23 @@ function NewProjectDialog({ onClose }: { onClose: () => void }) {
               </span>
             </label>
           )}
-          {inspection && !inspection.isGit && !inspection.gitAvailable && (
+          {inspection && !conflict && inspection.repos.length > 0 && (
+            <div className="notice">
+              This folder holds {inspection.repos.length === 1 ? "a git repository" : `${inspection.repos.length} git repositories`} (
+              {inspection.repos.join(", ")}). Symbio keeps them as they are: each helper works in one of them, and pushes go to that
+              repository's own remote.
+            </div>
+          )}
+          {inspection && !conflict && inspection.swallowed && (
+            <div className="notice">
+              This folder is a git repository that contains other repositories ({inspection.swallowed.inner.join(", ")}) without
+              tracking their files
+              {inspection.swallowed.createdBySymbio ? ", created on top of them by an earlier version of Symbio" : ""}. Agents would
+              commit to the outer one. To work in each repository instead, remove the outer repository's <code>.git</code> folder
+              (only the outer one: commits made in it are lost, so first copy any work you need into the inner repositories) before adding the project.
+            </div>
+          )}
+          {inspection && !inspection.isGit && !inspection.repos.length && !inspection.gitAvailable && (
             <div className="notice">Git isn't installed, so agents will share the folder directly.</div>
           )}
         </>

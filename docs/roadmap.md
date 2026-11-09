@@ -6,19 +6,7 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 
 ## Now
 
-- **Attachments in the chat.** Upload, drag in or paste images and documents into a message, as in
-  other AI chats; the agent gets them as files it can open (images through `view_image`), and each
-  project keeps a gallery of everything sent, to find and resend later. Today the human has to save
-  files in a folder and tell core where to look. (Before the phone layout, which should start from
-  the final chat box.)
-- **Folders of several git repositories.** E.g. a `game/` folder with `client/`, `server/`, `admin/`
-  and `api/`, each its own repository with its own remote. Today the New project dialog only looks at
-  the top folder and offers to initialize git there (checked by default); git then records the
-  sub-repositories only as pointers, helpers' copies of that new repository have each sub-project as
-  an empty folder, their commits go to it, and pushes have no remote of their own (they fall back to
-  a GitHub connection). Symbio should respect the existing repositories: no top-level repository
-  when subfolders are repositories, helpers working inside each one (copies, merges and pushes per
-  repository, with its own remote), and each checked for work that hasn't been pushed.
+Nothing in progress; the top of Next is what comes up.
 
 ## Next
 
@@ -72,6 +60,9 @@ Collected, not sorted or promised yet.
 
 Newest first; details per version in [CHANGELOG.md](../CHANGELOG.md).
 
+- **0.8** — Attachments in the chat (upload, drag in or paste), with a Files tab per project, and
+  `read_document` for PDF, Word, Excel and PowerPoint; folders of several git repositories, each
+  kept as it is, with helpers' copies, merges and pushes per repository.
 - **0.7** — Updates: `sym update`, and automatic updates while the team is idle (backup first,
   the old version kept if the install fails), with a setting and what's new in Settings → Updates.
 - **0.6** — Azure DevOps connections (push, pull, pull requests); a clearer credentials rule:
