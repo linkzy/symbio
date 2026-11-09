@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Automatic updates check for a new version every hour instead of every 6 hours, so a release no
+  longer waits most of a day to arrive.
 - The top bar shows Symbio's version next to its name.
 - Leaving Settings: the button says where it goes ("Back to <project>"), clicking Settings again or
   pressing Escape also goes back, and the project opens on the same tab and agent you left.

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowUpCircle, RefreshCw } from "lucide-react";
 import { api, type UpdateMode, type UpdateState } from "./api";
 
-/** Update state, refreshed now and then (the server checks npm every few hours). */
+/** Update state, refreshed now and then (the server checks npm every hour). */
 export function useUpdate(): [UpdateState | null, (s: UpdateState) => void] {
   const [state, setState] = useState<UpdateState | null>(null);
   useEffect(() => {

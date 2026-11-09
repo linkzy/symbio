@@ -125,7 +125,8 @@ export function parseChangelog(text: string): { version: string; items: string[]
   return out;
 }
 
-const CHECK_EVERY_MS = 6 * 60 * 60_000;
+// A tiny registry lookup. Every 6 hours was too slow: a release could wait most of a day.
+const CHECK_EVERY_MS = 60 * 60_000;
 const TICK_MS = 5 * 60_000;
 export const QUIET_MS = 10 * 60_000; // the team must have been quiet this long before an automatic update
 const FAILED_PAUSE_MS = 24 * 60 * 60_000; // after a failed update, don't retry the same version for a day
