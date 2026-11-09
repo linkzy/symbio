@@ -81,10 +81,24 @@ Newest first; details per version in [CHANGELOG.md](../CHANGELOG.md).
 
 ## Known issues
 
-Small bugs, not urgent, to fix eventually. *(good first contributions)*
+Problems people ran into, to fix. Those marked *(good first contribution)* are small.
 
+- **A folder of several git repositories gets a repository of its own.** E.g. a `game/` folder with
+  `client/`, `server/`, `admin/` and `api/`, each its own repository with its own remote. The New
+  project dialog only looks at the top folder, so it offers to initialize git there (checked by
+  default); git then records the sub-repositories only as pointers, helpers' copies of that new
+  repository have each sub-project as an empty folder, their commits go to it, and pushes have no
+  remote of their own to go to (they fall back to a GitHub connection). Symbio should respect the
+  existing repositories: not offer a top-level repository when subfolders are repositories, let
+  helpers work inside each one (their copies, merges and pushes per repository, using its own
+  remote), and check each for work that hasn't been pushed.
+- **A question from core gets lost in a busy chat.** When core asks a multiple-choice question and
+  more messages come in, the question scrolls out of sight; *Needs you* only says core asked
+  something, so the human has to ask core to repeat it. The inbox should show the question itself,
+  to answer right there (or at least jump to it in the chat).
 - **Removing a project shows "project not found".** After removing the project you're looking at,
   the page stays on its address and says it doesn't exist; it should go back to the projects list.
+  *(good first contribution)*
 
 ## Known limitations
 
