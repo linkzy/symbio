@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.0]
+
 - Fixed: a multiple-choice question from an agent disappeared from its chat when another
   agent's message arrived while it waited (only *Needs you* remained), and ten minutes later the
   watchdog interrupted it as if it were hung. The agent now stays *waiting* until you answer, and
