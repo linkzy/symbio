@@ -5,6 +5,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- The top bar shows Symbio's version next to its name.
+- Leaving Settings: the button says where it goes ("Back to <project>"), clicking Settings again or
+  pressing Escape also goes back, and the project opens on the same tab and agent you left.
+
 ## [0.8.0]
 
 - Fixed: a multiple-choice question from an agent disappeared from its chat when another

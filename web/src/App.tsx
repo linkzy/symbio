@@ -4,10 +4,10 @@ import { ChevronRight, KeyRound, PauseCircle, Settings as SettingsIcon } from "l
 import { api, LOCKED_EVENT, subscribe, type RuntimeInfo } from "./api";
 import { Home } from "./Home";
 import { ProjectView } from "./ProjectView";
-import { Settings } from "./Settings";
+import { leaveSettings, Settings } from "./Settings";
 import { EmptyState, Logo } from "./ui";
 import { RemoteBanner } from "./Remote";
-import { UpdateBadge } from "./Updates";
+import { UpdateBadge, useUpdate } from "./Updates";
 
 function useHashRoute() {
   const [hash, setHash] = useState(location.hash);
@@ -90,6 +90,7 @@ export function App() {
         <a className="brand" href="#/">
           <Logo />
           Symbio
+          <SymbioVersion />
         </a>
         <nav className="crumbs">
           <ChevronRight size={14} />
@@ -110,7 +111,17 @@ export function App() {
             <PauseCircle size={15} />
             Pause all
           </button>
-          <a className={`btn ghost sm ${route.page === "settings" ? "active" : ""}`} href="#/settings" title="Settings">
+          <a
+            className={`btn ghost sm ${route.page === "settings" ? "active" : ""}`}
+            href="#/settings"
+            title={route.page === "settings" ? "Close Settings" : "Settings"}
+            // A second click closes Settings, back to where you were.
+            onClick={(e) => {
+              if (route.page !== "settings") return;
+              e.preventDefault();
+              leaveSettings();
+            }}
+          >
             <SettingsIcon size={15} />
             Settings
           </a>
@@ -132,6 +143,16 @@ export function App() {
         </motion.main>
       </AnimatePresence>
     </div>
+  );
+}
+
+function SymbioVersion() {
+  const [state] = useUpdate();
+  if (!state?.current) return null;
+  return (
+    <span className="brand-version" title={state.install === "dev" ? "Symbio version (development copy)" : "Symbio version"}>
+      {state.current}
+    </span>
   );
 }
 

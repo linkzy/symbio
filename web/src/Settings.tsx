@@ -9,10 +9,25 @@ import { RemoteSection } from "./Remote";
 import { UpdatesSection } from "./Updates";
 import { Dialog, EmptyState } from "./ui";
 
-/** Back to the page the user came from (a project, the project list…), or the project list. */
-function goBack() {
+/** Where the user was before Settings (a project, the project list…). */
+export function previousPage(): string {
   const previous = sessionStorage.getItem("symbio:previous-page");
-  location.hash = previous && !previous.startsWith("#/settings") ? previous : "#/";
+  return previous && !previous.startsWith("#/settings") ? previous : "#/";
+}
+
+export function leaveSettings() {
+  location.hash = previousPage();
+}
+
+/** "Back to <project>" / "Back to projects": where Back (and Escape) take you. */
+function useBackLabel(): string {
+  const target = previousPage();
+  const id = target.match(/^#\/p\/([\w-]+)/)?.[1];
+  const [name, setName] = useState<string | null>(null);
+  useEffect(() => {
+    if (id) api.project(id).then((p) => setName(p.name)).catch(() => {});
+  }, [id]);
+  return id ? `Back to ${name ?? "the project"}` : "Back to projects";
 }
 
 export function Settings() {
@@ -20,6 +35,19 @@ export function Settings() {
   const [editing, setEditing] = useState<ConnectionView | "new-github" | "new-azure" | "new-server" | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const backLabel = useBackLabel();
+
+  // Escape leaves Settings, unless it's closing a dialog or the cursor is in a field.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented || document.querySelector(".backdrop")) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+      leaveSettings();
+    };
+    addEventListener("keydown", onKey);
+    return () => removeEventListener("keydown", onKey);
+  }, []);
 
   const load = () =>
     api
@@ -49,9 +77,9 @@ export function Settings() {
   return (
     <div className="page-inner">
       <div>
-        <button className="back" onClick={goBack}>
+        <button className="btn sm settings-back" onClick={leaveSettings} title="Esc">
           <ArrowLeft size={14} />
-          Back
+          {backLabel}
         </button>
         <div className="page-head">
           <div>

@@ -29,14 +29,27 @@ import { Avatar, EmptyState, statusText } from "./ui";
 
 type Tab = "chat" | "plan" | "messages" | "docs" | "files" | "settings";
 
+function useRemembered<T>(key: string, initial: T): [T, (v: T) => void] {
+  const [value, setValue] = useState<T>(() => {
+    const saved = sessionStorage.getItem(key);
+    return saved === null ? initial : (JSON.parse(saved) as T);
+  });
+  const set = (v: T) => {
+    sessionStorage.setItem(key, JSON.stringify(v));
+    setValue(v);
+  };
+  return [value, set];
+}
+
 export function ProjectView({ projectId }: { projectId: string }) {
   const [project, setProject] = useState<Project | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
+  // Remembered for the browser session, so coming back (e.g. from Settings) opens the same place.
+  const [selected, setSelected] = useRemembered<string | null>(`symbio:agent:${projectId}`, null);
   const [starting, setStarting] = useState(false);
-  const [tab, setTab] = useState<Tab>("chat");
+  const [tab, setTab] = useRemembered<Tab>(`symbio:tab:${projectId}`, "chat");
   const [inboxOpen, setInboxOpen] = useState(false);
   const [showStopped, setShowStopped] = useState(false);
   const log = useProjectLog(projectId);
