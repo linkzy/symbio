@@ -57,6 +57,9 @@ Collected, not sorted or promised yet.
 - **Per-task model routing.** Cheap models for simple tasks, strong ones for hard ones.
 - **Installing without Node.js.** An installer or a single download for people who don't have
   Node.js and npm (today Symbio needs Node 22+ and `npm install -g symbio`).
+- **Jira and Trello connections** *(low priority)*. Connect a board, like GitHub or Azure DevOps
+  today, so core can read the work from it (issues, cards, their details) and turn it into the
+  local plan for helpers, then mark items done on the board as their tasks finish.
 
 ## Done
 
