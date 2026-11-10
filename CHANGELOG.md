@@ -5,6 +5,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Usable on phones (e.g. through remote access): one column, the team in a drawer opened from the
+  button before the tabs, tabs that scroll sideways, the top bar and chat buttons as icons, dialogs
+  that slide up from the bottom, and Enter for a new line on touch keyboards (the button sends).
 - A new version available shows in the top bar as a green badge with its number, easier to notice.
 - What you type in a chat is kept until you send it, with the files attached to it: switching tabs,
   opening another project or reloading the page no longer empties the message box.

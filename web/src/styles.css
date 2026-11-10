@@ -317,6 +317,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); margi
 .tab svg { color: var(--text-3); }
 .tab.active svg { color: var(--text-2); }
 .tab-underline { position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2px; background: var(--text); border-radius: 2px; }
+.tab-agent { margin-left: -3px; }
 .tab .count { font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
 .tab-alert { display: inline-flex; align-items: center; gap: 5px; height: 18px; padding: 0 7px; border-radius: 9px; background: var(--amber); color: #1a1405; font-size: 11px; font-weight: 600; }
 .tab-alert-dot { position: relative; width: 6px; height: 6px; border-radius: 50%; background: #1a1405; }
@@ -691,3 +692,70 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); margi
 /* Settings: Back names where it goes; the top bar shows Symbio's version. */
 .settings-back { margin-bottom: 16px; }
 .brand-version { font-weight: 500; font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; margin-left: -3px; }
+
+/* ---------------------------------------------------------------- phones
+   One column: the team sidebar becomes a drawer (the button before the tabs), tabs scroll
+   sideways, buttons in tight spots keep their icon only (their title says what they do). */
+.team-toggle, .side-backdrop { display: none; }
+.app { height: 100dvh; }
+
+@media (max-width: 760px) {
+  .topbar { padding: 0 8px 0 12px; gap: 8px; }
+  .brand-name { display: none; }
+  .crumbs { flex: 1; }
+  .crumbs > a, .crumbs > a + svg { display: none; }
+  .crumbs .current { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .topbar-actions { gap: 2px; flex: none; }
+  .btn-label, .runtime-label, .runtime .subtle { display: none; }
+  .runtime { padding: 0 9px; }
+
+  .page-inner { padding: 18px 14px 48px; gap: 18px; }
+  .page-head { flex-wrap: wrap; align-items: flex-start; }
+  .section-head { flex-wrap: wrap; padding: 14px; }
+  .section-head > .row { flex-wrap: wrap; }
+  .field-row { flex-direction: column; }
+  .seg { flex-wrap: wrap; }
+  .list-row { flex-wrap: wrap; }
+  .project-row { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; }
+
+  .project-view { grid-template-columns: minmax(0, 1fr); position: relative; }
+  .side { position: fixed; z-index: 55; top: 0; bottom: 0; left: 0; width: min(300px, 86vw); transform: translateX(-102%); transition: transform 0.18s ease; box-shadow: 24px 0 48px rgba(0, 0, 0, 0.45); }
+  .side.open { transform: none; }
+  .side-backdrop { display: block; position: fixed; inset: 0; z-index: 54; background: rgba(0, 0, 0, 0.5); }
+  .team-toggle { display: inline-flex; flex: none; }
+  .main-head { padding: 0 6px; gap: 2px; }
+  .tabs { overflow-x: auto; scrollbar-width: none; min-width: 0; flex: 1; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: none; padding: 0 9px; }
+  .main-actions { flex: none; }
+  .banner { flex-wrap: wrap; padding: 9px 12px; }
+  .banner .grow { min-width: 60%; }
+
+  .chat-head { padding: 8px 10px; gap: 8px; }
+  .chat-head .sub { white-space: normal; }
+  .chat-scroll { padding: 14px 12px 8px; }
+  .msg-user { max-width: 92%; }
+  .composer-wrap { padding: 6px 8px 10px; }
+  .composer-hint { display: none; }
+  .composer textarea { font-size: 16px; } /* below 16px, phones zoom in when the box is focused */
+
+  .kanban-head { padding: 12px 14px; flex-direction: column; align-items: stretch; gap: 10px; }
+  .tab-agent { display: none; }
+  .timeline-toolbar { padding: 8px 12px; }
+  .timeline-inner { padding: 8px 12px 24px; }
+  .event { grid-template-columns: 22px minmax(0, 1fr); gap: 8px; }
+  .md ul, .md ol { padding-left: 18px; }
+  .columns { grid-template-columns: repeat(5, 84vw); padding: 12px 14px 14px; scroll-snap-type: x mandatory; }
+  .column { scroll-snap-align: start; }
+
+  .docs { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .docs-list { border-right: none; border-bottom: 1px solid var(--border); max-height: 32vh; }
+
+  .files-head { flex-wrap: wrap; }
+  .files-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+
+  .backdrop { padding: 0; align-items: flex-end; }
+  .dialog, .dialog.wide { width: 100%; max-height: 92dvh; border-radius: 14px 14px 0 0; }
+  .dialog-foot { flex-wrap: wrap; }
+  .drawer { width: 100vw; max-width: 100vw; }
+}

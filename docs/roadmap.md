@@ -6,13 +6,12 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 
 ## Now
 
-Nothing in progress; the top of Next is what comes up.
+- **Usable on phones.** Done for the next release: one column, the team in a drawer, tabs that
+  scroll sideways, dialogs that slide up from the bottom, Enter for a new line on touch keyboards.
 
 ## Next
 
-1. **Usable on phones.** The layout breaks on small screens (useful with remote access): the team
-   sidebar, tabs, chat and dialogs need a mobile layout.
-2. **Talk to Symbio.** A spoken conversation with core, hands-free: e.g. from a phone connected to
+1. **Talk to Symbio.** A spoken conversation with core, hands-free: e.g. from a phone connected to
    the car over Bluetooth, with Symbio working on the computer at home (remote access). Not just
    dictation into the chat box:
    - Only what core says to the human is read aloud: never tool calls, command output, messages
@@ -24,28 +23,28 @@ Nothing in progress; the top of Next is what comes up.
      deleting things) waits for the screen or an explicit spoken confirmation.
    - Turn-taking without touching the phone: listening after core speaks, or a headset/car button.
 
-   Builds on item 1 and on telling apart, in core's replies, what's for the human from the team's
-   work. To check first: the browsers' own speech recognition and voices (quality, languages,
-   whether they keep working with the screen off) against a speech service.
-3. **Linux and macOS.** Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
+   Builds on the phone layout and on telling apart, in core's replies, what's for the human from
+   the team's work. To check first: the browsers' own speech recognition and voices (quality,
+   languages, whether they keep working with the screen off) against a speech service.
+2. **Linux and macOS.** Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
    Keychain on macOS); headless Linux (a server or container) has no keyring, so it needs a
    fallback, such as a key file readable only by the user.
-4. **Create a project from a git repository.** In the New project dialog, an option to clone a
+3. **Create a project from a git repository.** In the New project dialog, an option to clone a
    repository (GitHub, Azure DevOps or any git URL, using the matching connection when it's private)
    into a folder and open it as a project, e.g. to continue on another computer. Tucked under an
    advanced option, so it doesn't get in the way of people who don't use git.
-5. **Switch projects from the breadcrumb.** A dropdown on the project name at the top
+4. **Switch projects from the breadcrumb.** A dropdown on the project name at the top
    (Symbio › Projects › *name*) to jump to another project. *(good first contribution)*
-6. **No focus outline on the chat box.** Remove the outline that appears when clicking into it, or
+5. **No focus outline on the chat box.** Remove the outline that appears when clicking into it, or
    make it subtle. *(good first contribution)*
-7. **Rules register on import.** When importing an existing project, offer to build the register
+6. **Rules register on import.** When importing an existing project, offer to build the register
    from the project and from sources the human points to (e-mails, meeting notes, manuals), marking
    rules found only in the work as unsourced.
-8. **Translations.** The UI in other languages, starting with Portuguese. *(good first
+7. **Translations.** The UI in other languages, starting with Portuguese. *(good first
    contribution, once the strings are extracted)*
-9. **A project site.** A GitHub Pages site that explains Symbio, with screenshots and a short video.
-10. **A public demo.** A container on a VPS with a light model, connections and other sensitive
-    options disabled, and visitors' data reset every few minutes (needs item 3's headless support).
+8. **A project site.** A GitHub Pages site that explains Symbio, with screenshots and a short video.
+9. **A public demo.** A container on a VPS with a light model, connections and other sensitive
+    options disabled, and visitors' data reset every few minutes (needs item 2's headless support).
 
 ## Ideas
 

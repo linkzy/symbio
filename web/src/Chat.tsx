@@ -386,7 +386,7 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
             }}
           >
             <RefreshCw size={14} />
-            {renewing ? "Renewing…" : "New session"}
+            <span className="btn-label">{renewing ? "Renewing…" : "New session"}</span>
           </button>
         )}
         {agent.role !== "coordinator" && agent.branch && agent.status !== "stopped" && (
@@ -415,7 +415,7 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
             }}
           >
             <FolderInput size={14} />
-            {moving ? "Moving…" : "Move to project folder"}
+            <span className="btn-label">{moving ? "Moving…" : "Move to project folder"}</span>
           </button>
         )}
         {agent.role !== "coordinator" && agent.status !== "stopped" && (
@@ -428,7 +428,7 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
             }}
           >
             <CircleStop size={14} />
-            Stop agent
+            <span className="btn-label">Stop agent</span>
           </button>
         )}
         {agent.role !== "coordinator" && agent.status === "stopped" && (
@@ -518,7 +518,8 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
               }
             }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
+              // Touch keyboards have no Shift+Enter: there Enter is a new line, and the button sends.
+              if (e.key === "Enter" && !e.shiftKey && !matchMedia("(pointer: coarse)").matches) {
                 e.preventDefault();
                 void send();
               }

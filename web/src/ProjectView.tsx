@@ -14,6 +14,7 @@ import {
   Pause,
   Play,
   Settings2,
+  Users,
 } from "lucide-react";
 import { UsageLine } from "./Usage";
 import { api, formatTokens, subscribe, usageTokens, type Agent, type Asset, type Plan, type Project } from "./api";
@@ -51,6 +52,8 @@ export function ProjectView({ projectId }: { projectId: string }) {
   const [starting, setStarting] = useState(false);
   const [tab, setTab] = useRemembered<Tab>(`symbio:tab:${projectId}`, "chat");
   const [inboxOpen, setInboxOpen] = useState(false);
+  // On phones the team sidebar is a drawer, opened from the button before the tabs.
+  const [teamOpen, setTeamOpen] = useState(false);
   const [showStopped, setShowStopped] = useState(false);
   const log = useProjectLog(projectId);
   const inbox = useInbox(project, log, plan);
@@ -100,6 +103,7 @@ export function ProjectView({ projectId }: { projectId: string }) {
   const select = (a: Agent) => {
     setSelected(a.id);
     setTab("chat");
+    setTeamOpen(false);
   };
 
   async function start() {
@@ -114,7 +118,13 @@ export function ProjectView({ projectId }: { projectId: string }) {
   }
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode; extra?: React.ReactNode }[] = [
-    { id: "chat", label: agent && agent.role !== "coordinator" ? `Chat · ${agent.name}` : "Chat", icon: <MessageSquare size={14} /> },
+    {
+      id: "chat",
+      label: "Chat",
+      icon: <MessageSquare size={14} />,
+      // The helper's name; hidden on phones, where the chat header already shows it.
+      extra: agent && agent.role !== "coordinator" ? <span className="tab-agent">· {agent.name}</span> : null,
+    },
     {
       id: "plan",
       label: "Plan",
@@ -139,7 +149,8 @@ export function ProjectView({ projectId }: { projectId: string }) {
 
   return (
     <div className="project-view">
-      <aside className="side">
+      {teamOpen && <div className="side-backdrop" onClick={() => setTeamOpen(false)} />}
+      <aside className={`side ${teamOpen ? "open" : ""}`}>
         <div className="side-scroll">
           <div>
             <div className="side-group-title">
@@ -215,6 +226,10 @@ export function ProjectView({ projectId }: { projectId: string }) {
 
       <section className="main">
         <div className="main-head">
+          <button className="btn ghost sm team-toggle" onClick={() => setTeamOpen(true)} title="Team" aria-label="Show the team">
+            <Users size={15} />
+            <span className="tnum">{activeAgents.length}</span>
+          </button>
           <div className="tabs">
             {tabs.map((t) => (
               <button key={t.id} className={`tab ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>

@@ -89,7 +89,7 @@ export function App() {
       <header className="topbar">
         <a className="brand" href="#/">
           <Logo />
-          Symbio
+          <span className="brand-name">Symbio</span>
           <SymbioVersion />
         </a>
         <nav className="crumbs">
@@ -109,7 +109,7 @@ export function App() {
         <div className="topbar-actions">
           <button className="btn ghost sm" onClick={pauseAll} title="Pause every project that has agents working">
             <PauseCircle size={15} />
-            Pause all
+            <span className="btn-label">Pause all</span>
           </button>
           <a
             className={`btn ghost sm ${route.page === "settings" ? "active" : ""}`}
@@ -123,7 +123,7 @@ export function App() {
             }}
           >
             <SettingsIcon size={15} />
-            Settings
+            <span className="btn-label">Settings</span>
           </a>
           <UpdateBadge />
           <RuntimeBadge runtime={runtime} />
@@ -174,7 +174,7 @@ function RuntimeBadge({ runtime }: { runtime: RuntimeInfo | null }) {
   return (
     <span className="runtime" title={[runtime.error, memory && `Memory: ${memory}`].filter(Boolean).join("\n") || undefined}>
       <span className={`dot ${runtime.state}`} />
-      {label}
+      <span className="runtime-label">{label}</span>
       {memory && runtime.state === "running" && <span className="subtle tnum">{memory}</span>}
     </span>
   );
