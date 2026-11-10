@@ -66,7 +66,11 @@ export function ProjectView({ projectId }: { projectId: string }) {
           setProject(p);
           setError(null);
         })
-        .catch((e) => setError(e.message));
+        .catch((e) => {
+          // Removed (here, in another tab, or a remembered link): back to the list, not a dead page.
+          if (/^project not found$/i.test(e.message)) location.replace("#/");
+          else setError(e.message);
+        });
     const loadAssets = () =>
       api
         .assets(projectId)

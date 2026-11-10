@@ -5,6 +5,7 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { api, subscribe, type Approval, type LoggedMessage, type PermissionRequest, type Plan, type Project } from "./api";
 import { openQuestions } from "./Messages";
+import { AgentForms } from "./FormCard";
 import { Avatar, Drawer, timeAgo } from "./ui";
 
 export interface InboxData {
@@ -107,12 +108,23 @@ export function InboxDrawer({
         {data.questions.map((q) =>
           q.kind === "form" ? (
             <Item key={q.id} icon={<MessageCircleQuestion size={14} />} kind="Question" agent={nameOf(q.from)} time={q.time}>
-              <div className="small">{nameOf(q.from)} is asking you a multiple-choice question.</div>
-              <div className="inbox-actions">
-                <button className="btn primary sm" onClick={() => onOpenAgent(q.from)}>
-                  Answer in chat
-                </button>
-              </div>
+              {/* The question itself, to answer right here. */}
+              {project.agents.some((a) => a.id === q.from) ? (
+                <AgentForms
+                  project={project}
+                  agent={project.agents.find((a) => a.id === q.from)!}
+                  fallback={
+                    <>
+                      <div className="small">{nameOf(q.from)} is asking you a question.</div>
+                      <div className="inbox-actions">
+                        <button className="btn primary sm" onClick={() => onOpenAgent(q.from)}>
+                          Answer in chat
+                        </button>
+                      </div>
+                    </>
+                  }
+                />
+              ) : null}
             </Item>
           ) : (
             <QuestionItem key={q.id} project={project} question={q} agentName={nameOf(q.from)} />

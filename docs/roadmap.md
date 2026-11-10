@@ -8,6 +8,9 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 
 - **Usable on phones.** Done for the next release: one column, the team in a drawer, tabs that
   scroll sideways, dialogs that slide up from the bottom, Enter for a new line on touch keyboards.
+- **Getting around.** Done for the next release: switching projects from the name at the top,
+  answering questions right in *Needs you*, no focus ring inside the chat box, and a removed
+  project's page going back to the project list.
 
 ## Next
 
@@ -33,25 +36,19 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
    repository (GitHub, Azure DevOps or any git URL, using the matching connection when it's private)
    into a folder and open it as a project, e.g. to continue on another computer. Tucked under an
    advanced option, so it doesn't get in the way of people who don't use git.
-4. **Switch projects from the breadcrumb.** A dropdown on the project name at the top
-   (Symbio › Projects › *name*) to jump to another project. *(good first contribution)*
-5. **No focus outline on the chat box.** Remove the outline that appears when clicking into it, or
-   make it subtle. *(good first contribution)*
-6. **Rules register on import.** When importing an existing project, offer to build the register
+4. **Rules register on import.** When importing an existing project, offer to build the register
    from the project and from sources the human points to (e-mails, meeting notes, manuals), marking
    rules found only in the work as unsourced.
-7. **Translations.** The UI in other languages, starting with Portuguese. *(good first
+5. **Translations.** The UI in other languages, starting with Portuguese. *(good first
    contribution, once the strings are extracted)*
-8. **A project site.** A GitHub Pages site that explains Symbio, with screenshots and a short video.
-9. **A public demo.** A container on a VPS with a light model, connections and other sensitive
-    options disabled, and visitors' data reset every few minutes (needs item 2's headless support).
+6. **A project site.** A GitHub Pages site that explains Symbio, with screenshots and a short video.
+7. **A public demo.** A container on a VPS with a light model, connections and other sensitive
+   options disabled, and visitors' data reset every few minutes (needs item 2's headless support).
 
 ## Ideas
 
 Collected, not sorted or promised yet.
 
-- **Answer questions from *Needs you*.** The inbox says an agent asked something; it could show the
-  question itself, to answer right there instead of in the agent's chat.
 - **Other agent CLIs.** Run teams on other agent runtimes besides OpenCode, and switch between them
   (e.g. from the OpenCode menu at the top). Big: Symbio is built on OpenCode's HTTP API (sessions,
   tools, permissions, events), so each runtime would need an adapter.
@@ -105,9 +102,7 @@ Newest first; details per version in [CHANGELOG.md](../CHANGELOG.md).
 
 Problems people ran into, to fix. Those marked *(good first contribution)* are small.
 
-- **Removing a project shows "project not found".** After removing the project you're looking at,
-  the page stays on its address and says it doesn't exist; it should go back to the projects list.
-  *(good first contribution)*
+Nothing open right now.
 
 ## Known limitations
 

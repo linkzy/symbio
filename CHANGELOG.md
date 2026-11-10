@@ -5,6 +5,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Switch projects from the project name at the top (a list of your projects, and all projects).
+- Questions an agent asks (multiple choice) can be answered right in *Needs you*, not only in its chat.
+- No more focus ring inside the chat box; the box itself shows it has focus, subtly.
+- Fixed: after removing a project (or opening a link to one that's gone), the page said "project
+  not found"; it now goes back to the project list.
 - Usable on phones (e.g. through remote access): one column, the team in a drawer opened from the
   button before the tabs, tabs that scroll sideways, the top bar and chat buttons as icons, dialogs
   that slide up from the bottom, and Enter for a new line on touch keyboards (the button sends).

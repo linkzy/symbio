@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronRight, KeyRound, PauseCircle, Settings as SettingsIcon } from "lucide-react";
-import { api, LOCKED_EVENT, subscribe, type RuntimeInfo } from "./api";
+import { Check, ChevronDown, ChevronRight, KeyRound, LayoutList, PauseCircle, Settings as SettingsIcon } from "lucide-react";
+import { api, LOCKED_EVENT, subscribe, type Project, type RuntimeInfo } from "./api";
 import { Home } from "./Home";
 import { ProjectView } from "./ProjectView";
 import { leaveSettings, Settings } from "./Settings";
@@ -100,7 +100,7 @@ export function App() {
             <>
               <a href="#/">Projects</a>
               <ChevronRight size={14} />
-              <span className="current ellipsis">{projectName ?? "…"}</span>
+              <ProjectSwitcher currentId={route.id} name={projectName} />
             </>
           ) : (
             <span className="current">Projects</span>
@@ -141,6 +141,64 @@ export function App() {
         >
           {route.page === "project" ? <ProjectView projectId={route.id} /> : route.page === "settings" ? <Settings /> : <Home runtime={runtime} />}
         </motion.main>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/** The project name in the breadcrumb: opens a list of the other projects to jump to. */
+function ProjectSwitcher({ currentId, name }: { currentId: string; name: string | null }) {
+  const [open, setOpen] = useState(false);
+  const [projects, setProjects] = useState<Project[] | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    api.projects().then(setProjects).catch(() => setProjects([]));
+    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    addEventListener("mousedown", close);
+    addEventListener("keydown", esc);
+    return () => {
+      removeEventListener("mousedown", close);
+      removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  return (
+    <div className="menu switcher" ref={ref}>
+      <button className="switcher-button current" onClick={() => setOpen((o) => !o)} title="Switch project" aria-haspopup="menu" aria-expanded={open}>
+        <span className="ellipsis">{name ?? "…"}</span>
+        <ChevronDown size={13} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div className="menu-list left" role="menu" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.1 }}>
+            {projects === null && <div className="menu-note">Loading…</div>}
+            {projects?.map((p) => (
+              <button
+                key={p.id}
+                role="menuitem"
+                className={p.id === currentId ? "on" : ""}
+                onClick={() => {
+                  setOpen(false);
+                  location.hash = `#/p/${p.id}`;
+                }}
+              >
+                <span className="ellipsis grow">{p.name}</span>
+                {p.id === currentId && <Check size={14} />}
+              </button>
+            ))}
+            <div className="menu-sep" />
+            <button
+              onClick={() => {
+                setOpen(false);
+                location.hash = "#/";
+              }}
+            >
+              <LayoutList size={14} />
+              All projects
+            </button>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );

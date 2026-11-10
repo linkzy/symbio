@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { MessageCircleQuestion } from "lucide-react";
 import { api, type Agent, type Project } from "./api";
@@ -75,7 +75,38 @@ export function PendingForms({ project, agent }: { project: Project; agent: Agen
   );
 }
 
-function FormView({ form, project, agent, onDone }: { form: Form; project: Project; agent: Agent; onDone: () => void }) {
+/**
+ * An agent's open questions outside its chat (the Needs you inbox). Shows `fallback` when there's
+ * no form to answer here (e.g. it was answered elsewhere a moment ago).
+ */
+export function AgentForms({ project, agent, fallback }: { project: Project; agent: Agent; fallback: ReactNode }) {
+  const [forms, setForms] = useState<Form[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      api
+        .forms(project.id, agent.id)
+        .then((f) => alive && setForms(f as Form[]))
+        .catch(() => alive && setForms([]));
+    void load();
+    const timer = setInterval(load, 3000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [project.id, agent.id]);
+  if (forms === null) return null;
+  if (!forms.length) return <>{fallback}</>;
+  return (
+    <>
+      {forms.map((f) => (
+        <FormView key={f.id} form={f} project={project} agent={agent} compact onDone={() => setForms((l) => l?.filter((x) => x.id !== f.id) ?? null)} />
+      ))}
+    </>
+  );
+}
+
+function FormView({ form, project, agent, onDone, compact }: { form: Form; project: Project; agent: Agent; onDone: () => void; compact?: boolean }) {
   const [values, setValues] = useState<Record<string, unknown>>(() =>
     Object.fromEntries(form.fields.map((f) => [f.key, f.default ?? (isMulti(f) ? [] : f.type === "boolean" ? false : "")])),
   );
@@ -86,8 +117,8 @@ function FormView({ form, project, agent, onDone }: { form: Form; project: Proje
 
   const card = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    card.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, []);
+    if (!compact) card.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [compact]);
 
   const set = (key: string, v: unknown) => setValues((s) => ({ ...s, [key]: v }));
   const missing = fields.some((f) => f.required && isEmpty(values[f.key]) && !custom[f.key]);
@@ -117,11 +148,13 @@ function FormView({ form, project, agent, onDone }: { form: Form; project: Proje
   }
 
   return (
-    <motion.div ref={card} className="form-card" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-      <div className="form-card-head">
-        <MessageCircleQuestion size={15} />
-        {agent.name} needs your answer{form.title ? ` — ${form.title}` : ""}
-      </div>
+    <motion.div ref={card} className={`form-card ${compact ? "compact" : ""}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+      {!compact && (
+        <div className="form-card-head">
+          <MessageCircleQuestion size={15} />
+          {agent.name} needs your answer{form.title ? ` — ${form.title}` : ""}
+        </div>
+      )}
       <div className="form-card-body">
       {fields.map((f) => {
         const options = f.options ?? f.items?.options;
