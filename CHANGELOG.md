@@ -5,6 +5,7 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- A new version available shows in the top bar as a green badge with its number, easier to notice.
 - What you type in a chat is kept until you send it, with the files attached to it: switching tabs,
   opening another project or reloading the page no longer empties the message box.
 - Automatic updates check for a new version every hour instead of every 6 hours, so a release no

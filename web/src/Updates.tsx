@@ -19,7 +19,7 @@ export function UpdateBadge() {
   const [state] = useUpdate();
   if (!state?.available || state.install === "dev") return null;
   return (
-    <a className="btn ghost sm update-badge" href="#/settings" title={state.waiting ?? `Symbio ${state.latest} is available`}>
+    <a className="btn sm update-badge" href="#/settings" title={state.waiting ?? `Symbio ${state.latest} is available`}>
       <ArrowUpCircle size={15} />
       {state.latest}
     </a>
