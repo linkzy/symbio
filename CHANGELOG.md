@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- What you type in a chat is kept until you send it, with the files attached to it: switching tabs,
+  opening another project or reloading the page no longer empties the message box.
 - Automatic updates check for a new version every hour instead of every 6 hours, so a release no
   longer waits most of a day to arrive.
 - The top bar shows Symbio's version next to its name.

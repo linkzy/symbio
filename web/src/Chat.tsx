@@ -168,11 +168,19 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
   const [live, setLive] = useState<Block[]>([]);
   const [failure, setFailure] = useState<string | null>(null);
   const [retry, setRetry] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
+  // What's being typed is kept in the browser per project and agent: leaving the chat (another tab,
+  // another project, a reload) doesn't lose it. Cleared when the message is sent.
+  const draftKey = `symbio:draft:${project.id}:${agent.id}`;
+  const [draft, setDraftState] = useState(() => localStorage.getItem(draftKey) ?? "");
+  const setDraft = (text: string) => {
+    setDraftState(text);
+    if (text) localStorage.setItem(draftKey, text);
+    else localStorage.removeItem(draftKey);
+  };
   const [sending, setSending] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const [renewing, setRenewing] = useState(false);
-  const pending = usePendingFiles(project.id);
+  const pending = usePendingFiles(project.id, `symbio:draft-files:${project.id}:${agent.id}`);
   const [dragging, setDragging] = useState(false);
   const [moving, setMoving] = useState(false);
   // null = the current session; otherwise an earlier one (read-only), after a renewal.

@@ -60,8 +60,26 @@ export interface PendingFile {
 }
 
 /** Files waiting to be sent with the next message, uploaded as soon as they're added. */
-export function usePendingFiles(projectId: string) {
-  const [files, setFiles] = useState<PendingFile[]>([]);
+/**
+ * Files waiting to go with the next message. With a storageKey, the uploaded ones are kept in the
+ * browser, so they're still there after leaving the chat (they're already stored in the project).
+ */
+export function usePendingFiles(projectId: string, storageKey?: string) {
+  const [files, setFiles] = useState<PendingFile[]>(() => {
+    if (!storageKey) return [];
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) ?? "[]") as Pick<PendingFile, "id" | "name" | "size">[];
+      return saved.map((f) => ({ ...f, key: f.id!, status: "ready" as const, progress: 1 }));
+    } catch {
+      return [];
+    }
+  });
+  useEffect(() => {
+    if (!storageKey) return;
+    const ready = files.filter((f) => f.status === "ready").map(({ id, name, size }) => ({ id, name, size }));
+    if (ready.length) localStorage.setItem(storageKey, JSON.stringify(ready));
+    else localStorage.removeItem(storageKey);
+  }, [files, storageKey]);
   const update = (key: string, patch: Partial<PendingFile>) => setFiles((fs) => fs.map((f) => (f.key === key ? { ...f, ...patch } : f)));
   const add = (list: File[]) => {
     for (const file of list) {
