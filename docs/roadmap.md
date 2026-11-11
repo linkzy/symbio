@@ -6,11 +6,7 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 
 ## Now
 
-- **Usable on phones.** Done for the next release: one column, the team in a drawer, tabs that
-  scroll sideways, dialogs that slide up from the bottom, Enter for a new line on touch keyboards.
-- **Getting around.** Done for the next release: switching projects from the name at the top,
-  answering questions right in *Needs you*, no focus ring inside the chat box, and a removed
-  project's page going back to the project list.
+Nothing in progress; the top of Next is what comes up.
 
 ## Next
 
@@ -75,6 +71,10 @@ Collected, not sorted or promised yet.
 
 Newest first; details per version in [CHANGELOG.md](../CHANGELOG.md).
 
+- **0.9** — Usable on phones (one column, the team in a drawer, scrolling tabs, bottom-sheet
+  dialogs); switching projects from the name at the top; answering questions in *Needs you*;
+  drafts kept until sent; Symbio's version in the top bar and a green badge for a new one; hourly
+  update checks; clearer ways out of Settings.
 - **0.8** — Attachments in the chat (upload, drag in or paste), with a Files tab per project, and
   `read_document` for PDF, Word, Excel and PowerPoint; folders of several git repositories, each
   kept as it is, with helpers' copies, merges and pushes per repository; questions no longer

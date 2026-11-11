@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.9.0]
+
 - Switch projects from the project name at the top (a list of your projects, and all projects).
 - Questions an agent asks (multiple choice) can be answered right in *Needs you*, not only in its chat.
 - No more focus ring inside the chat box; the box itself shows it has focus, subtly.
