@@ -10,7 +10,18 @@ Nothing in progress; the top of Next is what comes up.
 
 ## Next
 
-1. **Talk to Symbio.** A spoken conversation with core, hands-free: e.g. from a phone connected to
+1. **Chat modes: Auto, Plan and Act.** A selector in core's chat box, as in VS Code and other
+   agent tools, choosing how core handles a message:
+   - **Auto** (the default): as today; core decides whether to talk, plan or delegate.
+   - **Plan**: core discusses, studies and proposes a plan, but starts nothing. Enforced by Symbio,
+     not just asked: no helpers created, no tasks assigned, no merges, no changes to the project.
+   - **Act**: for small things, core skips proposing a plan and gets on with it. Shared assets,
+     approvals for remote actions and permissions apply as always.
+
+   Applies to core only (helpers do the tasks they're given); each sent message shows the mode it
+   was sent in. Talk to Symbio (next) can reuse the selector as a voice toggle.
+   *(Suggested by a user.)*
+2. **Talk to Symbio.** A spoken conversation with core, hands-free: e.g. from a phone connected to
    the car over Bluetooth, with Symbio working on the computer at home (remote access). Not just
    dictation into the chat box:
    - Only what core says to the human is read aloud: never tool calls, command output, messages
@@ -25,21 +36,21 @@ Nothing in progress; the top of Next is what comes up.
    Builds on the phone layout and on telling apart, in core's replies, what's for the human from
    the team's work. To check first: the browsers' own speech recognition and voices (quality,
    languages, whether they keep working with the screen off) against a speech service.
-2. **Linux and macOS.** Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
+3. **Linux and macOS.** Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
    Keychain on macOS); headless Linux (a server or container) has no keyring, so it needs a
    fallback, such as a key file readable only by the user.
-3. **Create a project from a git repository.** In the New project dialog, an option to clone a
+4. **Create a project from a git repository.** In the New project dialog, an option to clone a
    repository (GitHub, Azure DevOps or any git URL, using the matching connection when it's private)
    into a folder and open it as a project, e.g. to continue on another computer. Tucked under an
    advanced option, so it doesn't get in the way of people who don't use git.
-4. **Rules register on import.** When importing an existing project, offer to build the register
+5. **Rules register on import.** When importing an existing project, offer to build the register
    from the project and from sources the human points to (e-mails, meeting notes, manuals), marking
    rules found only in the work as unsourced.
-5. **Translations.** The UI in other languages, starting with Portuguese. *(good first
+6. **Translations.** The UI in other languages, starting with Portuguese. *(good first
    contribution, once the strings are extracted)*
-6. **A project site.** A GitHub Pages site that explains Symbio, with screenshots and a short video.
-7. **A public demo.** A container on a VPS with a light model, connections and other sensitive
-   options disabled, and visitors' data reset every few minutes (needs item 2's headless support).
+7. **A project site.** A GitHub Pages site that explains Symbio, with screenshots and a short video.
+8. **A public demo.** A container on a VPS with a light model, connections and other sensitive
+   options disabled, and visitors' data reset every few minutes (needs item 3's headless support).
 
 ## Ideas
 
