@@ -13,7 +13,7 @@ function baseName(p: string) {
   return p.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
 }
 
-export function Home({ runtime }: { runtime: RuntimeInfo | null }) {
+export function Home({ runtime, create }: { runtime: RuntimeInfo | null; create?: boolean }) {
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -30,6 +30,14 @@ export function Home({ runtime }: { runtime: RuntimeInfo | null }) {
   }, []);
 
   const canCreate = runtime?.state === "running";
+
+  // Opened as "#/new" (New project… in the project switcher): open the dialog once it can be used,
+  // and drop "new" from the address so closing it, or reloading, doesn't bring it back.
+  useEffect(() => {
+    if (!create || !canCreate) return;
+    setCreating(true);
+    history.replaceState(null, "", "#/");
+  }, [create, canCreate]);
 
   // First run on a new machine: nothing to run agents on until a provider is connected.
   const [noProviders, setNoProviders] = useState(false);

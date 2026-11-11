@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- *New project…* in the project switcher at the top opens the New project dialog.
+
 ## [0.9.0]
 
 - Switch projects from the project name at the top (a list of your projects, and all projects).

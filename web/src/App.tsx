@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, ChevronDown, ChevronRight, KeyRound, LayoutList, PauseCircle, Settings as SettingsIcon } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, KeyRound, LayoutList, PauseCircle, Plus, Settings as SettingsIcon } from "lucide-react";
 import { api, LOCKED_EVENT, subscribe, type Project, type RuntimeInfo } from "./api";
 import { Home } from "./Home";
 import { ProjectView } from "./ProjectView";
@@ -24,7 +24,8 @@ function useHashRoute() {
   const match = hash.match(/^#\/p\/([\w-]+)/);
   if (match) return { page: "project" as const, id: match[1] };
   if (hash.startsWith("#/settings")) return { page: "settings" as const };
-  return { page: "home" as const };
+  // "#/new": the project list with the New project dialog open (from the project switcher).
+  return { page: "home" as const, create: hash === "#/new" };
 }
 
 export function App() {
@@ -139,7 +140,7 @@ export function App() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.12 }}
         >
-          {route.page === "project" ? <ProjectView projectId={route.id} /> : route.page === "settings" ? <Settings /> : <Home runtime={runtime} />}
+          {route.page === "project" ? <ProjectView projectId={route.id} /> : route.page === "settings" ? <Settings /> : <Home runtime={runtime} create={route.page === "home" && route.create} />}
         </motion.main>
       </AnimatePresence>
     </div>
@@ -196,6 +197,15 @@ function ProjectSwitcher({ currentId, name }: { currentId: string; name: string 
             >
               <LayoutList size={14} />
               All projects
+            </button>
+            <button
+              onClick={() => {
+                setOpen(false);
+                location.hash = "#/new";
+              }}
+            >
+              <Plus size={14} />
+              New project…
             </button>
           </motion.div>
         )}
