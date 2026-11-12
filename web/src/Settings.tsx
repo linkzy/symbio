@@ -360,7 +360,7 @@ function ConnectionForm({
           <label className="field">
             <span>Password</span>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={keep("password")} />
-            <span className="hint">FTP only uploads files: agents use it with remote_upload. For a server with SSH or SFTP, add a Server connection instead.</span>
+            <span className="hint">Agents upload with it (replacing files that are there) and can list, move, rename and delete files; they can't run commands, FTP has none. Whether each change needs your OK is set per project, like other connections. For a server with SSH or SFTP, add a Server connection instead.</span>
           </label>
         </>
       ) : (

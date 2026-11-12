@@ -384,8 +384,9 @@ const listConnections: Tool = {
 const remoteExec: Tool = {
   name: "remote_exec",
   description:
-    "Run a non-interactive shell command on a server connection over SSH (e.g. deploy steps, checking a service). Returns exit code and output.",
-  inputSchema: obj({ connection: str("Server connection name"), command: str("The command (bash on the server)"), reason: reasonField }, [
+    "Run a non-interactive shell command on a server connection over SSH (e.g. deploy steps, checking a service); returns exit code and output. " +
+    "On an FTP connection, run FTP file operations instead, one per line: ls [path], mkdir <path>, rm <file>, rmdir <folder> (with everything in it), mv <from> <to>.",
+  inputSchema: obj({ connection: str("Server or FTP connection name"), command: str("The command (bash on the server), or FTP file operations"), reason: reasonField }, [
     "connection",
     "command",
     "reason",

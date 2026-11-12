@@ -1,5 +1,5 @@
 // A tiny FTP server for tests: plain FTP, passive mode, files kept in a temporary folder.
-import { mkdirSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, renameSync, rmdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -21,6 +21,7 @@ export async function fakeFtp(user: string, password: string): Promise<FakeFtp> 
     socket.on("error", () => {});
     let cwd = "/";
     let given = "";
+    let renameFrom = "";
     let authed = false;
     let passive: net.Server | null = null;
     let data: Promise<net.Socket> | null = null;
@@ -66,10 +67,38 @@ export async function fakeFtp(user: string, password: string): Promise<FakeFtp> 
         else if (verb === "PASV") {
           const port = await openPassive();
           reply(`227 Entering Passive Mode (127,0,0,1,${port >> 8},${port & 255})`);
-        } else if (verb === "LIST" || verb === "NLST") {
+        } else if (verb === "CDUP") (cwd = resolve("..")), reply("250 ok");
+        else if (verb === "LIST" || verb === "NLST") {
+          const where = rest.filter((w) => !w.startsWith("-")).join(" ") || cwd;
           const s = await data!;
           reply("150 here it comes");
-          s.end(readdirSync(local(cwd)).map((n) => `-rw-r--r-- 1 u g 0 Jan 1 00:00 ${n}\r\n`).join(""), () => reply("226 done"));
+          const lines = readdirSync(local(where), { withFileTypes: true }).map((e) => {
+            const size = e.isFile() ? statSync(path.join(local(where), e.name)).size : 0;
+            return `${e.isDirectory() ? "d" : "-"}rw-r--r-- 1 u g ${size} Jan 1 00:00 ${e.name}\r\n`;
+          });
+          s.end(lines.join(""), () => reply("226 done"));
+        } else if (verb === "DELE") {
+          try {
+            unlinkSync(local(arg));
+            reply("250 deleted");
+          } catch {
+            reply("550 no such file");
+          }
+        } else if (verb === "RMD") {
+          try {
+            rmdirSync(local(arg)); // only empty folders, like a real server
+            reply("250 removed");
+          } catch {
+            reply("550 can't remove");
+          }
+        } else if (verb === "RNFR") (renameFrom = arg), reply("350 ready");
+        else if (verb === "RNTO") {
+          try {
+            renameSync(local(renameFrom), local(arg));
+            reply("250 renamed");
+          } catch {
+            reply("550 can't rename");
+          }
         } else if (verb === "STOR") {
           const target = local(arg);
           const s = await data!;

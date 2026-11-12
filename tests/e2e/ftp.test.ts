@@ -1,6 +1,6 @@
-// An FTP connection: added and tested in Settings, then used by an agent to publish a folder.
+// An FTP connection: added and tested in Settings, used by an agent to publish a folder, and a change approved from Needs you.
 import assert from "node:assert/strict";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { after, before, test } from "node:test";
 import { fakeFtp, type FakeFtp } from "../fake-ftp.js";
@@ -22,7 +22,7 @@ test("add an FTP connection in Settings, test it, and publish a folder with remo
   const { page } = await openPage(symbio);
   await page.goto(`${symbio.base}/#/settings`);
   await page.locator("button", { hasText: "FTP" }).click();
-  const field = (label: string) => page.locator("label.field", { hasText: label }).locator("input");
+  const field = (label: string) => page.locator("label.field").filter({ has: page.locator("span", { hasText: new RegExp(`^${label}$`) }) }).locator("input");
   await field("Name").fill("Site hosting");
   await field("Host").fill("ftp://127.0.0.1/");
   await page.locator(".seg button", { hasText: "Plain FTP" }).click();
@@ -50,4 +50,17 @@ test("add an FTP connection in Settings, test it, and publish a folder with remo
       return false;
     }
   });
+
+  // With "Ask me", a change on the FTP account (a rename) waits in Needs you until approved.
+  await symbio.call("PATCH", `/projects/${project.id}`, { connections: [{ id: conn.id, policy: "ask" }] });
+  const rename = { connection: "Site hosting", command: "mv public_html/index.html public_html/old.html", reason: "Keep the old page" };
+  await symbio.call("POST", `/projects/${project.id}/agents/${core.id}/messages`, { text: `@core tool remote_exec ${JSON.stringify(rename)}` });
+  await idle(symbio, project.id);
+  assert.ok(existsSync(path.join(ftp.root, "public_html", "index.html")), "nothing changes before the approval");
+  await page.goto(`${symbio.base}/#/p/${project.id}`);
+  await page.locator(".needs-you").click();
+  const item = page.locator(".inbox-item", { hasText: "Use Site hosting" });
+  await item.locator("pre.command", { hasText: "mv public_html/index.html public_html/old.html" }).waitFor();
+  await item.locator("button", { hasText: "Approve" }).click();
+  await until("the file to be renamed", () => existsSync(path.join(ftp.root, "public_html", "old.html")));
 });

@@ -55,7 +55,7 @@ export interface AzureConnection extends Base {
   account: string | null;
 }
 
-/** An FTP or FTPS account (e.g. web hosting): uploads only, FTP can't run commands. */
+/** An FTP or FTPS account (e.g. web hosting): uploads and file operations (FTP has no shell). */
 export interface FtpConnection extends Base {
   type: "ftp";
   host: string;

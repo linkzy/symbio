@@ -11,7 +11,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { bus } from "./bus.js";
 import type { AzureConnection, Connection, Connections, GithubConnection, ServerConnection } from "./connections.js";
-import { ftpUpload } from "./ftp.js";
+import { FTP_OPERATIONS, ftpReadOnly, ftpRun, ftpUpload, parseFtpOperations } from "./ftp.js";
 import { sshExec, sshUpload } from "./ssh.js";
 import { globalDir, newId, type Agent, type Project, type ProjectConnection } from "./store.js";
 
@@ -81,7 +81,7 @@ export class RemoteOps {
             : conn.type === "azure"
               ? `Azure DevOps organization ${conn.organization}${conn.account ? ` (as ${conn.account})` : ""} — git_push, git_pull, azure_devops_api`
               : conn.type === "ftp"
-                ? `FTP account ${conn.username}@${conn.host}${conn.security === "none" ? "" : " (FTPS)"} — remote_upload only (FTP can't run commands)`
+                ? `FTP account ${conn.username}@${conn.host}${conn.security === "none" ? "" : " (FTPS)"} — remote_upload (replaces files that exist), and remote_exec with FTP file operations, one per line: ${FTP_OPERATIONS} (no shell commands; ls never needs approval)`
                 : `server ${conn.username}@${conn.host} — remote_exec, remote_upload`;
         return `- "${conn.name}": ${what} (${link.policy === "ask" ? "each action needs the human's approval" : "allowed without approval"})`;
       })
@@ -91,8 +91,12 @@ export class RemoteOps {
   /** Runs an action now (policy "allow", or read-only) or queues it for approval. */
   async request(project: Project, agent: Agent, action: RemoteAction, reason: string): Promise<string> {
     const { conn, link } = this.resolve(project, action.connectionId, action.kind);
+    // FTP operations are checked now, so a mistake comes back at once rather than after an approval.
+    if (action.kind === "remote_exec" && conn.type === "ftp") parseFtpOperations(action.command);
     const summary = this.summarize(conn, action, agent);
-    const readOnly = (action.kind === "github_api" || action.kind === "azure_devops_api") && action.method.toUpperCase() === "GET";
+    const readOnly =
+      ((action.kind === "github_api" || action.kind === "azure_devops_api") && action.method.toUpperCase() === "GET") ||
+      (action.kind === "remote_exec" && conn.type === "ftp" && ftpReadOnly(action.command));
     if (link.policy === "allow" || readOnly) {
       return this.execute(project, agent, conn, action, summary, reason);
     }
@@ -166,14 +170,9 @@ export class RemoteOps {
       const names = this.enabled(project).map(({ conn }) => conn.name).join(", ") || "none";
       throw new Error(`No connection "${connectionRef}" in this project. Available: ${names}.`);
     }
-    if (kind === "remote_exec" && found.conn.type === "ftp") {
-      throw new Error(`"${found.conn.name}" is an FTP connection: FTP can only upload files (remote_upload), not run commands.`);
-    }
-    const needs: Connection["type"][] = kind === "remote_upload"
+    const needs: Connection["type"][] = kind.startsWith("remote_")
       ? ["server", "ftp"]
-      : kind === "remote_exec"
-        ? ["server"]
-        : kind === "github_api"
+      : kind === "github_api"
         ? ["github"]
         : kind === "azure_devops_api"
           ? ["azure"]
@@ -223,6 +222,7 @@ export class RemoteOps {
   private async perform(agent: Agent, conn: Connection, a: RemoteAction): Promise<string> {
     switch (a.kind) {
       case "remote_exec": {
+        if (conn.type === "ftp") return await ftpRun(await this.connections.ftpTarget(conn), a.command);
         const res = await sshExec(await this.connections.sshTarget(conn as ServerConnection), a.command);
         const parts = [`exit code ${res.code}`];
         if (res.stdout.trim()) parts.push(`stdout:\n${res.stdout.trimEnd()}`);

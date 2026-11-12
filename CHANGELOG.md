@@ -15,7 +15,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **Show changes** on a task in review or done (Plan tab and Needs you): the files it changed, with
   their diffs a click away (projects in a git repository).
 - **FTP connections** (FTP and FTPS) in Settings → Connections, for hostings that only offer FTP:
-  agents publish to them with `remote_upload`. Server connections whose hosting allows SFTP but no
+  agents publish to them with `remote_upload` (replacing files that are there) and can list, create,
+  move and delete files and folders; changes need your OK when the connection is set to *Ask me*. Server connections whose hosting allows SFTP but no
   commands now test as "SFTP only" instead of failing.
 - Agents run the project's own deploy or publish scripts directly instead of asking for a
   connection; when you ask for the deploy, that's the go-ahead.

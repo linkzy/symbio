@@ -110,7 +110,10 @@ project the connections it needs.
 - **FTP accounts** use FTPS (TLS, explicit or implicit) by default, with the certificate verified;
   "Accept the server's certificate as it is" turns verification off for hostings with self-signed or
   mismatched certificates, and *Plain FTP* sends the password and files unencrypted (the form says
-  so). FTP only uploads, from inside the agent's working folder, like SSH uploads.
+  so). Uploads come only from inside the agent's working folder, like SSH uploads. `remote_exec` on
+  an FTP account accepts only the file operations `ls`, `mkdir`, `rm`, `rmdir` and `mv`, checked before
+  anything is queued; listing doesn't need approval (like read-only API calls), changes follow the
+  connection's *Ask me* / *Allow*, and removing the account's top folder is refused.
 - **Approvals** for remote actions are stored in `~/.symbio/approvals/`, outside the project, so an
   agent can't edit what you're about to approve. A connection set to **Ask me** makes every action
   wait for your approval; read-only API calls (GET, GitHub or Azure DevOps) don't need approval.

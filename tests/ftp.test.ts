@@ -53,7 +53,7 @@ test("an FTP connection: password kept secret, Test signs in, wrong password sai
   await conns.update(c.id, { password: PASSWORD });
 });
 
-test("remote_upload sends a folder over FTP (skipping .git); remote_exec says FTP can't run commands", async () => {
+test("remote_upload sends a folder over FTP (skipping .git) and replaces files that exist", async () => {
   const conns = new Connections();
   await conns.load();
   const c = await conns.create({ type: "ftp", name: "Site", host: "127.0.0.1", port: server.port, username: "deploy", password: PASSWORD, security: "none" });
@@ -69,7 +69,7 @@ test("remote_upload sends a folder over FTP (skipping .git); remote_exec says FT
   const project = { id: "p1", connections: [{ id: c.id, policy: "allow" }] } as any;
   const agent = { id: "a1", name: "helper", directory: work } as any;
 
-  assert.match(remote.describeFor(project), /FTP account deploy@127\.0\.0\.1 — remote_upload only/);
+  assert.match(remote.describeFor(project), /FTP account deploy@127\.0\.0\.1 — remote_upload .*remote_exec with FTP file operations/);
   const result = await remote.request(project, agent, { kind: "remote_upload", connectionId: "Site", localPath: "dist", remotePath: "public_html" }, "Publish the site");
   assert.match(result, /Uploaded 2 file\(s\)/);
   assert.equal(readFileSync(path.join(server.root, "public_html", "index.html"), "utf8"), "<h1>Hi</h1>");
@@ -77,7 +77,57 @@ test("remote_upload sends a folder over FTP (skipping .git); remote_exec says FT
   assert.deepEqual(readdirSync(path.join(server.root, "public_html")).sort(), ["css", "index.html"], ".git is skipped");
   assert.ok(!logs.join("\n").includes(PASSWORD), "the password isn't in the log");
 
-  await assert.rejects(remote.request(project, agent, { kind: "remote_exec", connectionId: "Site", command: "ls" }, "x"), /FTP can only upload files/);
+  // A second deploy replaces what's there.
+  writeFileSync(path.join(work, "dist", "index.html"), "<h1>Hi again</h1>");
+  await remote.request(project, agent, { kind: "remote_upload", connectionId: "Site", localPath: "dist/index.html", remotePath: "public_html/index.html" }, "Redeploy");
+  assert.equal(readFileSync(path.join(server.root, "public_html", "index.html"), "utf8"), "<h1>Hi again</h1>");
+});
+
+test("FTP file operations through remote_exec: listing runs at once, changes follow the connection's approval setting", async () => {
+  const { parseFtpOperations } = await import("../src/server/ftp.js");
+  assert.deepEqual(parseFtpOperations('rm -f old.html\nmv "a b.txt" c.txt; ls'), [
+    { op: "rm", args: ["old.html"] },
+    { op: "mv", args: ["a b.txt", "c.txt"] },
+    { op: "ls", args: [] },
+  ]);
+  assert.throws(() => parseFtpOperations("chmod 755 x"), /isn't an FTP operation/);
+  assert.throws(() => parseFtpOperations("mv onlyone"), /Usage: mv/);
+
+  const conns = new Connections();
+  await conns.load();
+  const c = await conns.create({ type: "ftp", name: "Ops", host: "127.0.0.1", port: server.port, username: "deploy", password: PASSWORD, security: "none" });
+  mkdirSync(path.join(server.root, "www", "old", "img"), { recursive: true });
+  writeFileSync(path.join(server.root, "www", "old", "img", "logo.png"), "png");
+  writeFileSync(path.join(server.root, "www", "old", "page.html"), "old");
+  writeFileSync(path.join(server.root, "www", "draft.html"), "draft");
+  const notes: string[] = [];
+  const remote = new RemoteOps(conns, { log: async () => {}, notify: async (_p, _a, text) => void notes.push(text) });
+  const project = { id: "p2", connections: [{ id: c.id, policy: "ask" }] } as any;
+  const agent = { id: "a1", name: "helper", directory: os.tmpdir() } as any;
+  const exec = (command: string) => remote.request(project, agent, { kind: "remote_exec", connectionId: "Ops", command }, "Tidy the site");
+
+  // Listing only reads: no approval even when the connection asks.
+  const listing = await exec("ls www");
+  assert.match(listing, /d .* old\//);
+  assert.match(listing, /- +5 +draft\.html/);
+
+  // Changes wait for the human; a mistake is refused before anything is queued.
+  await assert.rejects(exec("rm -rf / && reboot"), /isn't an FTP operation/);
+  const waiting = await exec("rmdir www/old\nmv www/draft.html www/index.html\nmkdir www/assets/css");
+  assert.match(waiting, /Waiting for the human's approval/);
+  assert.ok(readdirSync(path.join(server.root, "www")).includes("old"), "nothing changed before approval");
+  const [approval] = (await remote.list(project)).filter((a: any) => a.status === "pending");
+  await remote.decide(project, agent, approval.id, true, null);
+  assert.deepEqual(readdirSync(path.join(server.root, "www")).sort(), ["assets", "index.html"]);
+  assert.ok(readdirSync(path.join(server.root, "www", "assets")).includes("css"));
+  assert.match(notes.at(-1)!, /\$ rmdir www\/old\nok/);
+
+  // A failure stops the rest and says so; the account's top folder can't be removed.
+  await remote.decide(project, agent, (await exec("rm www/missing.html\nrm www/index.html").then(async () => (await remote.list(project)).at(-1)!)).id, true, null);
+  assert.match(notes.at(-1)!, /failed: .*\n\n\(stopped here/);
+  assert.ok(readdirSync(path.join(server.root, "www")).includes("index.html"), "the second rm didn't run");
+  await remote.decide(project, agent, (await exec("rmdir /").then(async () => (await remote.list(project)).at(-1)!)).id, true, null);
+  assert.match(notes.at(-1)!, /Refusing to remove the account's top folder/);
 });
 
 test("a server that allows SFTP but no commands tests as SFTP only", async () => {

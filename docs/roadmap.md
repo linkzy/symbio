@@ -9,7 +9,8 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 - **Reviewing the team's work.** Done for the next release: review guides, the "To review" list
   (approve, send back), the setting with *core*, *me, every task* and *me, the tasks marked in the
   plan*, and a task's changes (files and diffs). Left for later: images as before/after.
-- **FTP connections.** Done for the next release: FTP and FTPS accounts for uploads, servers that
+- **FTP connections.** Done for the next release: FTP and FTPS accounts for uploads and file
+  operations (list, create, move, delete), servers that
   only allow SFTP, and agents running the project's own deploy scripts instead of asking for a
   connection.
 

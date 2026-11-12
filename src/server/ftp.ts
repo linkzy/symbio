@@ -1,4 +1,4 @@
-// FTP and FTPS for FTP connections: uploads only (FTP can't run commands). Runs inside the
+// FTP and FTPS for FTP connections: uploads and file operations (FTP has no shell). Runs inside the
 // Symbio process with the password from the vault; agents only see results.
 
 import { Client } from "basic-ftp";
@@ -46,6 +46,87 @@ export async function ftpCheck(target: FtpTarget): Promise<string> {
     const home = await client.pwd();
     const entries = await client.list();
     return `Connected${target.security === "none" ? " (unencrypted)" : " over TLS"}: ${home} (${entries.length} item(s))`;
+  } finally {
+    client.close();
+  }
+}
+
+// FTP has no shell: remote_exec on an FTP connection runs these file operations instead.
+export const FTP_OPERATIONS = "ls [path], mkdir <path>, rm <file>, rmdir <folder> (with everything in it), mv <from> <to>";
+
+export interface FtpOperation {
+  op: "ls" | "mkdir" | "rm" | "rmdir" | "mv";
+  args: string[];
+}
+
+/** Parses FTP operations, one per line; paths with spaces go in quotes. Throws on anything else. */
+export function parseFtpOperations(script: string): FtpOperation[] {
+  const counts: Record<FtpOperation["op"], [number, number]> = { ls: [0, 1], mkdir: [1, 1], rm: [1, 1], rmdir: [1, 1], mv: [2, 2] };
+  const ops: FtpOperation[] = [];
+  for (const raw of script.split(/\r?\n|;|&&/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) continue;
+    const words = [...line.matchAll(/"([^"]*)"|'([^']*)'|(\S+)/g)].map((m) => m[1] ?? m[2] ?? m[3]);
+    const op = words[0].toLowerCase() as FtpOperation["op"];
+    const args = words.slice(1).filter((w) => !/^-[a-z]+$/i.test(w)); // tolerate "rm -r", "ls -la"
+    const count = counts[op];
+    if (!count) throw new Error(`"${words[0]}" isn't an FTP operation. An FTP connection can do: ${FTP_OPERATIONS}; and upload with remote_upload.`);
+    if (args.length < count[0] || args.length > count[1]) throw new Error(`Usage: ${FTP_OPERATIONS.split(", ").find((u) => u.startsWith(op))}`);
+    ops.push({ op, args });
+  }
+  if (ops.length === 0) throw new Error(`No FTP operation given. An FTP connection can do: ${FTP_OPERATIONS}.`);
+  return ops;
+}
+
+/** Only listing: runs without the human's approval, like read-only API calls. */
+export const ftpReadOnly = (script: string) => {
+  try {
+    return parseFtpOperations(script).every((o) => o.op === "ls");
+  } catch {
+    return false;
+  }
+};
+
+/** Runs FTP operations in order, stopping at the first failure. Returns a report of each. */
+export async function ftpRun(target: FtpTarget, script: string): Promise<string> {
+  const ops = parseFtpOperations(script);
+  const client = await connect(target, 5 * 60_000);
+  const out: string[] = [];
+  try {
+    const home = await client.pwd();
+    const absolute = (p = ".") => {
+      const rel = p.replace(/^~\/?/, "");
+      return rel.startsWith("/") ? path.posix.normalize(rel) : path.posix.join(home, rel || ".");
+    };
+    for (const { op, args } of ops) {
+      const label = `${op} ${args.join(" ")}`.trim();
+      try {
+        if (op === "ls") {
+          const list = await client.list(absolute(args[0]));
+          const lines = list.map((e) => `${e.isDirectory ? "d" : "-"} ${String(e.size).padStart(10)}  ${e.name}${e.isDirectory ? "/" : ""}`);
+          out.push(`$ ${label}\n${lines.join("\n") || "(empty)"}`);
+        } else if (op === "mkdir") {
+          await client.ensureDir(absolute(args[0]));
+          out.push(`$ ${label}\nok`);
+        } else if (op === "rm") {
+          await client.remove(absolute(args[0]));
+          out.push(`$ ${label}\nok`);
+        } else if (op === "rmdir") {
+          const dir = absolute(args[0]);
+          if (dir === "/" || dir === home) throw new Error("Refusing to remove the account's top folder.");
+          await client.removeDir(dir);
+          out.push(`$ ${label}\nok`);
+        } else {
+          await client.rename(absolute(args[0]), absolute(args[1]));
+          out.push(`$ ${label}\nok`);
+        }
+      } catch (err) {
+        out.push(`$ ${label}\nfailed: ${friendly(err as Error, target)}`);
+        if (ops.length > 1) out.push("(stopped here; the operations after it didn't run)");
+        break;
+      }
+    }
+    return out.join("\n\n");
   } finally {
     client.close();
   }

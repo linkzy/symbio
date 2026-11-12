@@ -462,7 +462,8 @@ ${connections || "None."}
 Use connections only through Symbio's tools: \`list_connections\`; \`git_push\`,
 \`git_pull\` (GitHub or Azure DevOps); \`github_api\` (GitHub); \`azure_devops_api\`
 (Azure DevOps: pull requests, repositories, branches); \`remote_exec\`,
-\`remote_upload\` (servers; FTP connections only upload). Symbio performs the
+\`remote_upload\` (servers and FTP accounts; on FTP, \`remote_exec\` runs file
+operations, not shell commands). Symbio performs the
 action with the stored credentials — you never see them. To open a pull request:
 push the branch with \`git_push\`, then create it with \`github_api\` or
 \`azure_devops_api\`. Remote commands must be non-interactive. Always give a

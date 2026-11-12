@@ -189,7 +189,8 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "The project's own tools come first: if the project already has a way to deploy or publish (a script, a configured CLI, " +
       "a task in its build files), run it like any other command; don't ask the human for a connection for it. When the human " +
       "asks for the deploy, that is their OK for changing production. Connections are for when the project has no access of " +
-      "its own; they can now also be FTP accounts (FTP or FTPS), which only upload files with remote_upload. Tell your helpers " +
+      "its own; they can now also be FTP accounts (FTP or FTPS): remote_upload replaces files that are there, and remote_exec " +
+      "runs FTP file operations (ls, mkdir, rm, rmdir, mv; not shell commands). Tell your helpers " +
       "if one of them is waiting on a connection for something the project's own script can do.",
   },
 ];
