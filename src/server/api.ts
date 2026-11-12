@@ -381,7 +381,7 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       }
     }
     // Agents stuck without a working model can resume.
-    if (modelsAdded) await team.resumeStuck(project, false);
+    if (modelsAdded) await team.fallback.resumeStuck(project, false);
     return c.json(project);
   });
 
@@ -394,7 +394,7 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
   /** "Retry now" for agents stuck because every model failed (e.g. after a quota reset). */
   api.post("/projects/:id/retry-models", async (c) => {
     const project = withProject(c.req.param("id"));
-    return c.json({ resumed: await team.resumeStuck(project, true) });
+    return c.json({ resumed: await team.fallback.resumeStuck(project, true) });
   });
 
   api.post("/projects/:id/start", async (c) => {
@@ -524,7 +524,7 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
 
   api.get("/projects/:id/permissions", (c) => {
     const project = withProject(c.req.param("id"));
-    return c.json(team.permissionRequests(project));
+    return c.json(team.permissions.requests(project));
   });
 
   api.post("/projects/:id/permissions/:requestId", async (c) => {
@@ -534,7 +534,7 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       return c.json({ error: "decision must be once, always or reject" }, 400);
     }
     try {
-      await team.answerPermission(project, c.req.param("requestId"), body.decision, body.note);
+      await team.permissions.answer(project, c.req.param("requestId"), body.decision, body.note);
     } catch (err) {
       throw new HttpError(409, (err as Error).message);
     }
@@ -565,19 +565,19 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
   // Housekeeping: backups, work not on the remote, helpers' disk use.
   api.get("/projects/:id/housekeeping", async (c) => {
     const project = withProject(c.req.param("id"));
-    return c.json(team.housekeepingReport(project) ?? (await team.checkProject(project, false)));
+    return c.json(team.housekeeper.report(project) ?? (await team.housekeeper.check(project, false)));
   });
 
   api.post("/projects/:id/housekeeping/check", async (c) => {
     const project = withProject(c.req.param("id"));
-    return c.json(await team.checkProject(project, false));
+    return c.json(await team.housekeeper.check(project, false));
   });
 
   api.post("/projects/:id/agents/:agentId/clean", async (c) => {
     const project = withProject(c.req.param("id"));
     const agent = withAgent(project, c.req.param("agentId"));
     try {
-      return c.json({ result: await team.cleanHelperFolder(project, agent) });
+      return c.json({ result: await team.housekeeper.cleanHelperFolder(project, agent) });
     } catch (err) {
       return c.json({ error: (err as Error).message }, 400);
     }

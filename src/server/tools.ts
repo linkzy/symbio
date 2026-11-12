@@ -272,7 +272,7 @@ const cleanBuildOutputs: Tool = {
   async run({ agent: name }, { team, project }) {
     const target = team.findAgent(project, name);
     if (!target || target.role === "coordinator") throw new Error(`No helper agent named "${name}".`);
-    return team.cleanHelperFolder(project, target);
+    return team.housekeeper.cleanHelperFolder(project, target);
   },
 };
 
@@ -353,7 +353,7 @@ const listProcesses: Tool = {
   name: "list_processes",
   description: "List the background processes (servers, watchers) you started that are still running, with their ids.",
   inputSchema: obj({}),
-  run: (_args, { team, project, agent }) => team.listProcesses(project, agent),
+  run: (_args, { team, project, agent }) => team.processes.list(project, agent),
 };
 
 const stopProcess: Tool = {
@@ -362,7 +362,7 @@ const stopProcess: Tool = {
     "Stop a background process you started (by its shell id, e.g. sh_…, shown when you started it or by list_processes). " +
     "This is the only way to stop processes — killing by name or PID is blocked.",
   inputSchema: obj({ shell_id: str("The background shell id, e.g. sh_179a…") }, ["shell_id"]),
-  run: ({ shell_id }, { team, project, agent }) => team.stopProcess(project, agent, String(shell_id)),
+  run: ({ shell_id }, { team, project, agent }) => team.processes.stop(project, agent, String(shell_id)),
 };
 
 // ---- connections (GitHub, servers): Symbio acts with the stored credentials

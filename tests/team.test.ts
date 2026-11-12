@@ -140,14 +140,14 @@ test("in the shared project folder, each agent sees and stops only the processes
   };
   client.interrupt = async () => {};
 
-  assert.match(await team.listProcesses(project, writer), /sh_w/);
-  assert.doesNotMatch(await team.listProcesses(project, writer), /sh_e|sh_c|sh_none|sh_x/);
-  const coreList = await team.listProcesses(project, core);
+  assert.match(await team.processes.list(project, writer), /sh_w/);
+  assert.doesNotMatch(await team.processes.list(project, writer), /sh_e|sh_c|sh_none|sh_x/);
+  const coreList = await team.processes.list(project, core);
   assert.match(coreList, /sh_c/);
   assert.match(coreList, /sh_none/, "processes with no recorded owner are core's");
   assert.match(coreList, /sh_x/, "processes of sessions no agent has are core's");
   assert.doesNotMatch(coreList, /sh_w|sh_e/, "not the helpers'");
-  await assert.rejects(team.stopProcess(project, editor, "sh_w"), /No running background process/);
+  await assert.rejects(team.processes.stop(project, editor, "sh_w"), /No running background process/);
 
   // A renewed session keeps its earlier processes.
   writer.previousSessions = [{ sessionId: "ses_writer" , endedAt: 0 }];
@@ -168,7 +168,7 @@ test("where helpers work: project setting, per-helper choice, and moving a helpe
   client.messagePage = async () => ({ messages: [], hasMore: false });
   client.shells = async () => [];
   (team as any).registerTools = async () => {};
-  (team as any).refreshUsage = async () => {};
+  team.usage.refresh = async () => {};
 
   await team.spawnWorker(project, core, { name: "branchy", purpose: "p", task: "t" });
   const branchy = team.findAgent(project, "branchy")!;
@@ -211,15 +211,15 @@ test("a conversation too large to send gets one fresh session, then an alert ins
   client.createSession = async () => ({ id: `ses_fresh${++n}` });
   client.messagePage = async () => ({ messages: [], hasMore: false });
   client.interrupt = async () => {};
-  (team as any).refreshUsage = async () => {};
+  team.usage.refresh = async () => {};
   const error = { type: "provider.error", message: "Timed out reading request body. Try again, or use a smaller request size." };
 
-  await (team as any).fallback(project, writer, error);
+  await team.fallback.onFailure(project, writer, error);
   assert.equal(writer.sessionId, "ses_fresh1", "continues in a fresh session");
   assert.equal(writer.model, "p/m", "no model switching");
   assert.match(prompts(calls, "ses_fresh1").at(-1)!.body, /too large to send/, "and is told why");
 
-  await (team as any).fallback(project, writer, error);
+  await team.fallback.onFailure(project, writer, error);
   assert.equal(writer.sessionId, "ses_fresh1", "not renewed again right away");
   assert.equal(writer.status, "error");
   const log = await store.readMessages(project);
@@ -242,7 +242,7 @@ test("a question stays open while messages arrive, and the watchdog never interr
   assert.equal(core.status, "waiting", "still waiting: the question stays visible");
 
   core.lastActivity = Date.now() - 60 * 60_000;
-  await (team as any).checkStuck();
+  await team.watchdog.checkStuck();
   assert.equal(core.status, "waiting");
   assert.equal(interrupts(), 0, "not interrupted");
 
@@ -256,7 +256,7 @@ test("a question stays open while messages arrive, and the watchdog never interr
   client.request = async (method: string, p: string, body?: any) =>
     p.endsWith("/form") ? { data: [{ id: "frm_1", fields: [] }] } : request(method, p, body);
   core.lastActivity = Date.now() - 60 * 60_000;
-  await (team as any).checkStuck();
+  await team.watchdog.checkStuck();
   assert.equal(core.status, "waiting");
   assert.equal(interrupts(), 0);
 });
@@ -275,7 +275,7 @@ test("a helper that goes quiet without reporting is nudged once, then core is to
     }
     runtime.emit("event", { type: "session.execution.succeeded", data: { sessionID: agent.sessionId } });
   };
-  const check = (agent: any) => (team as any).checkReport(project.id, agent.id);
+  const check = (agent: any) => team.quiet.check(project.id, agent.id);
   const lastPrompt = (agent: any) => prompts(calls, agent.sessionId).at(-1)?.body ?? "";
 
   // Given work, the helper ends its turn without a word: nudged, then core is told.
@@ -307,5 +307,5 @@ test("a helper that goes quiet without reporting is nudged once, then core is to
   turnEnds(writer);
   await check(writer);
   assert.equal(prompts(calls, writer.sessionId).length, waiting, "no nudge while waiting for an asset");
-  (team as any).reported(writer);
+  team.quiet.reported(writer);
 });

@@ -21,25 +21,18 @@ import { accountChildUsage, accountUsage, emptyUsage, sessionUsage } from "./cos
 import { AGENT_UPDATES, unseenUpdates, updatesNote } from "./updates.js";
 import { cleanBuildOutputs, dailyBackup, gb, helperFolders, lastBackup, unpushedWork, type FolderUsage, type UnpushedBranch } from "./housekeeping.js";
 import { coordinatorTools, workerTools, type ToolContext } from "./tools.js";
+import { active, type TeamCore } from "./team/core.js";
+import { ModelFallback } from "./team/fallback.js";
+import { Housekeeper } from "./team/housekeeper.js";
+import { LoopGuard } from "./team/loop-guard.js";
+import { Permissions } from "./team/permissions.js";
+import { Processes } from "./team/processes.js";
+import { QuietHelpers } from "./team/quiet-helpers.js";
+import { Usage } from "./team/usage.js";
+import { Watchdog } from "./team/watchdog.js";
 import { describeOuterRepository, listRepositories, projectRepositories, repoRoot, resolveRepository, swallowedRepositories } from "./repos.js";
 import { changedFiles, createWorkspace, inProjectFolder, isGitRepo, leaveWorkspace, mergeWorkspace, reattachWorkspace, removeWorkspace, restoreWorkspace, syncWorkspace } from "./workspaces.js";
 
-const STUCK_AFTER_MS = Number(process.env.SYMBIO_STUCK_MINUTES ?? 10) * 60_000;
-const WATCHDOG_INTERVAL_MS = 30_000;
-// Loop guard: max conversational messages between the same pair in the window (per
-// project, see Project.messageLimit). Protocol traffic — task assignments, asset
-// requests/grants/releases, review reports — comes from real progress and isn't counted.
-const PAIR_WINDOW_MS = 30 * 60_000;
-// Daily check: warn when helpers' build outputs pass this size.
-const BUILD_ALERT_BYTES = Number(process.env.SYMBIO_BUILD_ALERT_GB ?? 2) * 1024 ** 3;
-
-export interface HousekeepingReport {
-  checkedAt: number;
-  remote: string | null;
-  unpushed: UnpushedBranch[];
-  folders: FolderUsage[];
-  lastBackup: string | null;
-}
 const PROTOCOL_KINDS = new Set<MessageKind>([
   "asset-request",
   "asset-granted",
@@ -48,18 +41,6 @@ const PROTOCOL_KINDS = new Set<MessageKind>([
   "task-review",
   "task-blocked",
 ]);
-// A helper that ends its turn still owing core a report is checked after this pause (more turns
-// may be queued), nudged once, and if it stays quiet core is told.
-const QUIET_HELPER_GRACE_MS = Number(process.env.SYMBIO_QUIET_HELPER_SECONDS ?? 20) * 1000;
-// Model fallback: a failed model is skipped for this long; switch after this many provider retries.
-const FAILED_MODEL_COOLDOWN_MS = 30 * 60_000;
-const RETRIES_BEFORE_FALLBACK = 4;
-const RETRIES_BEFORE_FALLBACK_ON_TIMEOUT = 2;
-// Memory recycling of the OpenCode process (MB), checked every minute.
-const MEMORY_SOFT_MB = Number(process.env.SYMBIO_RECYCLE_MB ?? 1500);
-const MEMORY_HARD_MB = Number(process.env.SYMBIO_RECYCLE_HARD_MB ?? 3000);
-const MEMORY_CHECK_MS = Number(process.env.SYMBIO_MEMORY_CHECK_SECONDS ?? 60) * 1000;
-
 // Session events forwarded to the browser for live views.
 const STREAMED = new Set([
   "session.text.started",
@@ -83,47 +64,35 @@ const STREAMED = new Set([
 // OpenCode's built-in interactive question tool (answered through session forms).
 const QUESTION_TOOLS = new Set(["question"]);
 
-const active = (a: Agent) => a.status !== "stopped";
-
-export class Team {
-  private watchdog: NodeJS.Timeout | null = null;
-  private recycler: NodeJS.Timeout | null = null;
-  private recycling = false;
-  private lastRecycle = 0;
+export class Team implements TeamCore {
   /** Last private-docs text sent to each agent, to avoid re-sending unchanged docs. */
   private docsSynced = new Map<string, string>();
   private registers = new Map<string, Promise<AssetRegister>>();
   private plans = new Map<string, Promise<PlanStore>>();
   /** MCP URL token → which project/folder it serves. Valid for this run only. */
   private mcpTokens = new Map<string, { projectId: string; directory: string }>();
-  private pairTraffic = new Map<string, number[]>();
-  private housekeeper: ReturnType<typeof setInterval> | null = null;
-  private reports = new Map<string, HousekeepingReport>();
-  private childUsageCheckedAt = new Map<string, number>(); // agent → last sub-agent usage check
-  private limitNoticed = new Map<string, number>(); // pair → when the human was last told
-  private failedModels = new Map<string, Map<string, number>>(); // agentId → model → failedAt
-  private fallbackBusy = new Set<string>();
-  /** When each agent last got a fresh session because its conversation was too large to send. */
-  private oversizedAt = new Map<string, number>();
   /** agentId → tool call id of an open interactive question. */
-  private pendingQuestion = new Map<string, string>();
-  /** Helpers given work by core that haven't reported since (see checkReport). */
-  private owedReports = new Map<string, { nudged: boolean; timer: NodeJS.Timeout | null }>();
+  readonly pendingQuestion = new Map<string, string>();
   /** Connection actions (SSH, git, GitHub API) and their approvals. Set at startup. */
   remote!: RemoteOps;
   /** Set when Symbio itself is shutting down on purpose. */
   shuttingDown = false;
-  private usageTimers = new Map<string, NodeJS.Timeout>();
-  /** Open OpenCode permission requests, by request id. */
-  private permissions = new Map<string, PendingPermission>();
-  /** Agents to wake once OpenCode is running again, and why they stopped. */
-  private interrupted = new Map<string, { reason: string; wasWaiting: boolean }>();
   /** agentId → agent-to-agent messages queued in OpenCode's inbox, not yet delivered (inboxID → text). */
   private inbox = new Map<string, Map<string, string>>();
 
+  // The team's parts (src/server/team/): each keeps its own state and uses only TeamCore.
+  readonly permissions = new Permissions(this);
+  readonly processes = new Processes(this);
+  readonly housekeeper = new Housekeeper(this);
+  readonly fallback = new ModelFallback(this);
+  readonly usage = new Usage(this);
+  readonly quiet = new QuietHelpers(this);
+  readonly watchdog = new Watchdog(this, () => this.permissions.size);
+  private loopGuard = new LoopGuard(this);
+
   constructor(
-    private readonly store: Store,
-    private readonly runtime: OpencodeRuntime,
+    readonly store: Store,
+    readonly runtime: OpencodeRuntime,
     private readonly mcpBaseUrl: string,
   ) {
     runtime.on("event", (e) => this.onEvent(e));
@@ -134,121 +103,14 @@ export class Team {
       else if (state === "stopped") this.markInterrupted("the OpenCode runtime was restarted");
       // Tool registrations and briefs live in the OpenCode process; push them whenever it
       // (re)starts, then wake whoever was interrupted.
-      else if (state === "running") void this.refreshAll().then(() => this.recoverInterrupted());
+      else if (state === "running") void this.refreshAll().then(() => this.watchdog.recoverInterrupted());
     });
   }
 
+  /** Starts the background checks: the watchdog (hangs, memory) and the hourly housekeeping. */
   startWatchdog() {
-    this.watchdog ??= setInterval(() => void this.checkStuck(), WATCHDOG_INTERVAL_MS);
-    this.recycler ??= setInterval(() => void this.checkMemory(), MEMORY_CHECK_MS);
-    if (!this.housekeeper) {
-      setTimeout(() => void this.housekeeping(), 5 * 60_000);
-      this.housekeeper = setInterval(() => void this.housekeeping(), 60 * 60_000);
-    }
-  }
-
-  // ---------------------------------------------------------------- housekeeping
-
-  /** Hourly: today's backup, and (once a day per project) work-not-pushed and disk checks. */
-  async housekeeping() {
-    const backup = await dailyBackup(this.store.list()).catch((err) => console.error("[backup]", err.message));
-    if (backup) console.log(`[backup] ${backup}`);
-    for (const project of this.store.list()) {
-      if (Date.now() - (project.housekeptAt ?? 0) < 24 * 3600_000) continue;
-      await this.checkProject(project, true).catch((err) => console.error(`[housekeeping] ${project.name}:`, err.message));
-    }
-  }
-
-  /** Measures the project's unpushed work and helper folders; with notify, tells the human and core. */
-  async checkProject(project: Project, notify: boolean): Promise<HousekeepingReport> {
-    const [{ remote, branches }, folders] = await Promise.all([unpushedWork(project), helperFolders(project)]);
-    const report: HousekeepingReport = { checkedAt: Date.now(), remote, unpushed: branches, folders, lastBackup: await lastBackup() };
-    this.reports.set(project.id, report);
-    if (!notify) return report;
-
-    project.housekeptAt = Date.now();
-    await this.store.update(project);
-    const buildBytes = folders.reduce((s, f) => s + f.buildBytes, 0);
-    const parts: string[] = [];
-    if (branches.length) {
-      parts.push(
-        `Work that exists only on this machine (not on ${remote === "each repository's remote" ? "each repository's remote" : `the remote "${remote}"`}):\n` +
-          branches.map((b) => `- ${b.branch}: ${b.commits} commit(s), latest "${b.latest}"`).join("\n") +
-          `\nIf it's ready to share, push it (git_push; in a project of several repositories, with repo); if a branch shouldn't go to the remote, tell the human.`,
-      );
-    }
-    if (buildBytes > BUILD_ALERT_BYTES) {
-      parts.push(
-        `Helpers' folders hold ${gb(buildBytes)} of build outputs:\n` +
-          folders.filter((f) => f.buildBytes > 0).map((f) => `- ${f.name} (${f.status}): ${gb(f.buildBytes)} of ${gb(f.bytes)}`).join("\n") +
-          `\nFor idle helpers that don't need them right now, free the space with clean_build_outputs (work is never touched).`,
-      );
-    }
-    if (!parts.length) return report;
-    const text = `Symbio housekeeping (daily check):\n\n${parts.join("\n\n")}`;
-    await this.log(project, { from: "symbio", to: "human", kind: "system", text });
-    const coordinator = this.coordinator(project);
-    if (coordinator) await this.system(project, coordinator, text).catch(() => {});
-    bus.publish({ type: "project.updated", projectId: project.id });
-    return report;
-  }
-
-  housekeepingReport(project: Project): HousekeepingReport | undefined {
-    return this.reports.get(project.id);
-  }
-
-  async cleanHelperFolder(project: Project, agent: Agent): Promise<string> {
-    const freed = await cleanBuildOutputs(project, agent);
-    const report = this.reports.get(project.id);
-    const folder = report?.folders.find((f) => f.agentId === agent.id);
-    if (folder) {
-      folder.bytes = Math.max(0, folder.bytes - freed);
-      folder.buildBytes = 0;
-    }
-    await this.log(project, { from: "symbio", to: "human", kind: "system", text: `Cleaned ${agent.name}'s build outputs: ${gb(freed)} freed.` });
-    bus.publish({ type: "project.updated", projectId: project.id });
-    return `Freed ${gb(freed)} in ${agent.name}'s folder (build outputs only).`;
-  }
-
-  /**
-   * OpenCode's memory grows over long sessions until it crashes. Restart it before
-   * that: above the soft limit only when every agent is idle (nobody notices);
-   * above the hard limit regardless (interrupted agents are told to continue).
-   */
-  private async checkMemory() {
-    if (this.runtime.state !== "running" || this.recycling) return;
-    const bytes = await this.runtime.memoryUsage();
-    if (!bytes) return;
-    const mb = Math.round(bytes / 1024 / 1024);
-    const everyoneIdle = this.store
-      .list()
-      .every((p) => p.agents.every((a) => a.status === "idle" || a.status === "stopped" || a.status === "error"));
-    const quiet = everyoneIdle && this.permissions.size === 0 && this.pendingQuestion.size === 0;
-    // Quiet restarts at most every 10 minutes, in case the limit is set below OpenCode's baseline.
-    const softAllowed = Date.now() - this.lastRecycle > 10 * 60_000;
-    const reason = mb >= MEMORY_HARD_MB ? "hard" : mb >= MEMORY_SOFT_MB && quiet && softAllowed ? "soft" : null;
-    if (!reason) return;
-    this.recycling = true;
-    this.lastRecycle = Date.now();
-    console.warn(`[recycle] OpenCode uses ${mb} MB (${reason} limit) — restarting it`);
-    try {
-      await this.runtime.restart(); // stopped → markInterrupted; running → refreshAll → recover
-      for (const project of this.store.list().filter((p) => p.agents.some((a) => a.status !== "stopped"))) {
-        await this.log(project, {
-          from: "symbio",
-          to: "human",
-          kind: "system",
-          text:
-            reason === "soft"
-              ? `Restarted OpenCode while everyone was idle to free memory (it was using ${mb} MB).`
-              : `OpenCode was using ${mb} MB, close to crashing, so it was restarted. Agents that were working were told to continue.`,
-        });
-      }
-    } catch (err) {
-      console.error("[recycle] restart failed:", (err as Error).message);
-    } finally {
-      this.recycling = false;
-    }
+    this.watchdog.start();
+    this.housekeeper.start();
   }
 
   /**
@@ -277,10 +139,7 @@ export class Team {
   }
 
   stopWatchdog() {
-    if (this.watchdog) clearInterval(this.watchdog);
-    if (this.recycler) clearInterval(this.recycler);
-    this.watchdog = null;
-    this.recycler = null;
+    this.watchdog.stop();
   }
 
   // ---------------------------------------------------------------- lookups
@@ -511,7 +370,7 @@ export class Team {
     if (agent.role !== "coordinator" && task.assignee !== agent.id) {
       throw new Error(`${task.id} isn't assigned to you. Ask the coordinator.`);
     }
-    if (agent.role === "worker") this.reported(agent); // any update on its task is news for core
+    if (agent.role === "worker") this.quiet.reported(agent); // any update on its task is news for core
     await store.update(task.id, { status, note: note ? { by: agent.name, text: note } : undefined });
     this.planChanged(project);
 
@@ -681,7 +540,7 @@ export class Team {
   }
 
   async stopAgent(project: Project, agent: Agent, reason: string): Promise<string> {
-    this.reported(agent);
+    this.quiet.reported(agent);
     await this.client()
       .interrupt(agent.sessionId)
       .catch(() => {});
@@ -689,7 +548,7 @@ export class Team {
     await reg.forget(agent.id);
     this.assetsChanged(project);
     // Helpers have their own folder; the project root is shared, so leave its processes alone.
-    await this.stopAllProcesses(project, agent);
+    await this.processes.stopAll(project, agent);
     const { committed, uncommitted } = await changedFiles(agent);
     const unmerged = committed.length > 0 || uncommitted.length > 0;
     if (!unmerged) await removeWorkspace(project, agent);
@@ -765,7 +624,7 @@ export class Team {
     const oldSession = agent.sessionId;
 
     // Count everything the old session used before leaving it.
-    await this.refreshUsage(project, agent).catch(() => {});
+    await this.usage.refresh(project, agent).catch(() => {});
     const handoff = await this.handoffNote(project, agent, oldSession, opts.moved);
 
     await this.registerTools(project, agent.directory);
@@ -809,7 +668,7 @@ export class Team {
       throw new Error(`${agent.name} is working; move it when it's idle.`);
     }
     // Its processes run in the folder about to go away (and would keep files open on Windows).
-    await this.stopAllProcesses(project, agent);
+    await this.processes.stopAll(project, agent);
     await leaveWorkspace(project, agent);
     const branch = agent.branch;
     agent.directory = project.directory;
@@ -949,9 +808,9 @@ export class Team {
    */
   async deliver(project: Project, from: Agent, to: Agent, kind: MessageKind, text: string, opts: { protocol?: boolean } = {}) {
     if (to.status === "stopped") throw new Error(`${to.name} is stopped.`);
-    if (!opts.protocol && !PROTOCOL_KINDS.has(kind)) await this.guardLoop(project, from, to);
+    if (!opts.protocol && !PROTOCOL_KINDS.has(kind)) await this.loopGuard.check(project, from, to);
     await this.log(project, { from: from.id, to: to.id, kind, text });
-    this.trackReports(from, to, kind);
+    this.quiet.track(from, to, kind);
     await this.prepare(project, to);
     const body = `[from: ${from.name} · ${kind}]\n${text}`;
     if (project.paused) {
@@ -974,6 +833,10 @@ export class Team {
    * now — in the result of whatever Symbio tool it is calling — instead of after its
    * turn, and they aren't delivered twice.
    */
+  hasQueuedMessages(agent: Agent): boolean {
+    return !!this.inbox.get(agent.id)?.size;
+  }
+
   async takeInbox(agent: Agent): Promise<string[]> {
     const pending = this.inbox.get(agent.id);
     if (!pending?.size) return [];
@@ -994,77 +857,9 @@ export class Team {
     return taken;
   }
 
-  // ---------------------------------------------------------------- helpers that go quiet
-
-  /** Work from core starts a report owed by the helper; its own messages to core settle it. */
-  private trackReports(from: Agent, to: Agent, kind: MessageKind) {
-    if (from.role === "coordinator" && to.role === "worker" && (kind === "request" || kind === "blocking" || kind === "urgent")) {
-      this.reported(to);
-      this.owedReports.set(to.id, { nudged: false, timer: null });
-    } else if (from.role === "worker" && to.role === "coordinator" && !kind.startsWith("asset-")) {
-      this.reported(from);
-    }
-  }
-
-  private reported(agent: Agent) {
-    const owed = this.owedReports.get(agent.id);
-    if (owed?.timer) clearTimeout(owed.timer);
-    this.owedReports.delete(agent.id);
-  }
-
-  /** After a helper's turn: if it still owes a report, check again shortly (more turns may be queued). */
-  private scheduleReportCheck(project: Project, agent: Agent) {
-    const owed = this.owedReports.get(agent.id);
-    if (!owed) return;
-    if (owed.timer) clearTimeout(owed.timer);
-    owed.timer = setTimeout(() => void this.checkReport(project.id, agent.id).catch((err) => console.error("[quiet helper]", err.message)), QUIET_HELPER_GRACE_MS);
-    owed.timer.unref?.();
-  }
-
-  /**
-   * A helper that ended its turn without reporting on the work core gave it (seen with smaller
-   * models): nudge it once; if it stays quiet, tell core instead of letting the work stall unseen.
-   * Not while it waits on something real: the human, a shared asset, messages on their way.
-   */
-  private async checkReport(projectId: string, agentId: string) {
-    const owed = this.owedReports.get(agentId);
-    const project = this.store.list().find((p) => p.id === projectId);
-    const agent = project?.agents.find((a) => a.id === agentId);
-    if (!owed || !project || !agent) return;
-    owed.timer = null;
-    if (agent.status !== "idle" || project.paused || this.shuttingDown) return;
-    if (this.inbox.get(agent.id)?.size) return;
-    if ((await this.assets(project)).list().some((a) => a.queue.some((q) => q.agentId === agent.id))) return;
-    const tasks = (await this.plan(project)).plan.tasks.filter((t) => t.assignee === agent.id);
-    const open = tasks.find((t) => t.status === "in-progress");
-    if (tasks.length && !open) return this.reported(agent); // its tasks are in review, blocked or done
-    const coordinator = this.coordinator(project);
-    const core = coordinator?.name ?? "the coordinator";
-    const what = open ? ` (${open.id} "${open.title}")` : "";
-    if (!owed.nudged) {
-      owed.nudged = true;
-      await this.system(
-        project,
-        agent,
-        `Symbio: you ended your turn without reporting to ${core} on the work you were given${what}. If it's done, report it now: ` +
-          (open ? `update_task("${open.id}", "review", <summary>)` : `send_message to ${core} (what you did, and where)`) +
-          ". If you're blocked or waiting on something, say so the same way. If you're still working on it, carry on.",
-      );
-      return;
-    }
-    this.reported(agent);
-    if (!coordinator || coordinator.status === "stopped") return;
-    await this.system(
-      project,
-      coordinator,
-      `Symbio: ${agent.name} has gone quiet: it ended its turn without reporting on the work you gave it${what}, even after a reminder. ` +
-        `Check on it (send_message), or look at its chat; its work so far is in ${agent.branch ? `its own copy (branch ${agent.branch})` : "the project folder"}.`,
-    );
-  }
-
   async sendFromHuman(project: Project, agent: Agent, text: string, urgent = false) {
     // The human is talking to the helper directly: its answer goes to them, not to core.
-    if (agent.role === "worker") this.reported(agent);
+    if (agent.role === "worker") this.quiet.reported(agent);
     await this.log(project, { from: "human", to: agent.id, kind: urgent ? "urgent" : "chat", text });
     await this.prepare(project, agent);
     // The coordinator talks with the human directly; for helpers, say who is speaking.
@@ -1074,7 +869,7 @@ export class Team {
   }
 
   async askHuman(project: Project, from: Agent, question: string) {
-    if (from.role === "worker") this.reported(from); // it's waiting on the human, not quiet
+    if (from.role === "worker") this.quiet.reported(from); // it's waiting on the human, not quiet
     await this.log(project, { from: from.id, to: "human", kind: "needs-human", text: question });
   }
 
@@ -1158,31 +953,6 @@ export class Team {
   }
 
   /**
-   * Wakes agents that stopped because every allowed model failed: after the human
-   * added models (or with `forgetFailures`, when they want to retry the same ones).
-   */
-  async resumeStuck(project: Project, forgetFailures: boolean): Promise<string[]> {
-    const resumed: string[] = [];
-    const now = Date.now();
-    for (const agent of project.agents.filter((a) => a.problem && active(a))) {
-      const failed = this.failedModels.get(agent.id) ?? new Map<string, number>();
-      if (forgetFailures) failed.clear();
-      const usable = (m: string) => !(failed.has(m) && now - failed.get(m)! < FAILED_MODEL_COOLDOWN_MS);
-      const model = usable(agent.model) && project.allowedModels.includes(agent.model)
-        ? agent.model
-        : project.allowedModels.find(usable);
-      if (!model) continue;
-      agent.problem = null;
-      if (model !== agent.model) await this.setModel(project, agent, model);
-      await this.store.update(project);
-      await this.system(project, agent, `Symbio: models are available again (you're on ${model}). Continue where you left off.`);
-      resumed.push(agent.name);
-    }
-    if (resumed.length) bus.publish({ type: "project.updated", projectId: project.id });
-    return resumed;
-  }
-
-  /**
    * Stops a project's agents, their processes and workspaces, and forgets the
    * project. With `deleteData`, also deletes its agent conversations and Symbio
    * data. Branches the helpers created stay in the repository.
@@ -1192,11 +962,11 @@ export class Team {
     for (const agent of project.agents) {
       if (client) {
         await client.interrupt(agent.sessionId).catch(() => {});
-        await this.stopAllProcesses(project, agent).catch(() => {});
+        await this.processes.stopAll(project, agent).catch(() => {});
       }
       if (agent.branch) await removeWorkspace(project, agent).catch(() => {});
       if (deleteData && client) await client.request("DELETE", `/api/session/${agent.sessionId}`).catch(() => {});
-      this.interrupted.delete(agent.id);
+      this.watchdog.forget(agent.id);
       this.inbox.delete(agent.id);
     }
     if (project.agents.some((a) => a.branch)) {
@@ -1209,77 +979,6 @@ export class Team {
     for (const [token, t] of this.mcpTokens) if (t.projectId === project.id) this.mcpTokens.delete(token);
     await this.store.remove(project, deleteData);
     bus.publish({ type: "project.updated", projectId: project.id });
-  }
-
-  // ---------------------------------------------------------------- permission requests
-
-  /** Open OpenCode permission requests (e.g. "may I run pip install …?") for a project. */
-  permissionRequests(project: Project): PendingPermission[] {
-    return [...this.permissions.values()].filter((p) => p.projectId === project.id);
-  }
-
-  private async onPermissionAsked(project: Project, agent: Agent, req: any) {
-    const action = String(req.action ?? "");
-    const resources: string[] = Array.isArray(req.resources) ? req.resources.map(String) : [];
-    // Image files: refused at once, with what to use instead (never a question for the human).
-    const refusal = readRefusal(action, resources);
-    if (refusal) {
-      await this.client()
-        .request("POST", `/api/session/${agent.sessionId}/permission/${req.id}/reply`, { decision: "reject", message: refusal })
-        .catch(() => {});
-      return;
-    }
-    // Already answered "always" for this kind of request in this project?
-    const allowed = resources.length > 0 && resources.every((r) => project.allowedPatterns.some((a) => a.action === action && wildcardMatch(a.pattern, r)));
-    if (allowed) {
-      await this.client()
-        .request("POST", `/api/session/${agent.sessionId}/permission/${req.id}/reply`, { decision: "once" })
-        .catch(() => {});
-      await this.log(project, { from: "symbio", to: "human", kind: "system", text: `Allowed ${agent.name} to ${action} \`${resources.join("; ")}\` (you chose “always” for this before).` });
-      return;
-    }
-    this.permissions.set(req.id, {
-      id: req.id,
-      projectId: project.id,
-      agentId: agent.id,
-      agentName: agent.name,
-      action,
-      resources,
-      save: Array.isArray(req.save) ? req.save.map(String) : [],
-      time: Date.now(),
-    });
-    this.setStatus(project, agent, "waiting");
-    await this.log(project, {
-      from: agent.id,
-      to: "human",
-      kind: "permission",
-      text: `${agent.name} asks to ${action}: \`${resources.join("; ")}\``,
-    });
-    bus.publish({ type: "approvals.updated", projectId: project.id });
-  }
-
-  /** The human's answer to a permission request. "always" also remembers the pattern for this project. */
-  async answerPermission(project: Project, requestId: string, decision: "once" | "always" | "reject", note?: string) {
-    const pending = this.permissions.get(requestId);
-    if (!pending || pending.projectId !== project.id) throw new Error("That request is no longer open.");
-    const agent = project.agents.find((a) => a.id === pending.agentId);
-    if (!agent) throw new Error("Agent not found");
-    if (decision === "always") {
-      for (const pattern of pending.save.length ? pending.save : pending.resources) {
-        if (!project.allowedPatterns.some((a) => a.action === pending.action && a.pattern === pattern)) {
-          project.allowedPatterns.push({ action: pending.action, pattern });
-        }
-      }
-      await this.store.update(project);
-      bus.publish({ type: "project.updated", projectId: project.id });
-    }
-    await this.client().request("POST", `/api/session/${agent.sessionId}/permission/${requestId}/reply`, {
-      // "always" is remembered by Symbio (per project); OpenCode only needs to let this one through.
-      decision: decision === "reject" ? "reject" : "once",
-      message: note?.trim() || (decision === "reject" ? "The human denied this." : null),
-    });
-    this.permissions.delete(requestId);
-    bus.publish({ type: "approvals.updated", projectId: project.id });
   }
 
   // ---------------------------------------------------------------- pause / resume
@@ -1343,106 +1042,6 @@ export class Team {
     await this.store.update(project);
   }
 
-  // ---------------------------------------------------------------- usage
-
-  /** Reads the agent's cumulative token/cost totals from its OpenCode session. */
-  private async refreshUsage(project: Project, agent: Agent) {
-    const res = await this.client()
-      .request("GET", `/api/session/${agent.sessionId}`)
-      .catch(() => null);
-    const usage = sessionUsage(res?.data ?? res);
-    if (!usage) return;
-    agent.usage = usage;
-    accountUsage(agent, agent.usage);
-    await this.refreshChildUsage(agent).catch(() => {});
-    await this.store.update(project);
-    bus.publish({ type: "project.updated", projectId: project.id });
-  }
-
-  /** Sub-agent sessions (and theirs), under the agent's current and earlier sessions. */
-  private async refreshChildUsage(agent: Agent) {
-    const now = Date.now();
-    if (now - (this.childUsageCheckedAt.get(agent.id) ?? 0) < 60_000) return; // at most once a minute
-    this.childUsageCheckedAt.set(agent.id, now);
-    const queue = [agent.sessionId, ...(agent.previousSessions ?? []).map((s) => s.sessionId)];
-    const visited = new Set<string>();
-    while (queue.length) {
-      const parent = queue.shift()!;
-      if (visited.has(parent) || visited.size > 200) continue;
-      visited.add(parent);
-      const res = await this.client().request("GET", `/api/session?parentID=${encodeURIComponent(parent)}&limit=100`);
-      for (const child of res?.data ?? []) {
-        const usage = sessionUsage(child);
-        const model = child.model?.providerID && child.model?.id ? `${child.model.providerID}/${child.model.id}` : agent.model;
-        if (usage) accountChildUsage(agent, child.id, model, usage);
-        queue.push(child.id);
-      }
-    }
-  }
-
-  /** Usage events come in bursts; read the totals at most every few seconds per agent. */
-  private scheduleUsage(project: Project, agent: Agent) {
-    if (this.usageTimers.has(agent.id)) return;
-    this.usageTimers.set(
-      agent.id,
-      setTimeout(() => {
-        this.usageTimers.delete(agent.id);
-        // OpenCode may be restarting; the next burst of usage events reads the totals again.
-        this.refreshUsage(project, agent).catch(() => {});
-      }, 3000),
-    );
-  }
-
-  // ---------------------------------------------------------------- processes
-
-  /**
-   * The agent's running background shells. An agent alone in its folder owns everything
-   * there; in the project folder (shared by the coordinator and shared helpers) a shell
-   * belongs to the session that started it, which OpenCode records in its metadata.
-   */
-  private async ownShells(project: Project, agent: Agent): Promise<any[]> {
-    const running = (await this.client().shells(agent.directory)).filter((s) => s.status === "running");
-    if (!inProjectFolder(project, agent)) return running;
-    const sessionsOf = (a: Agent) => [a.sessionId, ...(a.previousSessions ?? []).map((p) => p.sessionId), ...Object.keys(a.childSessions ?? {})];
-    const mine = new Set(sessionsOf(agent));
-    const others = new Set(project.agents.filter((a) => a.id !== agent.id).flatMap(sessionsOf));
-    return running.filter((s) => {
-      const owner = s.metadata?.sessionID;
-      if (owner) return mine.has(owner) || (agent.role === "coordinator" && !others.has(owner));
-      // No owner recorded (started outside an agent session): the coordinator manages it.
-      return agent.role === "coordinator";
-    });
-  }
-
-  /** Background shells the agent started that are still running. */
-  async listProcesses(project: Project, agent: Agent): Promise<string> {
-    const shells = await this.ownShells(project, agent);
-    if (shells.length === 0) return "You have no background processes running.";
-    return shells
-      .map((s) => `- ${s.id}: ${s.command} (pid ${s.pid ?? "?"}, started ${new Date(s.time.started).toLocaleTimeString()})`)
-      .join("\n");
-  }
-
-  /** Stops one background shell — only one the agent itself started. */
-  async stopProcess(project: Project, agent: Agent, shellId: string): Promise<string> {
-    const shell = (await this.ownShells(project, agent)).find((s) => s.id === shellId.trim());
-    if (!shell) {
-      throw new Error(`No running background process "${shellId}" of yours. Use list_processes to see yours.`);
-    }
-    await this.client().stopShell(agent.directory, shell.id);
-    return `Stopped ${shell.id} (${shell.command}).`;
-  }
-
-  /** Stops every background shell an agent left running (used when the agent is stopped). */
-  private async stopAllProcesses(project: Project, agent: Agent) {
-    const shells = await this.ownShells(project, agent).catch(() => []);
-    for (const s of shells) {
-      await this.client()
-        .stopShell(agent.directory, s.id)
-        .catch(() => {});
-    }
-  }
-
   // ---------------------------------------------------------------- misc agent ops
 
   async interrupt(project: Project, agent: Agent) {
@@ -1498,7 +1097,7 @@ export class Team {
 
   // ---------------------------------------------------------------- internals
 
-  private client(): OpencodeClient {
+  client(): OpencodeClient {
     const client = this.runtime.client;
     if (!client) throw new Error(`OpenCode is not running (${this.runtime.state})`);
     return client;
@@ -1575,7 +1174,7 @@ export class Team {
       }
       // Usage totals (also for stopped agents, so project totals stay complete).
       for (const agent of project.agents.filter((a) => !a.usage || active(a))) {
-        await this.refreshUsage(project, agent).catch(() => {});
+        await this.usage.refresh(project, agent).catch(() => {});
       }
       await this.tellAboutUpdates(project).catch((err) => console.error(`[updates] ${project.name}:`, err.message));
     }
@@ -1608,35 +1207,6 @@ export class Team {
     this.docsSynced.set(agent.id, text ?? "");
   }
 
-  /** Stops two agents from bouncing messages forever without the human noticing. */
-  private async guardLoop(project: Project, from: Agent, to: Agent) {
-    const limit = project.messageLimit ?? DEFAULT_MESSAGE_LIMIT;
-    if (limit <= 0) return;
-    const key = [from.id, to.id].sort().join("|");
-    const now = Date.now();
-    const times = (this.pairTraffic.get(key) ?? []).filter((t) => now - t < PAIR_WINDOW_MS);
-    if (times.length >= limit) {
-      // Tell the human once per window, so a blocked agent doesn't go unnoticed.
-      if (!this.limitNoticed.has(key) || now - this.limitNoticed.get(key)! > PAIR_WINDOW_MS) {
-        this.limitNoticed.set(key, now);
-        await this.log(project, {
-          from: "symbio",
-          to: "human",
-          kind: "system",
-          text:
-            `${from.name} and ${to.name} exchanged ${limit} messages in 30 minutes, so further messages between them are paused ` +
-            `until older ones age out. If they're doing real work, raise the limit in the project's Settings → Team.`,
-        });
-      }
-      throw new Error(
-        `Too many messages between ${from.name} and ${to.name} in the last 30 minutes (limit ${limit}). ` +
-          `Stop the back-and-forth and use ask_human to bring the human in.`,
-      );
-    }
-    times.push(now);
-    this.pairTraffic.set(key, times);
-  }
-
   private onEvent(e: OpencodeEvent) {
     const sessionId: string | undefined = e.data?.sessionID;
     if (!sessionId) return;
@@ -1645,13 +1215,13 @@ export class Team {
     const { project, agent } = found;
 
     agent.lastActivity = Date.now();
-    if (e.type === "session.usage.updated") this.scheduleUsage(project, agent);
+    if (e.type === "session.usage.updated") this.usage.schedule(project, agent);
     if (e.type === "permission.asked") {
-      void this.onPermissionAsked(project, agent, e.data).catch((err) => console.error("[permission]", err.message));
+      void this.permissions.asked(project, agent, e.data).catch((err) => console.error("[permission]", err.message));
     } else if (e.type === "permission.replied") {
-      this.permissions.delete(e.data?.requestID);
+      this.permissions.replied(e.data?.requestID);
       bus.publish({ type: "approvals.updated", projectId: project.id });
-      if (agent.status === "waiting" && !this.pendingQuestion.has(agent.id) && !this.permissionRequests(project).some((p) => p.agentId === agent.id)) {
+      if (agent.status === "waiting" && !this.pendingQuestion.has(agent.id) && !this.permissions.waitsFor(agent)) {
         this.setStatus(project, agent, "busy");
       }
     } else if (e.type === "session.inbox.delivered" || e.type === "session.inbox.cancelled") {
@@ -1681,16 +1251,10 @@ export class Team {
         bus.publish({ type: "project.updated", projectId: project.id });
       }
       if (agent.status !== "stopped") this.setStatus(project, agent, "idle");
-      if (e.type === "session.execution.failed") void this.fallback(project, agent, e.data?.error);
-      else if (agent.role === "worker") this.scheduleReportCheck(project, agent);
+      if (e.type === "session.execution.failed") void this.fallback.onFailure(project, agent, e.data?.error);
+      else if (agent.role === "worker") this.quiet.afterTurn(project, agent);
     } else if (/retr/i.test(e.type)) {
-      const attempt = Number(e.data?.attempt ?? e.data?.retry?.attempt ?? 0);
-      const error = e.data?.error ?? e.data?.retry?.error ?? { message: "provider not responding" };
-      // A timed-out attempt already cost minutes of waiting; don't sit through four of them.
-      const timedOut = /timed? ?out/i.test(String(error?.message ?? ""));
-      if (attempt >= (timedOut ? RETRIES_BEFORE_FALLBACK_ON_TIMEOUT : RETRIES_BEFORE_FALLBACK)) {
-        void this.fallback(project, agent, error, true);
-      }
+      this.fallback.onRetry(project, agent, e.data);
     }
 
     // Known live-view events, plus anything about retries (event names aren't in the API spec).
@@ -1699,113 +1263,7 @@ export class Team {
     }
   }
 
-  /**
-   * An agent whose conversation got too large to send continues in a fresh session (with the
-   * usual handoff note) and is told why. Once per 15 minutes: if the fresh one fails the same
-   * way, the human is told instead of looping.
-   */
-  private async renewOversized(project: Project, agent: Agent, message: string) {
-    const last = this.oversizedAt.get(agent.id) ?? 0;
-    if (Date.now() - last < 15 * 60_000) {
-      if (agent.problem) return;
-      agent.problem = `Its conversation is too large to send, even after a fresh session (${message}).`;
-      this.setStatus(project, agent, "error");
-      await this.store.update(project);
-      bus.publish({ type: "project.updated", projectId: project.id });
-      await this.log(project, { from: "symbio", to: "human", kind: "alert", text: `${agent.name} can't continue: ${agent.problem}` });
-      return;
-    }
-    this.oversizedAt.set(agent.id, Date.now());
-    this.fallbackBusy.add(agent.id);
-    try {
-      agent.problem = null;
-      if (agent.status !== "idle") this.setStatus(project, agent, "idle");
-      await this.renewSession(project, agent, "its conversation had grown too large to send");
-      await this.system(
-        project,
-        agent,
-        "Symbio: your previous conversation had grown too large to send to the model (the provider said: " +
-          `"${message}"), so you continue in this fresh session; the handoff note above has what carries over. ` +
-          "Usually it's images read in full: each one stays in the conversation and is sent again every turn. " +
-          "To look at an image, read a small copy (scaled down to about 1000 px wide) or have a helper review it. " +
-          "Continue where you left off.",
-      );
-    } catch (err) {
-      agent.problem = `Its conversation is too large to send (${message}), and a fresh session couldn't start: ${(err as Error).message}. Use New session in its chat.`;
-      this.setStatus(project, agent, "error");
-      await this.store.update(project);
-      bus.publish({ type: "project.updated", projectId: project.id });
-      await this.log(project, { from: "symbio", to: "human", kind: "alert", text: `${agent.name} can't continue: ${agent.problem}` });
-    } finally {
-      this.fallbackBusy.delete(agent.id);
-    }
-  }
-
-  /**
-   * When an agent's model fails for provider reasons (quota, outage, timeouts),
-   * switch it to the next allowed model and tell it to continue.
-   */
-  private async fallback(project: Project, agent: Agent, error: any, interruptFirst = false) {
-    if (agent.status === "stopped" || this.fallbackBusy.has(agent.id)) return;
-    const message = String(error?.message ?? error ?? "unknown error");
-    const type = String(error?.type ?? "");
-    const status = Number(error?.status ?? 0);
-    if (/interrupt|abort|cancel/i.test(`${type} ${message}`)) return; // our own interrupts
-    // The conversation itself is too big to send (seen with Copilot: "Timed out reading request
-    // body", after an agent read several large images). Another model won't help; a fresh session will.
-    if (status === 413 || /request body|request size|payload too large|request too large|request entity too large/i.test(message)) {
-      // Still retrying the same oversized request: stop it before moving on.
-      if (interruptFirst) await this.client().interrupt(agent.sessionId).catch(() => {});
-      await this.renewOversized(project, agent, message);
-      return;
-    }
-    const providerProblem =
-      type.startsWith("provider") ||
-      [401, 402, 403, 404, 408, 429].includes(status) ||
-      status >= 500 ||
-      /limit|quota|not available|unavailable|timed out|timeout|overloaded|rate|not responding/i.test(message);
-    if (!providerProblem) return;
-
-    this.fallbackBusy.add(agent.id);
-    try {
-      const failed = this.failedModels.get(agent.id) ?? new Map<string, number>();
-      this.failedModels.set(agent.id, failed);
-      failed.set(agent.model, Date.now());
-      const now = Date.now();
-      const next = project.allowedModels.find(
-        (m) => m !== agent.model && !(failed.has(m) && now - failed.get(m)! < FAILED_MODEL_COOLDOWN_MS),
-      );
-      if (!next) {
-        if (agent.problem) return; // already reported
-        const problem = `Every allowed model failed recently. Last error (${agent.model}): ${message}`;
-        agent.problem = problem;
-        this.setStatus(project, agent, "error");
-        await this.store.update(project);
-        bus.publish({ type: "project.updated", projectId: project.id });
-        await this.log(project, {
-          from: "symbio",
-          to: "human",
-          kind: "alert",
-          text: `${agent.name} can't continue: ${problem}\n\nAdd another model to the project (Models in the sidebar) — stuck agents resume automatically — or use “Retry now” once the quota resets.`,
-        });
-        return;
-      }
-      const previous = agent.model;
-      if (interruptFirst) await this.client().interrupt(agent.sessionId).catch(() => {});
-      await this.setModel(project, agent, next);
-      await this.system(
-        project,
-        agent,
-        `Symbio: your model (${previous}) failed — ${message}. You were switched to ${next}. Continue where you left off.`,
-      );
-    } catch (err) {
-      console.error(`[fallback] ${project.name}/${agent.name}:`, (err as Error).message);
-    } finally {
-      this.fallbackBusy.delete(agent.id);
-    }
-  }
-
-  private setStatus(project: Project, agent: Agent, status: Agent["status"]) {
+  setStatus(project: Project, agent: Agent, status: Agent["status"]) {
     if (agent.status === status) return;
     // A message arriving while the agent waits on the human (a question, a permission request) is
     // queued until it's answered. Turning "busy" here hid the question from the chat and let the
@@ -1818,94 +1276,19 @@ export class Team {
   }
 
   private waitsOnHuman(project: Project, agent: Agent): boolean {
-    return this.pendingQuestion.has(agent.id) || this.permissionRequests(project).some((p) => p.agentId === agent.id);
+    return this.pendingQuestion.has(agent.id) || this.permissions.waitsFor(agent);
   }
 
-  /** An agent that has been "busy" without any event for too long is hung: interrupt and nudge it. */
-  private async checkStuck() {
-    if (this.runtime.state !== "running") return;
-    const now = Date.now();
-    for (const project of this.store.list()) {
-      for (const agent of project.agents) {
-        if (agent.status !== "busy" || now - agent.lastActivity < STUCK_AFTER_MS) continue;
-        // Silent because it's waiting for the human's answer (an event may have been missed): not a hang.
-        const forms = await this.forms(agent).catch(() => []);
-        if (forms.length) {
-          if (forms[0]?.id) this.pendingQuestion.set(agent.id, String(forms[0].id));
-          this.setStatus(project, agent, "waiting");
-          continue;
-        }
-        const minutes = Math.round((now - agent.lastActivity) / 60_000);
-        console.warn(`[watchdog] ${project.name}/${agent.name} silent for ${minutes} min, interrupting`);
-        this.setStatus(project, agent, "stuck");
-        try {
-          await this.client().interrupt(agent.sessionId);
-          await this.system(
-            project,
-            agent,
-            `Symbio watchdog: you produced no activity for ${minutes} minutes, so your last step was interrupted. ` +
-              `It was most likely a command that never returned (a server, a watcher, or something waiting for input). ` +
-              `Do not run it the same way again — use non-interactive flags and never start long-running processes in the foreground. ` +
-              `Continue your task.`,
-          );
-        } catch (err) {
-          console.error("[watchdog] recovery failed:", (err as Error).message);
-          this.setStatus(project, agent, "error");
-        }
-      }
-    }
-  }
-
-  /**
-   * Remembers which agents were in the middle of something when their runtime went
-   * away (OpenCode crash or restart, or Symbio itself going down), so they can be
-   * told to continue once OpenCode is back. Marks them idle meanwhile.
-   */
+  /** Agents working when their runtime went away are woken once OpenCode is back (see Watchdog). */
   markInterrupted(reason: string) {
-    // On a deliberate shutdown, leave statuses on disk as they are: the next start
-    // sees who was working and wakes them then.
-    if (this.shuttingDown) return;
-    for (const project of this.store.list()) {
-      let changed = false;
-      for (const agent of project.agents) {
-        if (agent.status !== "busy" && agent.status !== "stuck" && agent.status !== "waiting") continue;
-        this.interrupted.set(agent.id, { reason, wasWaiting: agent.status === "waiting" });
-        agent.status = "idle";
-        changed = true;
-      }
-      if (changed) void this.store.update(project);
-    }
-  }
-
-  /** Wakes up the agents interrupted by a crash/restart (after tools and briefs are re-registered). */
-  private async recoverInterrupted() {
-    for (const project of this.store.list()) {
-      for (const agent of project.agents) {
-        const info = this.interrupted.get(agent.id);
-        if (!info) continue;
-        this.interrupted.delete(agent.id);
-        if (!active(agent)) continue;
-        try {
-          await this.system(
-            project,
-            agent,
-            `Symbio: ${info.reason} while you were working. Your conversation is intact, but anything that was running ` +
-              `(commands, servers, background processes) is gone. Check the state of your work (files, git status) and continue your task.` +
-              (info.wasWaiting ? " You were waiting for the human's answer to a question — ask it again." : ""),
-          );
-        } catch (err) {
-          console.error("[recovery] failed for", agent.name, (err as Error).message);
-          this.setStatus(project, agent, "error");
-        }
-      }
-    }
+    this.watchdog.markInterrupted(reason);
   }
 
   /**
    * A message from Symbio itself. With `wake` = false it is only added to the
    * conversation (the agent sees it on its next turn) instead of starting a turn.
    */
-  private async system(project: Project, agent: Agent, text: string, wake = true) {
+  async system(project: Project, agent: Agent, text: string, wake = true) {
     await this.log(project, { from: "symbio", to: agent.id, kind: "system", text });
     await this.prepare(project, agent);
     if (wake && project.paused) {
@@ -1936,14 +1319,5 @@ export class Team {
   }
 }
 
-export interface PendingPermission {
-  id: string;
-  projectId: string;
-  agentId: string;
-  agentName: string;
-  action: string;
-  resources: string[];
-  /** Pattern(s) OpenCode suggests for "always allow" (e.g. "pip install *"). */
-  save: string[];
-  time: number;
-}
+export type { PendingPermission } from "./team/permissions.js";
+export type { HousekeepingReport } from "./team/housekeeper.js";
