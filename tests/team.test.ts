@@ -60,7 +60,7 @@ const notes = (calls: any[], session: string) => calls.filter((c) => c.method ==
 
 test("a free asset is granted at once; core gets a note, not a turn", async () => {
   const { project, team, calls, writer } = await setup();
-  const answer = await team.requestAsset(project, writer, "chapters", "write chapter 1");
+  const answer = await team.sharedAssets.request(project, writer, "chapters", "write chapter 1");
   assert.match(answer, /Granted/);
   const reg = await team.assets(project);
   assert.equal(reg.list().find((a) => a.name === "chapters")!.holder, writer.id);
@@ -68,18 +68,18 @@ test("a free asset is granted at once; core gets a note, not a turn", async () =
   assert.equal(notes(calls, "ses_core").length, 1, "core got a note");
 
   // Released with nobody waiting: again only a note.
-  await team.releaseAsset(project, writer, "chapters", "chapter 1 done");
+  await team.sharedAssets.release(project, writer, "chapters", "chapter 1 done");
   assert.equal(prompts(calls, "ses_core").length, 0, "still not woken");
   assert.equal(notes(calls, "ses_core").length, 2);
 });
 
 test("a held asset goes to core to decide, and the release wakes core when someone waits", async () => {
   const { project, team, calls, writer, editor } = await setup();
-  await team.requestAsset(project, writer, "chapters", "write");
-  const answer = await team.requestAsset(project, editor, "chapters", "edit");
+  await team.sharedAssets.request(project, writer, "chapters", "write");
+  const answer = await team.sharedAssets.request(project, editor, "chapters", "edit");
   assert.match(answer, /Request sent to the coordinator/);
   assert.equal(prompts(calls, "ses_core").length, 1, "contention → core decides");
-  await team.releaseAsset(project, writer, "chapters", "done");
+  await team.sharedAssets.release(project, writer, "chapters", "done");
   assert.equal(prompts(calls, "ses_core").length, 2, "someone waiting → core is woken");
 });
 
@@ -300,9 +300,9 @@ test("a helper that goes quiet without reporting is nudged once, then core is to
   assert.equal(prompts(calls, writer.sessionId).length, before, "no nudge after reporting");
 
   // Waiting for a shared asset someone else holds isn't going quiet.
-  await team.requestAsset(project, editor, "chapters", "edit");
+  await team.sharedAssets.request(project, editor, "chapters", "edit");
   await team.deliver(project, core, writer, "request", "Write chapter 3");
-  await team.requestAsset(project, writer, "chapters", "write chapter 3");
+  await team.sharedAssets.request(project, writer, "chapters", "write chapter 3");
   const waiting = prompts(calls, writer.sessionId).length;
   turnEnds(writer);
   await check(writer);

@@ -21,6 +21,7 @@ import { accountChildUsage, accountUsage, emptyUsage, sessionUsage } from "./cos
 import { AGENT_UPDATES, unseenUpdates, updatesNote } from "./updates.js";
 import { cleanBuildOutputs, dailyBackup, gb, helperFolders, lastBackup, unpushedWork, type FolderUsage, type UnpushedBranch } from "./housekeeping.js";
 import { coordinatorTools, workerTools, type ToolContext } from "./tools.js";
+import { SharedAssets } from "./team/asset-protocol.js";
 import { active, type TeamCore } from "./team/core.js";
 import { ModelFallback } from "./team/fallback.js";
 import { Housekeeper } from "./team/housekeeper.js";
@@ -87,6 +88,7 @@ export class Team implements TeamCore {
   readonly fallback = new ModelFallback(this);
   readonly usage = new Usage(this);
   readonly quiet = new QuietHelpers(this);
+  readonly sharedAssets = new SharedAssets(this);
   readonly watchdog = new Watchdog(this, () => this.permissions.size);
   private loopGuard = new LoopGuard(this);
 
@@ -873,85 +875,6 @@ export class Team implements TeamCore {
     await this.log(project, { from: from.id, to: "human", kind: "needs-human", text: question });
   }
 
-  // ---------------------------------------------------------------- shared assets
-
-  async requestAsset(project: Project, agent: Agent, assetName: string, reason: string): Promise<string> {
-    const reg = await this.assets(project);
-    const { asset, alreadyHeld } = await reg.request(assetName, agent.id, reason);
-    if (alreadyHeld) return `You already hold "${asset.name}".`;
-    this.assetsChanged(project);
-    const coordinator = this.coordinator(project);
-    if (!coordinator) throw new Error("This project has no coordinator.");
-
-    // Free and nobody else waiting: grant now, without spending a coordinator turn.
-    // The coordinator only decides when there is contention.
-    if (!asset.holder && asset.queue.length === 1 && asset.queue[0].agentId === agent.id && agent.id !== coordinator.id) {
-      await reg.grant(asset.name, agent.id, "granted automatically (it was free)");
-      this.assetsChanged(project);
-      await this.log(project, { from: coordinator.id, to: agent.id, kind: "asset-granted", text: `"${asset.name}" granted automatically — it was free. Reason given: ${reason}` });
-      await this.note(project, coordinator, `Symbio: granted the shared asset "${asset.name}" to ${agent.name} automatically (it was free). Reason: ${reason}`);
-      return `Granted: "${asset.name}" was free, so it's yours now. Change it, then call release_asset with a summary when you're done.`;
-    }
-    const holder = asset.holder ? this.agentName(project, asset.holder) : null;
-    const waiting = asset.queue.map((q) => this.agentName(project, q.agentId)).join(", ");
-    await this.deliver(
-      project,
-      agent,
-      coordinator,
-      "asset-request",
-      `${agent.name} requests the shared asset "${asset.name}": ${reason}\n` +
-        `Currently held by: ${holder ?? "nobody (you)"}. Waiting: ${waiting}.\n` +
-        `Answer with grant_asset or deny_asset.`,
-    );
-    return (
-      `Request sent to the coordinator. Do NOT change "${asset.name}" until you receive a grant. ` +
-      `Continue with other work — the answer will show up in the result of your next Symbio tool call ` +
-      `(or call check_messages) — or end your turn and it will wake you. Don't ask for it again.`
-    );
-  }
-
-  async grantAsset(project: Project, coordinator: Agent, to: Agent, assetName: string, note?: string): Promise<string> {
-    const reg = await this.assets(project);
-    const asset = await reg.grant(assetName, to.id, note);
-    this.assetsChanged(project);
-    if (to.id !== coordinator.id) {
-      await this.deliver(
-        project,
-        coordinator,
-        to,
-        "asset-granted",
-        `You may now change the shared asset "${asset.name}".${note ? ` ${note}` : ""}\nCall release_asset when you are done.`,
-      );
-    }
-    return `Granted "${asset.name}" to ${to.name}.`;
-  }
-
-  async denyAsset(project: Project, coordinator: Agent, to: Agent, assetName: string, reason: string): Promise<string> {
-    const reg = await this.assets(project);
-    const asset = await reg.deny(assetName, to.id, reason);
-    this.assetsChanged(project);
-    await this.deliver(project, coordinator, to, "asset-denied", `Your request for "${asset.name}" was denied: ${reason}`);
-    return `Denied "${asset.name}" to ${to.name}.`;
-  }
-
-  async releaseAsset(project: Project, agent: Agent, assetName: string, summary: string): Promise<string> {
-    const reg = await this.assets(project);
-    const asset = await reg.release(assetName, agent.id, summary);
-    this.assetsChanged(project);
-    const coordinator = this.coordinator(project);
-    if (coordinator && coordinator.id !== agent.id) {
-      const waiting = asset.queue.map((q) => this.agentName(project, q.agentId)).join(", ");
-      const text = `${agent.name} released "${asset.name}": ${summary}${waiting ? `\nStill waiting for it: ${waiting}.` : ""}`;
-      // Only wake the coordinator when someone is waiting for it to decide; otherwise a note.
-      if (waiting) await this.deliver(project, agent, coordinator, "asset-released", text);
-      else {
-        await this.log(project, { from: agent.id, to: coordinator.id, kind: "asset-released", text });
-        await this.note(project, coordinator, `Symbio: ${text}`);
-      }
-    }
-    return `Released "${asset.name}".`;
-  }
-
   /**
    * Stops a project's agents, their processes and workspaces, and forgets the
    * project. With `deleteData`, also deletes its agent conversations and Symbio
@@ -1302,7 +1225,7 @@ export class Team implements TeamCore {
   }
 
   /** Adds a line to an agent's conversation without starting a turn or logging it (the caller logs). */
-  private async note(project: Project, agent: Agent, text: string) {
+  async note(project: Project, agent: Agent, text: string) {
     await this.prepare(project, agent).catch(() => {});
     await this.client().synthetic(agent.sessionId, text, false).catch(() => {});
   }

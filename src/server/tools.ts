@@ -106,7 +106,7 @@ const requestAsset: Tool = {
     if (agent.role === "coordinator") {
       return "You are the coordinator: assets nobody holds are yours. If another agent holds it, ask them to release it.";
     }
-    return team.requestAsset(project, agent, String(asset), String(reason));
+    return team.sharedAssets.request(project, agent, String(asset), String(reason));
   },
 };
 
@@ -115,7 +115,7 @@ const releaseAsset: Tool = {
   description: "Release a shared asset you hold, with a short summary of what you changed. The coordinator is notified.",
   inputSchema: obj({ asset: str("Asset name"), summary: str("What you changed") }, ["asset", "summary"]),
   async run({ asset, summary }, { team, project, agent }) {
-    return team.releaseAsset(project, agent, String(asset), String(summary));
+    return team.sharedAssets.release(project, agent, String(asset), String(summary));
   },
 };
 
@@ -321,7 +321,7 @@ const grantAsset: Tool = {
   async run({ asset, agent: name, note }, { team, project, agent }) {
     const target = team.findAgent(project, name);
     if (!target) throw new Error(`No agent named "${name}".`);
-    return team.grantAsset(project, agent, target, String(asset), note ? String(note) : undefined);
+    return team.sharedAssets.grant(project, agent, target, String(asset), note ? String(note) : undefined);
   },
 };
 
@@ -336,7 +336,7 @@ const denyAsset: Tool = {
   async run({ asset, agent: name, reason }, { team, project, agent }) {
     const target = team.findAgent(project, name);
     if (!target) throw new Error(`No agent named "${name}".`);
-    return team.denyAsset(project, agent, target, String(asset), String(reason));
+    return team.sharedAssets.deny(project, agent, target, String(asset), String(reason));
   },
 };
 

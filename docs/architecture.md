@@ -59,7 +59,14 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 | `origin.ts` | Host/Origin checks on every request (against DNS rebinding and cross-site requests) |
 | `ui-token.ts` | The UI key (`~/.symbio/ui-token`) every API request must carry |
 | `store.ts` | Projects and agents on disk (`~/.symbio/config.json`, `<project>/.symbio/`) and the message log |
-| `team.ts` | The heart: creating agents, delivery, status, plan/asset bookkeeping, watchdog, model fallback, memory recycling, crash recovery, pause/resume, stop/restart |
+| `team.ts` | The heart: creating, stopping, restarting and renewing agents, delivering messages, status, the plan, pause/resume, routing OpenCode's events. Its parts live in `team/` and use only the `TeamCore` interface (`team/core.ts`) |
+| `team/asset-protocol.ts` | The shared-asset protocol: request (free ones granted at once), grant, deny, release |
+| `team/watchdog.ts` | Hung agents interrupted and told why, OpenCode restarted before its memory makes it crash, interrupted agents woken after a restart |
+| `team/fallback.ts` | Failing providers: switch to the next allowed model, a fresh session when the conversation is too large, resuming stuck agents |
+| `team/quiet-helpers.ts` | Helpers that end their turn without reporting: reminded once, then core is told |
+| `team/permissions.ts` | OpenCode permission requests: answered from known rules, or held for the human |
+| `team/housekeeper.ts` | The hourly and daily housekeeping run (see `housekeeping.ts`) and its reports |
+| `team/usage.ts`, `team/processes.ts`, `team/loop-guard.ts` | Token usage per agent; agents' background processes; the message limit between two agents |
 | `tools.ts` | The MCP tools agents call (worker and coordinator sets) |
 | `mcp.ts` | Minimal MCP server (Streamable HTTP, JSON responses) |
 | `prompts.ts` | The briefs given to core and helpers |

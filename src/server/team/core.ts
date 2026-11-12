@@ -19,9 +19,16 @@ export interface TeamCore {
   log(project: Project, m: { from: string; to: string; kind: MessageKind; text: string }): Promise<void>;
   /** A message from Symbio to an agent: wakes it (`wake`), or is only added to its conversation. */
   system(project: Project, agent: Agent, text: string, wake?: boolean): Promise<void>;
+  /** Adds a line to an agent's conversation without starting a turn or logging it (the caller logs). */
+  note(project: Project, agent: Agent, text: string): Promise<void>;
+  /** A message between agents: logged, delivered (it wakes the recipient), loop-guarded. */
+  deliver(project: Project, from: Agent, to: Agent, kind: MessageKind, text: string, opts?: { protocol?: boolean }): Promise<void>;
   setStatus(project: Project, agent: Agent, status: Agent["status"]): void;
   coordinator(project: Project): Agent | undefined;
   assets(project: Project): Promise<AssetRegister>;
+  /** Tells the browser the shared assets changed. */
+  assetsChanged(project: Project): void;
+  agentName(project: Project, agentId: string): string | undefined;
   plan(project: Project): Promise<PlanStore>;
   setModel(project: Project, agent: Agent, model: string): Promise<void>;
   renewSession(project: Project, agent: Agent, reason: string): Promise<void>;

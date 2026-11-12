@@ -15,14 +15,14 @@ Reliability first: Symbio shouldn't be shown to new people while it can stall or
 - **A way back from a bad release.** Done for the next release: `sym update --to <version>`, and
   releases only published when every test passes.
 - **Helpers that go quiet.** Done for the next release: reminded once, then core is told.
-- Next up: splitting `team.ts`, then chat modes.
+- **Split `team.ts`.** Done for the next release: its self-contained parts (the watchdog, model
+  fallback, permission requests, housekeeping, quiet helpers, the shared-asset protocol, usage,
+  processes, the message limit) are modules in `src/server/team/`, each with its own state.
+- Next up: chat modes.
 
 ## Next
 
-1. **Split `team.ts`.** One class of ~1,900 lines holds messaging, the watchdog, permissions,
-   housekeeping, workspaces, updates and session renewal; every feature touches it. Split it into
-   modules with clear responsibilities before adding more.
-2. **Chat modes: Auto, Plan and Act.** A selector in core's chat box, as in VS Code and other
+1. **Chat modes: Auto, Plan and Act.** A selector in core's chat box, as in VS Code and other
    agent tools, choosing how core handles a message:
    - **Auto** (the default): as today; core decides whether to talk, plan or delegate.
    - **Plan**: core discusses, studies and proposes a plan, but starts nothing. Enforced by Symbio,
@@ -33,14 +33,14 @@ Reliability first: Symbio shouldn't be shown to new people while it can stall or
    Applies to core only (helpers do the tasks they're given); each sent message shows the mode it
    was sent in. Talk to Symbio can reuse the selector as a voice toggle.
    *(Suggested by a user.)*
-3. **Review what the team changed.** Per task and per helper: the files changed and their diffs,
+2. **Review what the team changed.** Per task and per helper: the files changed and their diffs,
    before and after a merge, readable in the browser (and on a phone). Today the human has to trust
    core's summary or open the files; every serious tool in this space has this.
-4. **Notifications.** When something needs the human (a question, an approval, a plan to review, a
+3. **Notifications.** When something needs the human (a question, an approval, a plan to review, a
    stuck agent) or a task finishes, send it where they are: browser/phone notifications, and
    optionally a messaging app (e.g. Telegram) or e-mail, with per-project choices. Essential for
    steering Symbio away from the computer.
-5. **Talk to Symbio.** A spoken conversation with core, hands-free: e.g. from a phone connected to
+4. **Talk to Symbio.** A spoken conversation with core, hands-free: e.g. from a phone connected to
    the car over Bluetooth, with Symbio working on the computer at home (remote access). Not just
    dictation into the chat box:
    - Only what core says to the human is read aloud: never tool calls, command output, messages
@@ -55,28 +55,28 @@ Reliability first: Symbio shouldn't be shown to new people while it can stall or
    Builds on the phone layout and on telling apart, in core's replies, what's for the human from
    the team's work. To check first: the browsers' own speech recognition and voices (quality,
    languages, whether they keep working with the screen off) against a speech service.
-6. **Budgets per project.** A spending limit per project (and optionally per day), with a warning
+5. **Budgets per project.** A spending limit per project (and optionally per day), with a warning
    at a threshold and the team paused when it's reached, using the cost tracking Symbio already
    has.
-7. **Scheduled work.** Ask core for recurring jobs ("refresh the data every night", "check the site
+6. **Scheduled work.** Ask core for recurring jobs ("refresh the data every night", "check the site
    every Monday"): Symbio wakes core at the set time with the job, and the human sees the runs and
    their results.
-8. **Linux and macOS.** Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
+7. **Linux and macOS.** Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
    Keychain on macOS); headless Linux (a server or container) has no keyring, so it needs a
    fallback, such as a key file readable only by the user.
-9. **Make it showable.** Before inviting others: a sample project to try in five minutes, a
+8. **Make it showable.** Before inviting others: a sample project to try in five minutes, a
    two-minute video of core running a team on a non-coding project, and a short GitHub Pages site
    with screenshots. First audience: the OpenCode community.
-10. **Create a project from a git repository.** In the New project dialog, an option to clone a
-    repository (GitHub, Azure DevOps or any git URL, using the matching connection when it's private)
-    into a folder and open it as a project, e.g. to continue on another computer. Tucked under an
-    advanced option, so it doesn't get in the way of people who don't use git.
-11. **Rules register on import.** When importing an existing project, offer to build the register
+9. **Create a project from a git repository.** In the New project dialog, an option to clone a
+   repository (GitHub, Azure DevOps or any git URL, using the matching connection when it's private)
+   into a folder and open it as a project, e.g. to continue on another computer. Tucked under an
+   advanced option, so it doesn't get in the way of people who don't use git.
+10. **Rules register on import.** When importing an existing project, offer to build the register
     from the project and from sources the human points to (e-mails, meeting notes, manuals), marking
     rules found only in the work as unsourced.
-12. **Translations.** The UI in other languages, starting with Portuguese. *(good first
+11. **Translations.** The UI in other languages, starting with Portuguese. *(good first
     contribution, once the strings are extracted)*
-13. **A public demo.** A container on a VPS with a light model, connections and other sensitive
+12. **A public demo.** A container on a VPS with a light model, connections and other sensitive
     options disabled, and visitors' data reset every few minutes (needs Linux headless support).
 
 ## Ideas
