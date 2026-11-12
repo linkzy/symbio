@@ -5,6 +5,14 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Open questions**: the team's questions for you now wait in a list in *Needs you* instead of
+  scrolling away in the chat. Each is numbered (Q1, Q2…), with its context, suggested answers and
+  whether work is blocked on it. Answer several and send them together; each agent gets its own
+  answers. A question that's already open isn't asked again, and you can set one aside. Answered
+  questions stay listed with their answers.
+- core keeps its replies to helpers' reports short, and no longer re-lists what's pending in the
+  chat.
+
 ## [0.11.0]
 
 - Review guides: helpers report each finished task with a guide for checking it (where to look, the

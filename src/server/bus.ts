@@ -11,6 +11,7 @@ export type UiEvent =
   | { type: "assets.updated"; projectId: string }
   | { type: "plan.updated"; projectId: string }
   | { type: "approvals.updated"; projectId: string }
+  | { type: "questions.updated"; projectId: string }
   | { type: "agent.status"; projectId: string; agentId: string; status: string }
   | { type: "agent.stream"; projectId: string; agentId: string; event: { type: string; data: any } }
   | { type: "message"; projectId: string; message: unknown };

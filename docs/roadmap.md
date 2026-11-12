@@ -6,11 +6,13 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 
 ## Now
 
-Nothing in progress; the top of Next is what comes up.
+- **Open questions.** Done for the next release: the team's questions for the human in a list in
+  Needs you (numbered, with context and options), answered several at once; repeats refused; core's
+  replies to helpers' reports kept short so the chat doesn't scroll everything away.
 
 ## Next
 
-1. **Notifications.** When something needs the human (a question, an approval, a plan to review, a
+1. **Notifications.** When something needs the human (an open question, an approval, a plan to review, a
    stuck agent) or a task finishes, send it where they are: browser/phone notifications, and
    optionally a messaging app (e.g. Telegram) or e-mail, with per-project choices. Essential for
    steering Symbio away from the computer.

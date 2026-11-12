@@ -91,6 +91,22 @@ export interface Task {
 }
 
 /** One file a task changed, with its unified diff. */
+/** A question the team has for the human (Needs you), open until answered or set aside. */
+export interface Question {
+  id: string;
+  question: string;
+  context?: string;
+  options?: string[];
+  taskId?: string;
+  blocking: boolean;
+  askedBy: string;
+  askedAt: number;
+  state: "open" | "answered" | "set-aside";
+  answer?: string;
+  answeredIn?: "human" | "chat";
+  closedAt?: number;
+}
+
 export interface TaskChange {
   file: string;
   status: "added" | "modified" | "deleted";
@@ -258,6 +274,7 @@ export type UiEvent =
   | { type: "assets.updated"; projectId: string }
   | { type: "plan.updated"; projectId: string }
   | { type: "approvals.updated"; projectId: string }
+  | { type: "questions.updated"; projectId: string }
   | { type: "agent.status"; projectId: string; agentId: string; status: AgentStatus }
   | { type: "agent.stream"; projectId: string; agentId: string; event: { type: string; data: any } }
   | { type: "message"; projectId: string; message: LoggedMessage };
@@ -585,6 +602,10 @@ export const api = {
   pauseAll: () => call<{ paused: string[] }>("POST", "/pause-all"),
   plan: (projectId: string) => call<Plan>("GET", `/projects/${projectId}/plan`),
   taskChanges: (projectId: string, taskId: string) => call<{ files: TaskChange[]; note?: string }>("GET", `/projects/${projectId}/plan/tasks/${taskId}/changes`),
+  questions: (projectId: string) => call<Question[]>("GET", `/projects/${projectId}/questions`),
+  answerQuestions: (projectId: string, answers: { id: string; answer: string }[]) =>
+    call<Question[]>("POST", `/projects/${projectId}/questions/answers`, { answers }),
+  setAsideQuestion: (projectId: string, id: string, note?: string) => call<Question[]>("POST", `/projects/${projectId}/questions/${id}/set-aside`, { note }),
   markTask: (projectId: string, taskId: string, review: boolean) => call<Plan>("POST", `/projects/${projectId}/plan/tasks/${taskId}/mark`, { review }),
   reviewTask: (projectId: string, taskId: string, decision: "approve" | "send-back", note?: string) =>
     call<Plan>("POST", `/projects/${projectId}/plan/tasks/${taskId}/review`, { decision, note }),

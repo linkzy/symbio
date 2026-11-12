@@ -64,6 +64,7 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 | `team/watchdog.ts` | Hung agents interrupted and told why, OpenCode restarted before its memory makes it crash, interrupted agents woken after a restart |
 | `team/fallback.ts` | Failing providers: switch to the next allowed model, a fresh session when the conversation is too large, resuming stuck agents |
 | `team/review.ts` | The human's review of finished tasks (`reviewBy`): the gate on done, approve, send back |
+| `team/questions.ts` | The team's open questions for the human: asking (repeats refused), answering several at once, setting aside |
 | `team/quiet-helpers.ts` | Helpers that end their turn without reporting: reminded once, then core is told |
 | `team/permissions.ts` | OpenCode permission requests: answered from known rules, or held for the human |
 | `team/housekeeper.ts` | The hourly and daily housekeeping run (see `housekeeping.ts`) and its reports |
@@ -74,6 +75,7 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 | `updates.ts` | Agent-facing notes about what changed in Symbio, given once to each coordinator after an update |
 | `housekeeping.ts` | Daily: backups of Symbio's state (`~/.symbio/backups`), commits no remote has, build outputs piling up in helpers' folders |
 | `plan.ts` | The plan and its tasks (`plan.json`) |
+| `questions.ts` | The team's questions for the human and their answers (`questions.json`) |
 | `costs.ts` | Token usage per agent and model, model prices (`~/.symbio/prices.json`) and estimated cost |
 | `assets.ts` | Shared-asset register: holders, queues, history, merge-time checks (`assets.json`) |
 | `workspaces.ts` | Where helpers work: git worktrees (create, merge, sync, remove, restore) or the shared project folder |

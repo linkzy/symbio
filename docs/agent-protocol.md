@@ -92,6 +92,14 @@ being merged (unless core forces the merge).
   told). *marked*: only the tasks marked for the human (`review: true` in `submit_plan` /
   `add_task`, which core sets when it proposes the plan; the human ticks or unticks them in the Plan
   tab, `POST …/plan/tasks/:id/mark`) wait; the others work as with *core*.
+- **Open questions** (`team/questions.ts`, `.symbio/questions.json`). Questions for the human go to
+  their list instead of the chat: `ask_human` adds one, numbered Q1, Q2… Asking what's already open
+  (near-identical wording, any case or accents) is refused with the open one's number. The human
+  answers from Needs you, several at once (`POST …/questions/answers`), and each agent that asked
+  gets its answers in one message from the human; for a helper's, core gets a note that doesn't
+  wake it. *Set aside* (`POST …/questions/:id/set-aside`) closes one without an answer and tells the
+  asker. Core's brief keeps questions and pending lists out of the chat, and its replies to helpers'
+  reports to one line.
 - **A task's changes** (`Reviews.changes`, `GET …/plan/tasks/:id/changes`): the files the task
   changed and their diffs, from OpenCode's session diff (`docs/opencode-api.md`) over the helper's
   turns on that task. Symbio records them as `Task.work`: the assignment's message starts a segment,
@@ -123,7 +131,9 @@ All agents:
 | Tool | What it does |
 |---|---|
 | `send_message` | Message another agent by name (`core` is the coordinator); wakes the recipient |
-| `ask_human` | Ask the human something only they can answer; the answer arrives later as a message |
+| `ask_human` | Add a question to the human's open questions (Needs you): one per call, with context, options, the task and whether work is blocked; the answer arrives later as a message |
+| `list_questions` | The open questions, and the ones closed recently with their answers |
+| `close_question` | Close an open question: with the answer the human gave in the chat, or without one when it's no longer needed |
 | `list_team` | Agents on the project: name, role, purpose, status, model |
 | `list_assets` | Declared shared assets, holders and queues |
 | `request_asset` | Ask core for a shared asset; don't touch it until granted |

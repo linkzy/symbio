@@ -3,7 +3,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { CircleAlert, ClipboardList, KeyRound, MessageCircleQuestion, Plug, ShieldQuestion, ListChecks } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { api, subscribe, type Approval, type LoggedMessage, type PermissionRequest, type Plan, type Project, type Task } from "./api";
+import { api, subscribe, type Approval, type LoggedMessage, type PermissionRequest, type Plan, type Project, type Question, type Task } from "./api";
+import { OpenQuestions, useQuestions } from "./Questions";
 import { openQuestions } from "./Messages";
 import { AgentForms } from "./FormCard";
 import { ReviewActions, ReviewGuide, TaskChanges, waitingForReview } from "./Review";
@@ -15,6 +16,8 @@ export interface InboxData {
   questions: LoggedMessage[];
   /** Finished tasks waiting for the human's review. */
   toReview: Task[];
+  /** The team's questions (open ones wait for an answer; the rest are the record). */
+  teamQuestions: Question[];
   count: number;
 }
 
@@ -43,10 +46,19 @@ export function useInbox(project: Project | null, log: LoggedMessage[] | null, p
   }, [id]);
 
   const questions = openQuestions(log ?? []);
+  const teamQuestions = useQuestions(id);
+  const openCount = teamQuestions.filter((q) => q.state === "open").length;
   const stuck = project?.agents.filter((a) => a.problem && a.status !== "stopped").length ?? 0;
   const planWaiting = plan?.status === "proposed" ? 1 : 0;
   const toReview = plan?.tasks.filter(waitingForReview) ?? [];
-  return { approvals, permissions, questions, toReview, count: approvals.length + permissions.length + questions.length + stuck + planWaiting + toReview.length };
+  return {
+    approvals,
+    permissions,
+    questions,
+    toReview,
+    teamQuestions,
+    count: approvals.length + permissions.length + questions.length + stuck + planWaiting + toReview.length + openCount,
+  };
 }
 
 export function InboxDrawer({
@@ -100,6 +112,8 @@ export function InboxDrawer({
             </div>
           </Item>
         )}
+
+        <OpenQuestions key="team-questions" project={project} questions={data.teamQuestions} />
 
         {data.toReview.map((t) => (
           <Item key={`review-${t.id}`} icon={<ListChecks size={14} />} kind="To review" agent={t.assignee ? nameOf(t.assignee) : undefined} time={t.humanReview?.at}>

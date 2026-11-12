@@ -193,6 +193,17 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "runs FTP file operations (ls, mkdir, rm, rmdir, mv; not shell commands). Tell your helpers " +
       "if one of them is waiting on a connection for something the project's own script can do.",
   },
+  {
+    id: "2026-11-13-open-questions",
+    text:
+      "Questions for the human now go to their list, not the chat: ask_human adds one question per call (with context, options " +
+      "when there are clear ones, the task, and whether work is blocked on it) to their open questions in Needs you, numbered " +
+      "Q1, Q2…; they answer when they can, often several at once, and the answers arrive as one message. Asking what's already " +
+      "open is refused. list_questions shows them; close_question records an answer they gave in the chat, or drops one that's no " +
+      "longer needed. Don't put questions for them in the chat or re-list pending ones (one short clarifying question in a reply to " +
+      "their own message is fine). If questions of yours are still waiting for an answer in the chat, add each with ask_human now. " +
+      "And replies to helpers' reports stay short: act on them, then one line on what changed at most; the human may be away.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */

@@ -518,6 +518,36 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     return c.json((await team.plan(project)).plan);
   });
 
+  // The team's questions for the human (team/questions.ts): all of them, newest last.
+  api.get("/projects/:id/questions", async (c) => {
+    const project = withProject(c.req.param("id"));
+    return c.json((await team.questions.store(project)).questions);
+  });
+
+  // Answers to several questions at once; each agent that asked gets its answers in one message.
+  api.post("/projects/:id/questions/answers", async (c) => {
+    const project = withProject(c.req.param("id"));
+    const body = await c.req.json<{ answers?: { id?: string; answer?: string }[] }>();
+    const answers = (body.answers ?? []).filter((a) => typeof a.id === "string" && typeof a.answer === "string") as { id: string; answer: string }[];
+    try {
+      await team.questions.answer(project, answers);
+    } catch (err) {
+      throw new HttpError(409, (err as Error).message);
+    }
+    return c.json((await team.questions.store(project)).questions);
+  });
+
+  api.post("/projects/:id/questions/:qid/set-aside", async (c) => {
+    const project = withProject(c.req.param("id"));
+    const body = await c.req.json<{ note?: string }>().catch(() => ({}) as { note?: string });
+    try {
+      await team.questions.setAside(project, c.req.param("qid"), body.note);
+    } catch (err) {
+      throw new HttpError(409, (err as Error).message);
+    }
+    return c.json((await team.questions.store(project)).questions);
+  });
+
   api.get("/projects/:id/approvals", async (c) => {
     const project = withProject(c.req.param("id"));
     return c.json(await team.remote.list(project));

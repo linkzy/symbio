@@ -53,13 +53,44 @@ const sendMessage: Tool = {
 const askHuman: Tool = {
   name: "ask_human",
   description:
-    "Ask the human a question that only they can answer (a decision, missing information, an approval). " +
-    "Their answer arrives later as a message; continue with other work or end your turn.",
-  inputSchema: obj({ question: str("The question, with enough context to answer it") }, ["question"]),
-  async run({ question }, { team, project, agent }) {
-    await team.askHuman(project, agent, String(question));
-    return "Your question was sent to the human. Their answer will arrive as a message.";
+    "Add a question to the human's open questions (Needs you): a decision or information only they can give. One question per call; " +
+    "they answer when they can, often several at once, and the answer arrives as a message. Asking what's already open is refused. " +
+    "Not for reviews of finished work (that's update_task review) or approving the plan.",
+  inputSchema: obj(
+    {
+      question: str("One question, short and answerable on its own (e.g. \"Should a blank field in the generated form warn or block?\")"),
+      context: str("What they need to know to answer: the situation, what you found, what each option would mean (markdown)"),
+      options: { type: "array", items: { type: "string" }, description: "Suggested answers to pick from, when there are clear ones" },
+      task_id: str("The task it's about, if any (e.g. T12)"),
+      blocking: { type: "boolean", description: "Work can't go on without the answer" },
+    },
+    ["question"],
+  ),
+  run({ question, context, options, task_id, blocking }, { team, project, agent }) {
+    return team.askHuman(project, agent, {
+      question: String(question),
+      context: context ? String(context) : undefined,
+      options: Array.isArray(options) ? options.map(String) : undefined,
+      taskId: task_id ? String(task_id) : undefined,
+      blocking: blocking === true,
+    });
   },
+};
+
+const listQuestions: Tool = {
+  name: "list_questions",
+  description: "List the human's open questions (who asked, which task, blocking or not) and the ones answered recently, with their answers.",
+  inputSchema: obj({}),
+  run: (_args, { team, project }) => team.questions.describe(project),
+};
+
+const closeQuestion: Tool = {
+  name: "close_question",
+  description:
+    "Close an open question: with the answer when the human answered it in the chat instead, or without one when it's no longer needed. " +
+    "Only the agent that asked (or the coordinator) can close it.",
+  inputSchema: obj({ question_id: str("The question, e.g. Q12"), answer: str("The human's answer, if they gave it in the chat") }, ["question_id"]),
+  run: ({ question_id, answer }, { team, project, agent }) => team.questions.closeByAgent(project, agent, String(question_id), answer ? String(answer) : undefined),
 };
 
 const listTeam: Tool = {
@@ -662,6 +693,8 @@ const COMMON = [
   azureDevopsApi,
   sendMessage,
   askHuman,
+  listQuestions,
+  closeQuestion,
   listTeam,
   listAssets,
   requestAsset,

@@ -23,6 +23,8 @@ import { cleanBuildOutputs, dailyBackup, gb, helperFolders, lastBackup, unpushed
 import { coordinatorTools, workerTools, type ToolContext } from "./tools.js";
 import { SharedAssets } from "./team/asset-protocol.js";
 import { Reviews } from "./team/review.js";
+import { Questions } from "./team/questions.js";
+import type { QuestionInput } from "./questions.js";
 import { active, type TeamCore } from "./team/core.js";
 import { ModelFallback } from "./team/fallback.js";
 import { Housekeeper } from "./team/housekeeper.js";
@@ -91,6 +93,7 @@ export class Team implements TeamCore {
   readonly quiet = new QuietHelpers(this);
   readonly sharedAssets = new SharedAssets(this);
   readonly reviews = new Reviews(this);
+  readonly questions = new Questions(this);
   readonly watchdog = new Watchdog(this, () => this.permissions.size);
   private loopGuard = new LoopGuard(this);
 
@@ -938,9 +941,9 @@ export class Team implements TeamCore {
     this.setStatus(project, agent, "busy");
   }
 
-  async askHuman(project: Project, from: Agent, question: string) {
+  async askHuman(project: Project, from: Agent, input: QuestionInput): Promise<string> {
     if (from.role === "worker") this.quiet.reported(from); // it's waiting on the human, not quiet
-    await this.log(project, { from: from.id, to: "human", kind: "needs-human", text: question });
+    return this.questions.ask(project, from, input);
   }
 
   /**
@@ -967,6 +970,7 @@ export class Team implements TeamCore {
     }
     this.registers.delete(project.id);
     this.plans.delete(project.id);
+    this.questions.forget(project.id);
     for (const [token, t] of this.mcpTokens) if (t.projectId === project.id) this.mcpTokens.delete(token);
     await this.store.remove(project, deleteData);
     bus.publish({ type: "project.updated", projectId: project.id });

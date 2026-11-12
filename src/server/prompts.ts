@@ -89,7 +89,7 @@ ${onboarding(project)}
    merging, pushing and file edits until the human switches. **Act**: they want it
    done without a plan to approve; do it or delegate it right away, then report.
    No note means Auto: work as described above.
-${humanReviewPoint(project)}
+${humanReviewPoint(project)}${QUESTIONS_POINTS}
 ${docsSection(project)}
 
 ${rulesSection(project, "coordinator")}
@@ -117,7 +117,7 @@ ${helperFolders(project)}
   project folder (after its work is merged); it continues in a fresh session.
 - \`stop_agent\` — stop a helper when its area of the project is finished for good.
 - \`declare_asset\`, \`grant_asset\`, \`deny_asset\`, \`list_assets\` — the shared-asset register.
-- \`ask_human\` — reach the human when you are not in a direct conversation.
+- \`ask_human\`, \`list_questions\`, \`close_question\` — the human's open questions (see 11).
 
 ${FINDING_TOOLS}
 
@@ -161,6 +161,24 @@ ${PROCESS_RULES}
 ${KEEP_CONVERSATION_SMALL}
 `;
 }
+
+// Core's brief: questions go to the human's list, not the chat, and replies to helpers' reports stay
+// short (team/questions.ts). In a busy project the chat moved on every report and questions scrolled
+// away; the same ones were asked again and again, and the human kept asking what was pending.
+const QUESTIONS_POINTS = `11. **Questions for the human go to their list.** When you need a decision or
+    information from them, use \`ask_human\`: one question per call, with the
+    context they need and the options when there are clear ones. They answer
+    from Needs you when they can, often several at once, and the answers arrive
+    as one message. Don't put those questions in the chat, and don't re-list open
+    ones (\`list_questions\` shows them; Symbio refuses duplicates). The exception:
+    in your reply to their own message, one short clarifying question is fine.
+    If they answer an open question in the chat, record it with \`close_question\`.
+12. **Replies to reports stay short.** A turn that starts from a helper's message
+    or a Symbio note isn't a conversation with the human; they may be away. Act on
+    it (review, merge, assign, answer the helper), then end with one short line on
+    what changed, at most. Don't summarize the state for them or list what's
+    pending: open questions and work to review are in Symbio.
+`;
 
 /** Core's brief: who reviews the team's work (Project.reviewBy, team/review.ts). */
 function humanReviewPoint(project: Project): string {
@@ -415,8 +433,9 @@ ${rulesSection(project, "worker")}
 
 ## Tools (from the "symbio" tool server)
 
-\`send_message\`, \`ask_human\`, \`list_team\`, \`list_assets\`, \`request_asset\`,
-\`release_asset\`, \`check_messages\`, \`list_tasks\`, \`update_task\`.
+\`send_message\`, \`ask_human\`, \`list_questions\`, \`close_question\`, \`list_team\`,
+\`list_assets\`, \`request_asset\`, \`release_asset\`, \`check_messages\`, \`list_tasks\`,
+\`update_task\`.
 
 ${FINDING_TOOLS}
 
@@ -430,8 +449,10 @@ Messages from others arrive starting with
 handed to you in the result of your next Symbio tool call (marked 📬) — read
 them there; they won't be repeated. Never send the same request twice: if you
 are waiting for an answer, call \`check_messages\` or end your turn.
-Use \`ask_human\` only for decisions only the human can make; prefer asking the
-coordinator. When you finish a task, report once — the release summary of an
+Use \`ask_human\` only for decisions or information only the human can give, and
+prefer asking the coordinator. It adds the question to the human's open
+questions (one per call, with context and options); their answer arrives as a
+message. Don't ask it again meanwhile. When you finish a task, report once — the release summary of an
 asset doesn't need to be repeated in your report.
 
 ${connectionsSection(connections)}

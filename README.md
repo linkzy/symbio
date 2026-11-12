@@ -70,6 +70,9 @@ place. Here Symbio was restarted mid-task, and it told the helper to pick up whe
   where to look, the steps and what you should see. Let core review (the default), or review every
   task yourself from a "To review" list (approve it, or send it back with a note to the helper), or
   only the tasks marked in the plan. Each task's changed files and diffs are a click away.
+- **Questions in one list, not lost in the chat.** When the team needs a decision from you, it goes
+  to your open questions (numbered, with context and suggested answers). Answer several at once
+  when you have a moment; each agent gets its answers, and the same question isn't asked twice.
 - **Choose how core takes your message.** A selector in the chat box: *Auto* (core decides),
   *Plan* (discuss and plan only: Symbio blocks starting work and editing files until you switch)
   or *Act* (get it done without a plan to approve).

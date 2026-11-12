@@ -809,3 +809,22 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); margi
 .patch .del { background: rgba(229, 83, 75, 0.12); color: #f0a09b; }
 .patch .hunk { color: var(--blue); }
 .review-mark { margin-bottom: 12px; }
+
+/* The team's open questions (Needs you) */
+.questions { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
+.questions-head { display: flex; align-items: center; gap: 8px; font-size: 13px; position: sticky; top: 0; z-index: 1; background: var(--panel); padding: 4px 0; }
+.question-card { border: 1px solid var(--border-strong); border-radius: var(--r-lg); background: var(--surface); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.question-card.answered { border-color: rgba(109, 106, 245, 0.55); }
+.question-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.question-meta .when { margin-left: auto; font-size: 11px; color: var(--text-3); }
+.question-id { font-family: var(--mono); font-size: 11px; color: var(--accent-text); background: var(--accent-soft); border-radius: var(--r-sm); padding: 1px 6px; }
+.question-text { font-weight: 600; font-size: 13.5px; line-height: 1.45; }
+.question-context { font-size: 12.5px; color: var(--text-2); max-height: 220px; overflow: auto; border-left: 2px solid var(--border-strong); padding-left: 10px; }
+.question-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text); border-radius: 999px; padding: 4px 10px; font-size: 12.5px; cursor: pointer; text-align: left; }
+.chip:hover { background: var(--surface-hover); }
+.chip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); }
+.question-actions { display: flex; justify-content: flex-end; }
+.questions-closed { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.question-closed { font-size: 12.5px; color: var(--text-2); }
+.question-answer { color: var(--text); margin: 2px 0 0 4px; }

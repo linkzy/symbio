@@ -12,6 +12,7 @@ const KIND: Record<string, { label: string; tone?: string }> = {
   blocking: { label: "Blocking", tone: "red" },
   urgent: { label: "Urgent", tone: "red" },
   "needs-human": { label: "Question for you", tone: "amber" },
+  question: { label: "Question for you", tone: "amber" },
   form: { label: "Question for you", tone: "amber" },
   alert: { label: "Needs your action", tone: "red" },
   approval: { label: "Approval requested", tone: "amber" },
