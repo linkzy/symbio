@@ -5,6 +5,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- `sym update --to <version>` installs a given version, e.g. to go back after a release that broke
+  something. Automatic updates then skip the version you left and resume with the next release.
+- Releases are only published when the unit tests, the OpenCode contract test and the new end-to-end
+  tests (the whole app in a browser) all pass.
 - *New project…* in the project switcher at the top opens the New project dialog.
 
 ## [0.9.0]

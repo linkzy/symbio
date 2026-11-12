@@ -82,11 +82,33 @@ const REGISTRY = (process.env.SYMBIO_UPDATE_REGISTRY ?? "https://registry.npmjs.
 
 /** The version npm installs as `symbio@latest`, and the Node.js it needs. */
 export async function latestRelease(): Promise<{ version: string; node: string | null }> {
-  const res = await fetch(`${REGISTRY}/symbio/latest`, { signal: AbortSignal.timeout(15_000), headers: { accept: "application/json" } });
+  return release("latest");
+}
+
+/** A published version ("0.9.0", or a tag like "latest") and the Node.js it needs. */
+export async function release(spec: string): Promise<{ version: string; node: string | null }> {
+  const res = await fetch(`${REGISTRY}/symbio/${encodeURIComponent(spec.replace(/^v(?=\d)/, ""))}`, {
+    signal: AbortSignal.timeout(15_000),
+    headers: { accept: "application/json" },
+  });
+  if (res.status === 404) throw new Error(`There's no Symbio ${spec} on npm.`);
   if (!res.ok) throw new Error(`npm registry answered ${res.status}`);
   const data = (await res.json()) as { version?: string; engines?: { node?: string } };
   if (!data.version) throw new Error("npm registry gave no version");
   return { version: data.version, node: data.engines?.node ?? null };
+}
+
+/**
+ * After going back to an earlier version on purpose: automatic updates leave the version that was
+ * left alone, and resume with the next release (which may fix what made the human go back).
+ * Written to the settings file so it also works when Symbio isn't running.
+ */
+export async function holdBack(home: string, left: string) {
+  const file = path.join(home, "updates.json");
+  const settings = JSON.parse(await fs.readFile(file, "utf8").catch(() => "{}"));
+  settings.skip = { version: left, until: Number.MAX_SAFE_INTEGER, reason: "went-back" };
+  await fs.mkdir(home, { recursive: true });
+  await fs.writeFile(file, JSON.stringify(settings, null, 2));
 }
 
 export async function latestVersion(): Promise<string> {
@@ -155,7 +177,8 @@ export class SelfUpdate {
   private error: string | null = null;
   private notes: { version: string; items: string[] }[] = [];
   private mode: UpdateMode = "auto";
-  private skip: { version: string; until: number } | null = null;
+  /** A version automatic updates leave alone: it failed to install, or the human went back from it. */
+  private skip: { version: string; until: number; reason?: "failed" | "went-back" } | null = null;
   private lastResult: UpdateResult | null = null;
   private applying = false;
   private timer: NodeJS.Timeout | null = null;
@@ -180,7 +203,7 @@ export class SelfUpdate {
       if (r.ok) await this.host.announce(`Symbio was updated from ${r.from} to ${r.to}.`).catch(() => {});
       else {
         await this.host.announce(`Symbio couldn't update to ${r.to} and is still on ${this.host.version}: ${r.error}`).catch(() => {});
-        this.skip = { version: r.to, until: Date.now() + FAILED_PAUSE_MS };
+        this.skip = { version: r.to, until: Date.now() + FAILED_PAUSE_MS, reason: "failed" };
         await this.saveSettings();
       }
       r.seen = true;
@@ -244,7 +267,11 @@ export class SelfUpdate {
     if (this.applying) return "Already updating.";
     if (!forced && this.mode === "notify") return "Updates are set to notify only: update from Settings or with `sym update`.";
     if (!forced && this.mode === "off") return "Automatic updates are off: update from Settings or with `sym update`.";
-    if (!forced && this.skip && this.latest === this.skip.version && Date.now() < this.skip.until) return `The update to ${this.skip.version} failed recently; it will be retried tomorrow.`;
+    if (!forced && this.skip && this.latest === this.skip.version && Date.now() < this.skip.until) {
+      return this.skip.reason === "went-back"
+        ? `You went back from ${this.skip.version}, so automatic updates skip it and resume with the next release (\`sym update\` installs it anyway).`
+        : `The update to ${this.skip.version} failed recently; it will be retried tomorrow.`;
+    }
     if (!forced && this.host.remoteActive()) return "Remote access is on (updating would end it); waiting until it's off.";
     if (!forced) {
       const busy = this.host.busy();
@@ -265,23 +292,49 @@ export class SelfUpdate {
    * Hands over to the runner and stops Symbio. `forced` (the human asked): applies even with
    * agents working (they're interrupted and resumed after the restart).
    */
-  async apply(forced: boolean): Promise<string> {
+  async apply(forced: boolean, version?: string): Promise<string> {
+    if (version) return this.applyVersion(version);
     if (!this.latest || compareVersions(this.latest, this.host.version) <= 0) await this.check();
     if (!this.latest || compareVersions(this.latest, this.host.version) <= 0) throw new Error(`Symbio ${this.host.version} is up to date.`);
     const blocked = this.blocker(forced);
     if (blocked) throw new Error(blocked);
+    return this.handOver(this.latest, `Symbio is updating from ${this.host.version} to ${this.latest}`);
+  }
+
+  /**
+   * A specific version, asked for by the human (`sym update --to 0.9.0`): usually going back to
+   * the one before a release that broke something. Going back holds automatic updates (holdBack).
+   */
+  private async applyVersion(version: string): Promise<string> {
+    if (this.install.kind === "dev") throw new Error(this.blocker(true)!);
+    if (this.applying) throw new Error("Already updating.");
+    const target = await release(version);
+    if (compareVersions(target.version, this.host.version) === 0) throw new Error(`Symbio ${target.version} is already the one running.`);
+    if (!nodeSatisfies(target.node)) {
+      throw new Error(`Symbio ${target.version} needs Node.js ${target.node}, and this machine has ${process.versions.node}.`);
+    }
+    const back = compareVersions(target.version, this.host.version) < 0;
+    if (back) {
+      // Leave alone what's being left (or the newer release already out, if there is one).
+      const left = this.latest && compareVersions(this.latest, this.host.version) > 0 ? this.latest : this.host.version;
+      await holdBack(this.host.home, left);
+      this.skip = { version: left, until: Number.MAX_SAFE_INTEGER, reason: "went-back" };
+    }
+    return this.handOver(target.version, `Symbio is ${back ? "going back" : "moving"} from ${this.host.version} to ${target.version}`);
+  }
+
+  private async handOver(to: string, announcement: string): Promise<string> {
     this.applying = true;
-    const to = this.latest;
     try {
       await this.host.backup().catch((err) => console.error("[update] backup failed:", err.message));
-      await this.host.announce(`Symbio is updating from ${this.host.version} to ${to}; it'll be back in a minute or two.`).catch(() => {});
+      await this.host.announce(`${announcement}; it'll be back in a minute or two.`).catch(() => {});
       await this.runRunner({ waitPid: process.pid, to, start: true });
     } catch (err) {
       this.applying = false;
       throw err;
     }
     setTimeout(() => void this.host.shutdown(), 300);
-    return `Updating to ${to}: Symbio restarts in a minute or two.`;
+    return `Installing ${to}: Symbio restarts in a minute or two.`;
   }
 
   /** Starts the runner from a copy in the temp folder (npm replaces the package folder). */

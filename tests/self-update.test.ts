@@ -113,3 +113,45 @@ test("a release that needs a newer Node.js is never installed (npm would install
     globalThis.fetch = realFetch;
   }
 });
+
+test("going back to an earlier version (sym update --to): installed, and automatic updates wait for the next release", async () => {
+  const { readFileSync } = await import("node:fs");
+  const home = mkdtempSync(path.join(os.tmpdir(), "sym-upd-back-"));
+  let latest = "0.10.0";
+  const announced: string[] = [];
+  const host = (version: string) => ({ version, home, port: 1, busy: () => null, remoteActive: () => false, backup: async () => {}, announce: async (t: string) => void announced.push(t), shutdown: async () => {} });
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (url: any) => {
+    const u = String(url);
+    if (u.endsWith("/symbio/latest")) return new Response(JSON.stringify({ version: latest, engines: { node: ">=22" } }));
+    const v = u.match(/\/symbio\/([\d.]+)$/)?.[1];
+    return v && ["0.9.0", "0.10.0", "0.10.1"].includes(v) ? new Response(JSON.stringify({ version: v, engines: { node: ">=22" } })) : new Response("", { status: 404 });
+  }) as any;
+  try {
+    const up = new SelfUpdate(host("0.10.0") as any, { kind: "npm", root: home, prefix: home });
+    const runs: any[] = [];
+    up.runRunner = async (opts: any) => void runs.push(opts);
+    await up.load();
+    await up.check();
+    await assert.rejects(up.apply(true, "9.9.9"), /There's no Symbio 9\.9\.9 on npm/);
+    await assert.rejects(up.apply(true, "0.10.0"), /already the one running/);
+    assert.match(await up.apply(true, "0.9.0"), /Installing 0\.9\.0/);
+    assert.equal(runs[0].to, "0.9.0", "the updater installs that version");
+    assert.match(announced.at(-1)!, /going back from 0\.10\.0 to 0\.9\.0/);
+    const settings = JSON.parse(readFileSync(path.join(home, "updates.json"), "utf8"));
+    assert.deepEqual([settings.skip.version, settings.skip.reason], ["0.10.0", "went-back"]);
+
+    // Back on 0.9.0: 0.10.0 is still the latest, and isn't installed again automatically.
+    const after = new SelfUpdate(host("0.9.0") as any, { kind: "npm", root: home, prefix: home });
+    await after.load();
+    await after.check();
+    assert.equal(after.state().available, true, "still shown as available");
+    assert.match(after.state().waiting!, /You went back from 0\.10\.0/);
+    // A fix comes out: automatic updates resume.
+    latest = "0.10.1";
+    await after.check();
+    assert.equal(after.state().waiting, null, "the next release installs as usual");
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});

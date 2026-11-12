@@ -159,9 +159,10 @@ async function main() {
     return c.json(updates.state());
   });
   app.post("/api/update/apply", async (c) => {
-    const { force } = await c.req.json<{ force?: boolean }>().catch(() => ({ force: false }));
+    // version: a specific one (`sym update --to 0.9.0`), usually going back; otherwise the latest.
+    const { force, version } = await c.req.json<{ force?: boolean; version?: string }>().catch(() => ({ force: false, version: undefined }));
     try {
-      return c.json({ message: await updates.apply(force !== false) });
+      return c.json({ message: await updates.apply(force !== false, typeof version === "string" && version.trim() ? version.trim() : undefined) });
     } catch (err) {
       return c.json({ error: (err as Error).message }, 400);
     }

@@ -10,6 +10,7 @@
 //   sym run        run in the foreground (for debugging)
 //   sym remote     open a temporary link to use Symbio from another device (sym remote off to close it)
 //   sym update     install the latest version (waits for an idle team; --now doesn't)
+//   sym update --to 0.9.0   install that version instead, e.g. to go back after a bad release
 
 import { execFileSync, exec, spawn, spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, writeFileSync } from "node:fs";
@@ -209,11 +210,18 @@ async function doctor() {
 }
 
 /**
- * Installs the latest version. Running: Symbio hands over to its updater and restarts (waiting
- * for an idle team unless --now). Stopped: the updater runs here, and Symbio stays stopped.
+ * Installs the latest version, or with --to a specific one (usually going back to the version
+ * before a release that broke something). Running: Symbio hands over to its updater and restarts
+ * (waiting for an idle team unless --now). Stopped: the updater runs here, and Symbio stays stopped.
  */
 async function update() {
   const now = process.argv.includes("--now");
+  const toIndex = process.argv.indexOf("--to");
+  const wanted = toIndex >= 0 ? process.argv[toIndex + 1] : null;
+  if (toIndex >= 0 && !wanted) {
+    console.error('Say which version, e.g. "sym update --to 0.9.0".');
+    process.exit(1);
+  }
   const self = await import(pathToFileURL(path.join(root, "dist", "server", "self-update.js")).href);
   const install = self.installInfo(root);
   if (install.kind === "dev") {
@@ -222,14 +230,24 @@ async function update() {
   }
   let release;
   try {
-    release = await self.latestRelease();
+    release = wanted ? await self.release(wanted) : await self.latestRelease();
   } catch (err) {
-    console.error(`Couldn't check for updates: ${err.message}`);
+    console.error(wanted ? err.message : `Couldn't check for updates: ${err.message}`);
     process.exit(1);
   }
   const latest = release.version;
-  if (self.compareVersions(latest, pkg.version) <= 0) return console.log(`Symbio ${pkg.version} is up to date.`);
-  console.log(`Symbio ${latest} is available (you have ${pkg.version}).`);
+  const back = self.compareVersions(latest, pkg.version) < 0;
+  if (wanted) {
+    if (latest === pkg.version) return console.log(`Symbio ${pkg.version} is already the one installed.`);
+    console.log(
+      back
+        ? `Going back to Symbio ${latest} (you have ${pkg.version}). Automatic updates will skip ${pkg.version} and resume with the next release.`
+        : `Installing Symbio ${latest} (you have ${pkg.version}).`,
+    );
+  } else {
+    if (self.compareVersions(latest, pkg.version) <= 0) return console.log(`Symbio ${pkg.version} is up to date.`);
+    console.log(`Symbio ${latest} is available (you have ${pkg.version}).`);
+  }
   if (!self.nodeSatisfies(release.node)) {
     console.error(`It needs Node.js ${release.node}, and this is Node.js ${process.versions.node}. Update Node.js first (https://nodejs.org), then run "sym update".`);
     process.exit(1);
@@ -244,7 +262,7 @@ async function update() {
       process.exitCode = 1;
       return;
     }
-    const res = await api("POST", "/api/update/apply", { force: true });
+    const res = await api("POST", "/api/update/apply", { force: true, ...(wanted ? { version: latest } : {}) });
     if (res.status !== 200) {
       console.error(res.body?.error ?? `Symbio answered ${res.status}`);
       process.exit(1);
@@ -259,6 +277,7 @@ async function update() {
     console.log("");
   } else {
     // Not running: install right here, from a copy of the updater (npm replaces this folder).
+    if (back) await self.holdBack(HOME, pkg.version);
     const dir = mkdtempSync(path.join(os.tmpdir(), "symbio-update-"));
     const runner = path.join(dir, "update-runner.mjs");
     copyFileSync(path.join(root, "bin", "update-runner.mjs"), runner);
@@ -282,7 +301,7 @@ async function update() {
     spawnSync(process.execPath, [runner, job], { stdio: "inherit", windowsHide: true });
   }
   const result = existsSync(resultFile) ? JSON.parse(readFileSync(resultFile, "utf8")) : null;
-  if (result?.ok && result.to === latest) console.log(`Updated to ${latest}.${(await state()) === "running" ? ` Symbio is running: ${link()}` : ' Start it with "sym".'}`);
+  if (result?.ok && result.to === latest) console.log(`${back ? "Went back" : "Updated"} to ${latest}.${(await state()) === "running" ? ` Symbio is running: ${link()}` : ' Start it with "sym".'}`);
   else {
     console.error(`The update didn't complete${result?.error ? `: ${result.error}` : "."} Details: ${path.join(HOME, "logs", "update.log")}`);
     process.exitCode = 1;
@@ -304,6 +323,7 @@ Usage: sym [command]
   remote          open a temporary link + access code to use Symbio from another device
   remote off      close that link
   update          install the latest version (when the team is idle; --now to not wait)
+  update --to <v> install version <v> instead, e.g. to go back after a bad release
   --version       print the version
 
 Environment: SYMBIO_PORT (default 4310), SYMBIO_HOME (default ~/.symbio), SYMBIO_NO_OPEN=1.`);

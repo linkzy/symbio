@@ -34,6 +34,8 @@ jobs:
             exit 1
           fi
       - run: npm ci
+      # Nothing is published unless every check passes: unit tests, the OpenCode contract and the
+      # end-to-end tests (the whole app in a browser).
       - name: Check
         shell: bash
         run: |
@@ -41,7 +43,9 @@ jobs:
           git config --global user.email "ci@example.invalid"
           npm run typecheck
           npm test
+          npm run test:contract
           npm run build
+          npm run test:e2e
       - name: Publish
         shell: bash
         run: |

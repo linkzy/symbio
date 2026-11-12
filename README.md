@@ -135,11 +135,13 @@ on your computer, including the agents, from using Symbio's API behind your back
 | `sym run` | Run in the foreground, with the log in the terminal. |
 | `sym remote` | Open a temporary link and access code to use Symbio from another device (see below). `sym remote off` closes it. |
 | `sym update` | Install the latest version and restart Symbio, once no agent is working (`--now` doesn't wait). |
+| `sym update --to 0.9.0` | Install that version instead, e.g. to go back after a release that broke something; automatic updates then skip the version you left and resume with the next release. |
 
 **Updates.** Symbio checks for new versions and, by default, installs them by itself while the team
 is idle: never while an agent is working or waiting for you, or while remote access is on. It backs
 up first, restarts in a minute or two, and tells you in Messages. In Settings → Updates you can
-choose to be only told instead, or turn checking off, and see what's new.
+choose to be only told instead, or turn checking off, and see what's new. If a release breaks
+something, `sym update --to <version>` goes back to the one before.
 
 **From another device.** `sym remote` opens a temporary Cloudflare link to your Symbio and prints it
 with an access code. Open the link anywhere (phone, another computer), enter the code, and you're
