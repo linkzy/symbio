@@ -4,6 +4,7 @@ import { promises as fs, existsSync, mkdirSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
+import { replaceFile } from "./fsutil.js";
 
 export type AgentRole = "coordinator" | "worker";
 /** "waiting" = blocked on a question to the human (not hung; the watchdog leaves it alone). */
@@ -193,7 +194,7 @@ async function writeJson(file: string, value: unknown) {
   await fs.mkdir(path.dirname(file), { recursive: true });
   const tmp = `${file}.${process.pid}.tmp`;
   await fs.writeFile(tmp, JSON.stringify(value, null, 2));
-  await fs.rename(tmp, file);
+  await replaceFile(tmp, file);
 }
 
 export class Store {

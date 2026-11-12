@@ -7,6 +7,7 @@
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { replaceFile } from "./fsutil.js";
 
 export interface AssetRequest {
   agentId: string;
@@ -160,7 +161,7 @@ export class AssetRegister {
     await fs.mkdir(path.dirname(this.file), { recursive: true });
     const tmp = `${this.file}.${process.pid}.tmp`;
     await fs.writeFile(tmp, JSON.stringify(this.assets, null, 2));
-    await fs.rename(tmp, this.file);
+    await replaceFile(tmp, this.file);
   }
 }
 

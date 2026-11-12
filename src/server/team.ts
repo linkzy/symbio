@@ -1218,7 +1218,7 @@ export class Team implements TeamCore {
     agent.status = status;
     agent.lastActivity = Date.now();
     bus.publish({ type: "agent.status", projectId: project.id, agentId: agent.id, status });
-    void this.store.update(project);
+    this.store.update(project).catch((err) => console.error("[store] couldn't save", project.name, err.message));
   }
 
   private waitsOnHuman(project: Project, agent: Agent): boolean {

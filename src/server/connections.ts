@@ -9,6 +9,7 @@ import path from "node:path";
 import { SecretVault } from "./secrets.js";
 import { sshExec, type SshTarget } from "./ssh.js";
 import { globalDir, newId } from "./store.js";
+import { replaceFile } from "./fsutil.js";
 
 export type ConnectionType = "github" | "azure" | "server";
 
@@ -316,7 +317,7 @@ export class Connections {
     await fs.mkdir(globalDir, { recursive: true });
     const tmp = `${this.file}.${process.pid}.tmp`;
     await fs.writeFile(tmp, JSON.stringify(this.list, null, 2));
-    await fs.rename(tmp, this.file);
+    await replaceFile(tmp, this.file);
   }
 }
 

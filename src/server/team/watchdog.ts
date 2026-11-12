@@ -130,7 +130,7 @@ export class Watchdog {
         agent.status = "idle";
         changed = true;
       }
-      if (changed) void this.team.store.update(project);
+      if (changed) this.team.store.update(project).catch((err) => console.error("[store] couldn't save", project.name, err.message));
     }
   }
 

@@ -3,6 +3,7 @@
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { replaceFile } from "./fsutil.js";
 
 export const TASK_STATUSES = ["todo", "in-progress", "blocked", "review", "done"] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
@@ -188,7 +189,7 @@ export class PlanStore {
     await fs.mkdir(path.dirname(this.file), { recursive: true });
     const tmp = `${this.file}.${process.pid}.tmp`;
     await fs.writeFile(tmp, JSON.stringify(this.plan, null, 2));
-    await fs.rename(tmp, this.file);
+    await replaceFile(tmp, this.file);
   }
 }
 

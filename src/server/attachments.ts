@@ -8,6 +8,7 @@ import path from "node:path";
 import { IMAGE_EXTENSIONS } from "./guard.js";
 import { DOCUMENT_EXTENSIONS } from "./documents.js";
 import { newId, type Project } from "./store.js";
+import { replaceFile } from "./fsutil.js";
 
 export const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024;
 
@@ -45,7 +46,7 @@ async function save(project: Project, list: Attachment[]) {
   await fs.mkdir(path.dirname(indexFile(project)), { recursive: true });
   const tmp = `${indexFile(project)}.tmp`;
   await fs.writeFile(tmp, JSON.stringify(list, null, 2));
-  await fs.rename(tmp, indexFile(project));
+  await replaceFile(tmp, indexFile(project));
 }
 
 /** A file name safe on every OS, keeping the extension. */

@@ -7,6 +7,7 @@ import path from "node:path";
 import { git } from "./git.js";
 import { projectRepositoriesSync } from "./repos.js";
 import { globalDir, type Agent, type Project } from "./store.js";
+import { replaceFile } from "./fsutil.js";
 
 // ---------------------------------------------------------------- backups
 
@@ -43,7 +44,7 @@ async function writeBackup(projects: Project[], dest: string): Promise<string> {
     if (existsSync(src)) await fs.cp(src, path.join(tmp, "symbio", name), { recursive: true });
   }
   await fs.mkdir(tmp, { recursive: true });
-  await fs.rename(tmp, dest);
+  await replaceFile(tmp, dest);
   // Keep the last BACKUP_KEEP days that have backups (daily and labeled alike).
   const entries = (await fs.readdir(backupsDir())).filter((d) => /^\d{4}-\d{2}-\d{2}(-[\w.-]+)?$/.test(d));
   const keepDays = [...new Set(entries.map((d) => d.slice(0, 10)))].sort().slice(-BACKUP_KEEP);

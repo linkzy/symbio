@@ -13,6 +13,7 @@ import { randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { chmodSync, existsSync, promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { replaceFile } from "./fsutil.js";
 
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no 0/O, 1/I/L
 export const CODE_LENGTH = 8;
@@ -229,7 +230,7 @@ async function downloadCloudflared(dest: string) {
     await fs.rm(tmp, { force: true });
     if (r.status !== 0) throw new Error("Couldn't unpack cloudflared.");
   } else {
-    await fs.rename(tmp, dest);
+    await replaceFile(tmp, dest);
   }
   if (process.platform !== "win32") chmodSync(dest, 0o755);
 }

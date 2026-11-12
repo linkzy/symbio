@@ -10,6 +10,7 @@ import { Entry } from "@napi-rs/keyring";
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
+import { replaceFile } from "./fsutil.js";
 
 // Overridable so tests never touch the real credential entry.
 const SERVICE = process.env.SYMBIO_KEYRING_SERVICE ?? "symbio";
@@ -102,7 +103,7 @@ export class SecretVault {
       await fs.mkdir(path.dirname(this.file), { recursive: true });
       const tmp = `${this.file}.${process.pid}.tmp`;
       await fs.writeFile(tmp, Buffer.concat([iv, cipher.getAuthTag(), enc]));
-      await fs.rename(tmp, this.file);
+      await replaceFile(tmp, this.file);
     };
     this.writing = this.writing.catch(() => {}).then(write);
     return this.writing;

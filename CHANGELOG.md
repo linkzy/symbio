@@ -7,6 +7,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [0.10.0]
 
+- Fixed: on Windows, saving Symbio's state could fail when another program (antivirus, search
+  indexer) briefly held the file; saves now wait for it.
 - Chat modes in core's chat box: **Auto** (as before), **Plan** (discuss and plan only: Symbio blocks
   creating helpers, assigning tasks, merging, pushing and editing files until you switch) and **Act**
   (get it done without a plan to approve). Messages show the mode they were sent in.
