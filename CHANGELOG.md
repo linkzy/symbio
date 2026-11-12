@@ -5,6 +5,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Helpers that go quiet: a helper that ends its turn without reporting on the work core gave it is
+  reminded once, and if it stays quiet core is told, instead of the work stalling unseen (seen with
+  smaller models).
 - `sym update --to <version>` installs a given version, e.g. to go back after a release that broke
   something. Automatic updates then skip the version you left and resume with the next release.
 - Releases are only published when the unit tests, the OpenCode contract test and the new end-to-end

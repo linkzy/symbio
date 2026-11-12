@@ -260,3 +260,52 @@ test("a question stays open while messages arrive, and the watchdog never interr
   assert.equal(core.status, "waiting");
   assert.equal(interrupts(), 0);
 });
+
+test("a helper that goes quiet without reporting is nudged once, then core is told; reporting or waiting for an asset isn't quiet", async () => {
+  const { project, team, calls, core, writer, editor } = await setup();
+  // Earlier tests' projects share the data folder (and their session names): use our own.
+  core.sessionId = "ses_core_quiet";
+  writer.sessionId = "ses_writer_quiet";
+  editor.sessionId = "ses_editor_quiet";
+  const runtime = (team as any).runtime;
+  // A turn ends: OpenCode has delivered what was queued for the agent, and says the turn succeeded.
+  const turnEnds = (agent: any) => {
+    for (const inboxID of [...((team as any).inbox.get(agent.id)?.keys() ?? [])]) {
+      runtime.emit("event", { type: "session.inbox.delivered", data: { sessionID: agent.sessionId, inboxID } });
+    }
+    runtime.emit("event", { type: "session.execution.succeeded", data: { sessionID: agent.sessionId } });
+  };
+  const check = (agent: any) => (team as any).checkReport(project.id, agent.id);
+  const lastPrompt = (agent: any) => prompts(calls, agent.sessionId).at(-1)?.body ?? "";
+
+  // Given work, the helper ends its turn without a word: nudged, then core is told.
+  await team.deliver(project, core, writer, "request", "Write chapter 1");
+  turnEnds(writer);
+  await check(writer);
+  assert.match(lastPrompt(writer), /ended your turn without reporting to core/);
+  const toCore = prompts(calls, core.sessionId).length;
+  turnEnds(writer);
+  await check(writer);
+  assert.match(lastPrompt(core), /writer has gone quiet/);
+  turnEnds(writer);
+  await check(writer);
+  assert.equal(prompts(calls, core.sessionId).length, toCore + 1, "core is told once");
+
+  // A report settles it.
+  await team.deliver(project, core, writer, "request", "Write chapter 2");
+  await team.deliver(project, writer, core, "info", "Chapter 2 is written, in chapters/02.md");
+  const before = prompts(calls, writer.sessionId).length;
+  turnEnds(writer);
+  await check(writer);
+  assert.equal(prompts(calls, writer.sessionId).length, before, "no nudge after reporting");
+
+  // Waiting for a shared asset someone else holds isn't going quiet.
+  await team.requestAsset(project, editor, "chapters", "edit");
+  await team.deliver(project, core, writer, "request", "Write chapter 3");
+  await team.requestAsset(project, writer, "chapters", "write chapter 3");
+  const waiting = prompts(calls, writer.sessionId).length;
+  turnEnds(writer);
+  await check(writer);
+  assert.equal(prompts(calls, writer.sessionId).length, waiting, "no nudge while waiting for an asset");
+  (team as any).reported(writer);
+});

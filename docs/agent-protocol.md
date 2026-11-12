@@ -83,6 +83,12 @@ being merged (unless core forces the merge).
   *in progress*. Tasks with unfinished dependencies can't be assigned.
 - Helpers report with `update_task`: `in-progress`, `blocked` (with the reason) or `review`
   (finished, with a summary, which is their report to core).
+- A helper given work by core (a task, or a `request`/`blocking`/`urgent` message) owes core a
+  report: an `update_task`, a message to core, or a question to the human. If it ends its turn
+  without one, Symbio waits a moment (`SYMBIO_QUIET_HELPER_SECONDS`, default 20, in case more turns
+  are queued), reminds it once, and if it stays quiet tells core it has gone quiet. Not while it
+  waits for a shared asset, for the human, or for messages on their way, nor when its tasks are
+  already in review or done; the human talking to the helper directly clears it.
 - core reviews, calls `merge_work` (helpers with their own copy; that marks the task done) or checks
   the files in the project folder and marks the task done with `update_task` (shared helpers). Small follow-ups go in with `add_task`
   without re-approval.

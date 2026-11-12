@@ -48,6 +48,9 @@ const PROTOCOL_KINDS = new Set<MessageKind>([
   "task-review",
   "task-blocked",
 ]);
+// A helper that ends its turn still owing core a report is checked after this pause (more turns
+// may be queued), nudged once, and if it stays quiet core is told.
+const QUIET_HELPER_GRACE_MS = Number(process.env.SYMBIO_QUIET_HELPER_SECONDS ?? 20) * 1000;
 // Model fallback: a failed model is skipped for this long; switch after this many provider retries.
 const FAILED_MODEL_COOLDOWN_MS = 30 * 60_000;
 const RETRIES_BEFORE_FALLBACK = 4;
@@ -104,6 +107,8 @@ export class Team {
   private oversizedAt = new Map<string, number>();
   /** agentId → tool call id of an open interactive question. */
   private pendingQuestion = new Map<string, string>();
+  /** Helpers given work by core that haven't reported since (see checkReport). */
+  private owedReports = new Map<string, { nudged: boolean; timer: NodeJS.Timeout | null }>();
   /** Connection actions (SSH, git, GitHub API) and their approvals. Set at startup. */
   remote!: RemoteOps;
   /** Set when Symbio itself is shutting down on purpose. */
@@ -506,6 +511,7 @@ export class Team {
     if (agent.role !== "coordinator" && task.assignee !== agent.id) {
       throw new Error(`${task.id} isn't assigned to you. Ask the coordinator.`);
     }
+    if (agent.role === "worker") this.reported(agent); // any update on its task is news for core
     await store.update(task.id, { status, note: note ? { by: agent.name, text: note } : undefined });
     this.planChanged(project);
 
@@ -675,6 +681,7 @@ export class Team {
   }
 
   async stopAgent(project: Project, agent: Agent, reason: string): Promise<string> {
+    this.reported(agent);
     await this.client()
       .interrupt(agent.sessionId)
       .catch(() => {});
@@ -944,6 +951,7 @@ export class Team {
     if (to.status === "stopped") throw new Error(`${to.name} is stopped.`);
     if (!opts.protocol && !PROTOCOL_KINDS.has(kind)) await this.guardLoop(project, from, to);
     await this.log(project, { from: from.id, to: to.id, kind, text });
+    this.trackReports(from, to, kind);
     await this.prepare(project, to);
     const body = `[from: ${from.name} · ${kind}]\n${text}`;
     if (project.paused) {
@@ -986,7 +994,77 @@ export class Team {
     return taken;
   }
 
+  // ---------------------------------------------------------------- helpers that go quiet
+
+  /** Work from core starts a report owed by the helper; its own messages to core settle it. */
+  private trackReports(from: Agent, to: Agent, kind: MessageKind) {
+    if (from.role === "coordinator" && to.role === "worker" && (kind === "request" || kind === "blocking" || kind === "urgent")) {
+      this.reported(to);
+      this.owedReports.set(to.id, { nudged: false, timer: null });
+    } else if (from.role === "worker" && to.role === "coordinator" && !kind.startsWith("asset-")) {
+      this.reported(from);
+    }
+  }
+
+  private reported(agent: Agent) {
+    const owed = this.owedReports.get(agent.id);
+    if (owed?.timer) clearTimeout(owed.timer);
+    this.owedReports.delete(agent.id);
+  }
+
+  /** After a helper's turn: if it still owes a report, check again shortly (more turns may be queued). */
+  private scheduleReportCheck(project: Project, agent: Agent) {
+    const owed = this.owedReports.get(agent.id);
+    if (!owed) return;
+    if (owed.timer) clearTimeout(owed.timer);
+    owed.timer = setTimeout(() => void this.checkReport(project.id, agent.id).catch((err) => console.error("[quiet helper]", err.message)), QUIET_HELPER_GRACE_MS);
+    owed.timer.unref?.();
+  }
+
+  /**
+   * A helper that ended its turn without reporting on the work core gave it (seen with smaller
+   * models): nudge it once; if it stays quiet, tell core instead of letting the work stall unseen.
+   * Not while it waits on something real: the human, a shared asset, messages on their way.
+   */
+  private async checkReport(projectId: string, agentId: string) {
+    const owed = this.owedReports.get(agentId);
+    const project = this.store.list().find((p) => p.id === projectId);
+    const agent = project?.agents.find((a) => a.id === agentId);
+    if (!owed || !project || !agent) return;
+    owed.timer = null;
+    if (agent.status !== "idle" || project.paused || this.shuttingDown) return;
+    if (this.inbox.get(agent.id)?.size) return;
+    if ((await this.assets(project)).list().some((a) => a.queue.some((q) => q.agentId === agent.id))) return;
+    const tasks = (await this.plan(project)).plan.tasks.filter((t) => t.assignee === agent.id);
+    const open = tasks.find((t) => t.status === "in-progress");
+    if (tasks.length && !open) return this.reported(agent); // its tasks are in review, blocked or done
+    const coordinator = this.coordinator(project);
+    const core = coordinator?.name ?? "the coordinator";
+    const what = open ? ` (${open.id} "${open.title}")` : "";
+    if (!owed.nudged) {
+      owed.nudged = true;
+      await this.system(
+        project,
+        agent,
+        `Symbio: you ended your turn without reporting to ${core} on the work you were given${what}. If it's done, report it now: ` +
+          (open ? `update_task("${open.id}", "review", <summary>)` : `send_message to ${core} (what you did, and where)`) +
+          ". If you're blocked or waiting on something, say so the same way. If you're still working on it, carry on.",
+      );
+      return;
+    }
+    this.reported(agent);
+    if (!coordinator || coordinator.status === "stopped") return;
+    await this.system(
+      project,
+      coordinator,
+      `Symbio: ${agent.name} has gone quiet: it ended its turn without reporting on the work you gave it${what}, even after a reminder. ` +
+        `Check on it (send_message), or look at its chat; its work so far is in ${agent.branch ? `its own copy (branch ${agent.branch})` : "the project folder"}.`,
+    );
+  }
+
   async sendFromHuman(project: Project, agent: Agent, text: string, urgent = false) {
+    // The human is talking to the helper directly: its answer goes to them, not to core.
+    if (agent.role === "worker") this.reported(agent);
     await this.log(project, { from: "human", to: agent.id, kind: urgent ? "urgent" : "chat", text });
     await this.prepare(project, agent);
     // The coordinator talks with the human directly; for helpers, say who is speaking.
@@ -996,6 +1074,7 @@ export class Team {
   }
 
   async askHuman(project: Project, from: Agent, question: string) {
+    if (from.role === "worker") this.reported(from); // it's waiting on the human, not quiet
     await this.log(project, { from: from.id, to: "human", kind: "needs-human", text: question });
   }
 
@@ -1603,6 +1682,7 @@ export class Team {
       }
       if (agent.status !== "stopped") this.setStatus(project, agent, "idle");
       if (e.type === "session.execution.failed") void this.fallback(project, agent, e.data?.error);
+      else if (agent.role === "worker") this.scheduleReportCheck(project, agent);
     } else if (/retr/i.test(e.type)) {
       const attempt = Number(e.data?.attempt ?? e.data?.retry?.attempt ?? 0);
       const error = e.data?.error ?? e.data?.retry?.error ?? { message: "provider not responding" };

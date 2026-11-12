@@ -148,6 +148,13 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       );
     },
   },
+  {
+    id: "2026-11-12-quiet-helpers",
+    text:
+      "Helpers that go quiet: when a helper you gave work to ends its turn without reporting (no update_task, no message to you), " +
+      "Symbio reminds it once; if it still doesn't report, Symbio tells you it has gone quiet, so check on it. Waiting for a shared " +
+      "asset or for the human doesn't count as going quiet.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */
