@@ -89,7 +89,14 @@ being merged (unless core forces the merge).
   done. *every*: a task merged or marked done waits in the human's "To review" list (Needs you, the
   Plan tab) and is done only when they approve it; reporting without a guide is refused; tasks that
   depend on it wait. *Send back* reopens the task and gives the human's note to its helper (core is
-  told). *marked* (only the tasks marked in the plan) comes with the next step.
+  told). *marked*: only the tasks marked for the human (`review: true` in `submit_plan` /
+  `add_task`, which core sets when it proposes the plan; the human ticks or unticks them in the Plan
+  tab, `POST …/plan/tasks/:id/mark`) wait; the others work as with *core*.
+- **A task's changes** (`Reviews.changes`, `GET …/plan/tasks/:id/changes`): the files the task
+  changed and their diffs, from OpenCode's session diff (`docs/opencode-api.md`) over the helper's
+  turns on that task. Symbio records them as `Task.work`: the assignment's message starts a segment,
+  the helper's review report ends it, and a later assignment or send-back starts another. Only in a
+  git repository; without git the Plan tab says so.
 - **Chat modes** (the selector in core's chat box, `Project.coreMode`). **Plan**: core discusses and
   proposes but starts nothing. Symbio enforces it: core's tools refuse creating helpers, assigning
   tasks, merging, moving helpers, cleaning folders, connection actions that change things (pushes,

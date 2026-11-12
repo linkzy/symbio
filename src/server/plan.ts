@@ -35,6 +35,11 @@ export interface Task {
   /** Marked for the human's review (Project.reviewBy "marked"). */
   review?: boolean;
   humanReview?: HumanReview;
+  /**
+   * The turns of its helper's session that did the work (user message ids, from the assignment to
+   * the latest report), for its changes (OpenCode's session diff). One entry per session.
+   */
+  work?: { sessionId: string; from: string; to?: string }[];
   createdAt: number;
   updatedAt: number;
 }
@@ -55,6 +60,8 @@ export interface TaskInput {
   description?: string;
   depends_on?: string[];
   assets?: string[];
+  /** The human reviews it before it's done (Project.reviewBy "marked"). */
+  review?: boolean;
 }
 
 const emptyPlan = (): Plan => ({ goal: "", status: "none", revision: 0, feedback: null, tasks: [], updatedAt: Date.now() });
@@ -116,6 +123,10 @@ export class PlanStore {
         dependsOn,
         assets: input.assets ?? [],
         notes: old?.notes ?? [],
+        ...(input.review ? { review: true } : {}),
+        ...(old?.guide ? { guide: old.guide } : {}),
+        ...(old?.humanReview ? { humanReview: old.humanReview } : {}),
+        ...(old?.work ? { work: old.work } : {}),
         createdAt: old?.createdAt ?? now,
         updatedAt: now,
       };
@@ -155,6 +166,7 @@ export class PlanStore {
       dependsOn: (input.depends_on ?? []).map((d) => this.task(d).id),
       assets: input.assets ?? [],
       notes: [],
+      ...(input.review ? { review: true } : {}),
       createdAt: now,
       updatedAt: now,
     };
@@ -167,7 +179,15 @@ export class PlanStore {
 
   async update(
     id: string,
-    change: { status?: TaskStatus; assignee?: string | null; note?: { by: string; text: string }; guide?: string; humanReview?: HumanReview | null },
+    change: {
+      status?: TaskStatus;
+      assignee?: string | null;
+      note?: { by: string; text: string };
+      guide?: string;
+      humanReview?: HumanReview | null;
+      review?: boolean;
+      work?: Task["work"];
+    },
   ) {
     const task = this.task(id);
     if (change.status) {
@@ -176,6 +196,8 @@ export class PlanStore {
     }
     if (change.assignee !== undefined) task.assignee = change.assignee;
     if (change.guide?.trim()) task.guide = change.guide.trim();
+    if (change.review !== undefined) task.review = change.review;
+    if (change.work) task.work = change.work;
     if (change.humanReview === null) delete task.humanReview;
     else if (change.humanReview) task.humanReview = change.humanReview;
     if (change.note?.text.trim()) task.notes.push({ time: Date.now(), by: change.note.by, text: change.note.text.trim() });

@@ -38,6 +38,7 @@ Symbio stops a server left behind by a previous run, if it's still running.
 | Read a session / its messages | `GET /api/session/{id}`, `GET /api/session/{id}/message?limit=&cursor=` (newest first) |
 | Update permissions | `PATCH /api/session/{id}` |
 | Deliver a message (wakes the agent) | `POST /api/session/{id}/prompt` `{text, delivery: "queue" \| "steer"}` |
+| A session's file changes over a range of turns | `GET /api/session/{id}/diff?from=<user message id>&to=<user message id>&context=<lines>` → `data: [{file, status, additions, deletions, patch}]` |
 | Add to the conversation without a turn | `POST /api/session/{id}/synthetic` `{text, delivery, resume}` |
 | Interrupt (watchdog, pause) | `POST /api/session/{id}/interrupt` |
 | Switch model | `POST /api/session/{id}/model` `{model: {providerID, id}}` |
@@ -61,6 +62,12 @@ and idle), `session.text.*`, `session.reasoning.*`, `session.tool.*` (live outpu
 
 ## Behaviors worth knowing
 
+- **A session's changes, turn by turn** (`GET /api/session/{id}/diff`): the files its turns changed,
+  with unified patches, whether or not anything was committed (so also for agents sharing a folder,
+  each with its own changes). `from` and `to` are user message ids; the id `POST …/prompt` returns is
+  the id of the user message it becomes. It only works in a git repository: in a folder without git
+  it returns nothing (verified live on 2.1.4 with a real model, 2026-11-12). Symbio's changes view per
+  task is built on it.
 - **An `edit` deny on `*` takes the editing tools away.** With `{action: "edit", resource: "*",
   effect: "deny"}` in a session's rules, the model isn't offered its write/edit tools at all ("I
   don't have a write or edit tool"); shell denies such as `* > *` refuse those commands

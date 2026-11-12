@@ -174,6 +174,15 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "that depend on it wait meanwhile. If they send it back, their note goes straight to the helper and you're told. When they " +
       "review, don't send them review lists in the chat: the list and the guides are in Symbio. Your brief says which applies.",
   },
+  {
+    id: "2026-11-12-marked-review",
+    text:
+      "Tasks marked for the human's review: a project can be set so the human reviews only some tasks (Settings → Team → Who " +
+      "reviews the work → marked tasks). Then mark those tasks with review: true in submit_plan or add_task (e.g. the " +
+      "checkpoints of a pipeline; ask the human when unsure); the human can change the marks in the Plan tab. Only marked tasks " +
+      "wait for their approval. The human can also see each task's changed files and diffs in Symbio, so you don't need to " +
+      "list them in the chat.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */

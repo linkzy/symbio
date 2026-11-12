@@ -22,7 +22,8 @@ export interface TeamCore {
   /** Adds a line to an agent's conversation without starting a turn or logging it (the caller logs). */
   note(project: Project, agent: Agent, text: string): Promise<void>;
   /** A message between agents: logged, delivered (it wakes the recipient), loop-guarded. */
-  deliver(project: Project, from: Agent, to: Agent, kind: MessageKind, text: string, opts?: { protocol?: boolean }): Promise<void>;
+  /** Returns the id of the user message it becomes in the recipient's session (undefined when held). */
+  deliver(project: Project, from: Agent, to: Agent, kind: MessageKind, text: string, opts?: { protocol?: boolean }): Promise<string | undefined>;
   setStatus(project: Project, agent: Agent, status: Agent["status"]): void;
   /** A message from the human to an agent (what they type in its chat). */
   sendFromHuman(project: Project, agent: Agent, text: string, urgent?: boolean): Promise<void>;

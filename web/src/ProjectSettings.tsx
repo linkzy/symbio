@@ -185,11 +185,14 @@ function Team({ project, onChanged }: { project: Project; onChanged: (p: Project
             <button className={review === "every" ? "on" : ""} onClick={() => setReview("every")}>
               Me, every task
             </button>
+            <button className={review === "marked" ? "on" : ""} onClick={() => setReview("marked")}>
+              Me, marked tasks
+            </button>
           </div>
           <span className="hint">
             {review === "core"
               ? "core reviews and merges the helpers' work, and tasks are done when it says so. Nothing waits on you; each task still has a guide for checking it, in the Plan tab."
-              : "When a task's work is finished, it waits in your list (Needs you, and the Plan tab) with its helper's guide: where to look and how to check it. It's done when you approve it; tasks that depend on it wait meanwhile. Sending it back gives your note to the helper that did it."}
+              : `${review === "marked" ? "Only the tasks marked for your review (core marks them in the plan, following what you told it; you tick or untick them on each task in the Plan tab). " : ""}When a task's work is finished, it waits in your list (Needs you, and the Plan tab) with its helper's guide: where to look and how to check it. It's done when you approve it; tasks that depend on it wait meanwhile. Sending it back gives your note to the helper that did it.`}
           </span>
         </div>
         <div className="field">

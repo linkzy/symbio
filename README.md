@@ -68,7 +68,8 @@ place. Here Symbio was restarted mid-task, and it told the helper to pick up whe
   merge.
 - **Review the work your way.** Helpers report each finished task with a guide for checking it:
   where to look, the steps and what you should see. Let core review (the default), or review every
-  task yourself from a "To review" list: approve it, or send it back with a note to the helper.
+  task yourself from a "To review" list (approve it, or send it back with a note to the helper), or
+  only the tasks marked in the plan. Each task's changed files and diffs are a click away.
 - **Choose how core takes your message.** A selector in the chat box: *Auto* (core decides),
   *Plan* (discuss and plan only: Symbio blocks starting work and editing files until you switch)
   or *Act* (get it done without a plan to approve).

@@ -6,7 +6,7 @@ import remarkGfm from "remark-gfm";
 import { api, subscribe, type Approval, type LoggedMessage, type PermissionRequest, type Plan, type Project, type Task } from "./api";
 import { openQuestions } from "./Messages";
 import { AgentForms } from "./FormCard";
-import { ReviewActions, ReviewGuide, waitingForReview } from "./Review";
+import { ReviewActions, ReviewGuide, TaskChanges, waitingForReview } from "./Review";
 import { Avatar, Drawer, timeAgo } from "./ui";
 
 export interface InboxData {
@@ -107,6 +107,7 @@ export function InboxDrawer({
               <strong>{t.id}</strong> {t.title}
             </div>
             <ReviewGuide guide={t.guide} />
+            <TaskChanges projectId={project.id} taskId={t.id} />
             <ReviewActions projectId={project.id} task={t} />
           </Item>
         ))}

@@ -787,3 +787,25 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); margi
 .review-actions.column { flex-direction: column; align-items: stretch; }
 .review-box { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid rgba(212, 160, 58, 0.45); border-radius: var(--r-lg); background: var(--amber-soft); margin-bottom: 14px; }
 .review-box-head { font-weight: 600; color: var(--amber); font-size: 13px; }
+
+/* A task's changes: files with +/−, each unified diff on click. */
+.task-changes { display: flex; flex-direction: column; gap: 6px; margin: 4px 0; }
+.task-changes > .btn { align-self: flex-start; }
+.changes-list { display: flex; flex-direction: column; gap: 4px; }
+.change-file { border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+.change-file-head { width: 100%; display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--surface); border: none; color: var(--text); font: inherit; font-size: 12px; cursor: pointer; text-align: left; }
+.change-file-head:hover { background: var(--surface-2); }
+.change-file-head .ellipsis { font-family: var(--mono); }
+.change-status { flex: none; width: 16px; text-align: center; font-weight: 700; font-size: 11px; }
+.change-status.added { color: var(--green); }
+.change-status.modified { color: var(--amber); }
+.change-status.deleted { color: var(--red); }
+.change-count { flex: none; font-size: 11px; font-variant-numeric: tabular-nums; }
+.change-count.add { color: var(--green); }
+.change-count.del { color: var(--red); }
+.patch { margin: 0; padding: 6px 0; max-height: 420px; overflow: auto; background: var(--bg-sunken); font-size: 11.5px; line-height: 1.5; border-top: 1px solid var(--border); }
+.patch > div { padding: 0 10px; white-space: pre; }
+.patch .add { background: rgba(63, 178, 127, 0.12); color: #8fdcb6; }
+.patch .del { background: rgba(229, 83, 75, 0.12); color: #f0a09b; }
+.patch .hunk { color: var(--blue); }
+.review-mark { margin-bottom: 12px; }

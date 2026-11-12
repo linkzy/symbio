@@ -6,9 +6,9 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 
 ## Now
 
-- **Reviewing the team's work, step 1.** Done for the next release: review guides, the "To review"
-  list (approve, send back), and the setting with *core* and *me, every task*. Next: step 2, the
-  tasks marked in the plan and the changes view (Next, item 1).
+- **Reviewing the team's work.** Done for the next release: review guides, the "To review" list
+  (approve, send back), the setting with *core*, *me, every task* and *me, the tasks marked in the
+  plan*, and a task's changes (files and diffs). Left for later: images as before/after.
 
 ## Next
 
@@ -28,8 +28,7 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
      localhost), and the task waits for the human; tasks that depend on it don't start meanwhile.
    - **The changes**: files changed and their diffs (images as before/after), a click away.
 
-   Step 1 (the guide, the "To review" list, *core* / *every task*) is done; step 2 is marked tasks
-   and the changes view.
+   Done (see Now), except images as before/after: the changes view shows text diffs only.
 2. **Notifications.** When something needs the human (a question, an approval, a plan to review, a
    stuck agent) or a task finishes, send it where they are: browser/phone notifications, and
    optionally a messaging app (e.g. Telegram) or e-mail, with per-project choices. Essential for

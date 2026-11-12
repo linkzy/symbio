@@ -6,8 +6,21 @@
 
 import { bus } from "../bus.js";
 import type { Task } from "../plan.js";
-import type { Project } from "../store.js";
+import { projectRepositoriesSync } from "../repos.js";
+import type { Agent, Project } from "../store.js";
+import { isGitRepo } from "../workspaces.js";
 import { active, type TeamCore } from "./core.js";
+
+/** One file a task changed. */
+export interface TaskChange {
+  file: string;
+  status: "added" | "modified" | "deleted";
+  additions: number;
+  deletions: number;
+  patch: string;
+}
+
+const MAX_PATCH = 200_000;
 
 export class Reviews {
   constructor(private readonly team: TeamCore) {}
@@ -64,6 +77,65 @@ export class Reviews {
     }
     if (helper && helper.role === "worker" && active(helper)) await this.team.renewAfterTask(project, helper, "its task was approved");
     bus.publish({ type: "project.updated", projectId: project.id });
+  }
+
+/** Marks (or unmarks) a task for the human's review, for projects reviewed "marked". */
+  async mark(project: Project, taskId: string, review: boolean): Promise<void> {
+    const plan = await this.team.plan(project);
+    const task = plan.task(taskId);
+    if (task.status === "done") throw new Error(`${task.id} is already done.`);
+    await plan.update(task.id, { review, note: { by: "human", text: review ? "marked for my review" : "no review by me" } });
+    this.team.planChanged(project);
+  }
+
+  /**
+   * A helper reported the task for review: the turn it reported in ends the task's work in its
+   * session (a fix round after "send back" extends it). A session started since the assignment (a
+   * fresh session) adds its own range.
+   */
+  async recordReport(project: Project, agent: Agent, taskId: string): Promise<void> {
+    const plan = await this.team.plan(project);
+    const task = plan.task(taskId);
+    const page = await this.team.client().messagePage(agent.sessionId, 40);
+    const users = page.messages.filter((m: any) => m.type === "user").map((m: any) => String(m.id));
+    if (!users.length) return;
+    const work = [...(task.work ?? [])];
+    const current = work.find((w) => w.sessionId === agent.sessionId);
+    if (current) current.to = users[users.length - 1];
+    else work.push({ sessionId: agent.sessionId, from: users[0], to: users[users.length - 1] });
+    await plan.update(task.id, { work });
+  }
+
+  /**
+   * What a task changed: the files its helper's turns changed, with their diffs (OpenCode's session
+   * diff, which needs git). Only the fields the browser needs are passed on.
+   */
+  async changes(project: Project, taskId: string): Promise<{ files: TaskChange[]; note?: string }> {
+    const task = (await this.team.plan(project)).task(taskId);
+    const ranges = (task.work ?? []).filter((w) => w.to);
+    if (!ranges.length) return { files: [], note: "Nothing recorded yet: the changes show once the helper reports the task." };
+    const byFile = new Map<string, TaskChange>();
+    for (const w of ranges) {
+      const res = await this.team
+        .client()
+        .request("GET", `/api/session/${w.sessionId}/diff?from=${encodeURIComponent(w.from)}&to=${encodeURIComponent(w.to!)}&context=3`)
+        .catch(() => null);
+      for (const f of res?.data ?? []) {
+        const patch = String(f.patch ?? "");
+        byFile.set(String(f.file), {
+          file: String(f.file),
+          status: f.status === "added" || f.status === "deleted" ? f.status : "modified",
+          additions: Number(f.additions) || 0,
+          deletions: Number(f.deletions) || 0,
+          patch: patch.length > MAX_PATCH ? `${patch.slice(0, MAX_PATCH)}\n… (cut: the change is too large to show here)` : patch,
+        });
+      }
+    }
+    const files = [...byFile.values()].sort((a, b) => a.file.localeCompare(b.file));
+    if (!files.length && !(await isGitRepo(project.directory)) && !projectRepositoriesSync(project).length) {
+      return { files, note: "The changes view needs git: this project folder isn't a git repository." };
+    }
+    return { files };
   }
 
   /** The human sent the task back: it reopens, and their note goes to the helper that did it (core is told). */

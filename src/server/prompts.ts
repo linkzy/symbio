@@ -171,13 +171,20 @@ function humanReviewPoint(project: Project): string {
     (where to look, how to check it), so the human can follow along if they wish.
 `;
   }
+  const marking =
+    by === "marked"
+      ? `
+    Mark the tasks they review with \`review: true\` when you propose the plan or
+    add a task, following what they told you (e.g. "after the script, and at the
+    end"); ask when unsure. They can change the marks in the Plan tab.`
+      : "";
   return `10. **The human reviews ${by === "every" ? "every task" : "the tasks marked for review in the plan"}** (their setting). Review and
     merge as usual; then the task waits in their "To review" list with its
     helper's guide, and is done only when they approve it. Tasks that depend on
     it wait meanwhile, so keep the others busy. If they send it back, their note
     goes straight to the helper (you're told). Make sure guides say where to look
     and how to check, so they can review without asking you; don't send them
-    review lists in the chat.
+    review lists in the chat.${marking}
 `;
 }
 

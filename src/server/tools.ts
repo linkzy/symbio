@@ -160,6 +160,7 @@ const taskShape = {
     description: str("What to do, the deliverable, and constraints — enough for a helper to start"),
     depends_on: { type: "array", items: { type: "string" }, description: "Keys/ids of tasks that must be done first" },
     assets: { type: "array", items: { type: "string" }, description: "Shared assets this task will change" },
+    review: { type: "boolean", description: "The human reviews this task before it's done (when they review the tasks marked in the plan)" },
   },
   required: ["title", "description"],
   additionalProperties: false,

@@ -387,7 +387,7 @@ export class Team implements TeamCore {
     await store.update(task.id, { assignee: helper.id, status: "in-progress", note: { by: coordinator.name, text: `assigned to ${helper.name}` } });
     this.planChanged(project);
     const assets = task.assets.length ? `\nShared assets involved: ${task.assets.join(", ")} — request them before changing them.` : "";
-    await this.deliver(
+    const assignment = await this.deliver(
       project,
       coordinator,
       helper,
@@ -397,6 +397,8 @@ export class Team implements TeamCore {
         `If you get stuck, update_task("${task.id}", "blocked", <why>).`,
       { protocol: true },
     );
+    // Where the work starts in the helper's session: the task's changes are diffed from here.
+    if (assignment) await store.update(task.id, { work: [...(task.work ?? []).filter((w) => w.sessionId !== helper.sessionId), { sessionId: helper.sessionId, from: assignment }] });
     return `Assigned ${task.id} to ${helper.name}.`;
   }
 
@@ -427,6 +429,7 @@ export class Team implements TeamCore {
       await this.reviews.complete(project, task.id, agent.name);
       return `${task.id} now waits for the human's review (they check it with its guide); it's done when they approve, and tasks that depend on it wait meanwhile. You don't need to remind them.`;
     }
+    if (agent.role === "worker" && status === "review") await this.reviews.recordReport(project, agent, task.id).catch(() => {});
     await store.update(task.id, {
       status,
       note: note ? { by: agent.name, text: note } : undefined,
@@ -871,7 +874,7 @@ export class Team implements TeamCore {
    * Delivers a message to an agent: logs it, and prompts the agent's session.
    * Delivery wakes the agent; if it is busy, OpenCode queues it.
    */
-  async deliver(project: Project, from: Agent, to: Agent, kind: MessageKind, text: string, opts: { protocol?: boolean } = {}) {
+  async deliver(project: Project, from: Agent, to: Agent, kind: MessageKind, text: string, opts: { protocol?: boolean } = {}): Promise<string | undefined> {
     if (to.status === "stopped") throw new Error(`${to.name} is stopped.`);
     if (!opts.protocol && !PROTOCOL_KINDS.has(kind)) await this.loopGuard.check(project, from, to);
     await this.log(project, { from: from.id, to: to.id, kind, text });
@@ -880,7 +883,7 @@ export class Team implements TeamCore {
     const body = `[from: ${from.name} · ${kind}]\n${text}`;
     if (project.paused) {
       await this.hold(project, to, body);
-      return;
+      return undefined;
     }
     const res = await this.client().prompt(to.sessionId, body, kind === "urgent" ? "steer" : "queue");
     // Track it until OpenCode delivers it, so it can be handed over mid-turn (see takeInbox).
@@ -890,6 +893,8 @@ export class Team implements TeamCore {
       this.inbox.get(to.id)!.set(inboxId, body);
     }
     this.setStatus(project, to, "busy");
+    // OpenCode gives the queued item the id of the user message it becomes (verified).
+    return inboxId;
   }
 
   /**

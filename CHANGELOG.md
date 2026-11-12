@@ -9,7 +9,12 @@ versions follow [Semantic Versioning](https://semver.org/).
   steps, what you should see, and whether they ran it). New setting, Settings → Team → **Who reviews
   the work**: *core* (as before) or *me, every task*: then finished tasks wait in a **To review** list
   (Needs you and the Plan tab) until you approve them or send them back with a note, which goes to
-  the helper that did the work.
+  the helper that did the work. Or *me, the tasks marked in the plan*: core marks the tasks you'll
+  review when it proposes the plan (e.g. a few checkpoints in a pipeline), and you tick or untick
+  them in the Plan tab.
+- **Show changes** on a task in review or done (Plan tab and Needs you): the files it changed, with
+  their diffs a click away (projects in a git repository).
+
 ## [0.10.0]
 
 - Fixed: on Windows, saving Symbio's state could fail when another program (antivirus, search

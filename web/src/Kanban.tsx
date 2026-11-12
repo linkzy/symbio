@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { CheckCircle2, Circle, CircleDashed, ClipboardList, Eye, Link2, Lock, MessageSquare, OctagonAlert } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { api, type Agent, type Plan, type Project, type Task, type TaskStatus } from "./api";
 import { Avatar, Drawer, EmptyState, clock } from "./ui";
-import { ReviewActions, ReviewGuide, waitingForReview } from "./Review";
+import { ReviewActions, ReviewGuide, TaskChanges, waitingForReview } from "./Review";
 
 const COLUMNS: { status: TaskStatus; title: string; icon: React.ReactNode }[] = [
   { status: "todo", title: "To do", icon: <Circle size={14} /> },
@@ -77,6 +77,7 @@ export function Kanban({ project, plan }: { project: Project; plan: Plan | null 
                   <AnimatePresence>
                     {tasks.map((t) => (
                       <TaskCard
+                        reviewMarked={project.reviewBy === "marked"}
                         key={t.id}
                         task={t}
                         agent={t.assignee ? agentById.get(t.assignee) : undefined}
@@ -94,7 +95,7 @@ export function Kanban({ project, plan }: { project: Project; plan: Plan | null 
       </LayoutGroup>
 
       <AnimatePresence>
-        {task && <TaskDetail projectId={project.id} task={task} agent={task.assignee ? agentById.get(task.assignee) : undefined} onClose={() => setOpenTask(null)} />}
+        {task && <TaskDetail project={project} task={task} agent={task.assignee ? agentById.get(task.assignee) : undefined} onClose={() => setOpenTask(null)} />}
       </AnimatePresence>
     </div>
   );
@@ -107,7 +108,7 @@ function PlanStatus({ status }: { status: Plan["status"] }) {
   return null;
 }
 
-function TaskCard({ task: t, agent, waitingOn, onOpen }: { task: Task; agent?: Agent; waitingOn: string[]; onOpen: () => void }) {
+function TaskCard({ task: t, agent, waitingOn, onOpen, reviewMarked }: { task: Task; agent?: Agent; waitingOn: string[]; onOpen: () => void; reviewMarked?: boolean }) {
   return (
     <motion.button
       layout
@@ -122,6 +123,7 @@ function TaskCard({ task: t, agent, waitingOn, onOpen }: { task: Task; agent?: A
       <div className="task-top">
         <span className="task-id">{t.id}</span>
         {waitingForReview(t) && <span className="tag amber">Waiting for you</span>}
+        {reviewMarked && t.review && !waitingForReview(t) && t.status !== "done" && <span className="tag blue">You review</span>}
         {waitingOn.length > 0 && t.status === "todo" && (
           <span className="row" style={{ gap: 3 }} title="Waiting on these tasks">
             <Link2 size={11} />
@@ -160,7 +162,9 @@ function TaskCard({ task: t, agent, waitingOn, onOpen }: { task: Task; agent?: A
   );
 }
 
-function TaskDetail({ projectId, task: t, agent, onClose }: { projectId: string; task: Task; agent?: Agent; onClose: () => void }) {
+function TaskDetail({ project, task: t, agent, onClose }: { project: Project; task: Task; agent?: Agent; onClose: () => void }) {
+  const projectId = project.id;
+  const marking = project.reviewBy === "marked" && t.status !== "done" && !waitingForReview(t);
   const column = COLUMNS.find((c) => c.status === t.status);
   return (
     <Drawer title={`${t.id} · ${t.title}`} onClose={onClose}>
@@ -208,9 +212,11 @@ function TaskDetail({ projectId, task: t, agent, onClose }: { projectId: string;
           <ReviewActions projectId={projectId} task={t} onDone={onClose} />
         </div>
       )}
+      {marking && <ReviewMark projectId={projectId} task={t} />}
       <div className="md">
         <Markdown remarkPlugins={[remarkGfm]}>{t.description || "_No description._"}</Markdown>
       </div>
+      {(t.status === "review" || t.status === "done" || t.guide) && <TaskChanges projectId={projectId} taskId={t.id} />}
       {!waitingForReview(t) && t.guide && (
         <>
           <h3>How to check it</h3>
@@ -284,5 +290,28 @@ function ApprovalBar({ project, plan }: { project: Project; plan: Plan }) {
       )}
       {error && <div className="error">{error}</div>}
     </motion.div>
+  );
+}
+
+/** "I review this task" (Project.reviewBy "marked"): shows the new state at once, then the plan confirms it. */
+function ReviewMark({ projectId, task }: { projectId: string; task: Task }) {
+  const [checked, setChecked] = useState(!!task.review);
+  useEffect(() => setChecked(!!task.review), [task.review]);
+  return (
+    <label className="check review-mark">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => {
+          const next = e.target.checked;
+          setChecked(next);
+          api.markTask(projectId, task.id, next).catch((err) => {
+            setChecked(!next);
+            alert(err.message);
+          });
+        }}
+      />
+      I review this task before it's done
+    </label>
   );
 }

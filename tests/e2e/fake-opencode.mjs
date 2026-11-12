@@ -18,7 +18,7 @@
 // "fake/unavailable" fails every turn at once, like a model that doesn't exist.
 
 import { execSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import path from "node:path";
 
@@ -203,8 +203,11 @@ async function runStep(session, step, ctl) {
       return toolStep(session, "write", { path: m[1], content: m[2] }, async () => {
         if (denied(session, "edit", m[1])) return { error: "Permission denied: edit" };
         const file = path.resolve(session.directory, m[1]);
+        const before = existsSync(file) ? readFileSync(file, "utf8") : null;
         mkdirSync(path.dirname(file), { recursive: true });
-        writeFileSync(file, m[2].replace(/\\n/g, "\n") + "\n");
+        const after = m[2].replace(/\\n/g, "\n") + "\n";
+        writeFileSync(file, after);
+        session.edits.push({ turn: session.turn, file: m[1].replace(/\\/g, "/"), before, after });
         return { text: `Wrote ${m[1]}` };
       });
     }
@@ -252,6 +255,7 @@ async function drain(session) {
       if (item.type === "synthetic" && !item.resume) continue;
       const ctl = { aborted: false, onAbort: null };
       session.ctl = ctl;
+      session.turn = item.id; // the user message this turn answers (for the session diff)
       const steps = stepsFor(session, item.payload.text);
       if (!steps.length) steps.push({ kind: "say", rest: defaultReply(session, item.payload.text) });
       for (const step of steps) {
@@ -270,6 +274,30 @@ async function drain(session) {
     session.running = false;
     emit(outcome === "succeeded" ? "session.execution.succeeded" : "session.execution.failed", { sessionID: session.id, ...(error ? { error } : {}) });
   }
+}
+
+/**
+ * The files the session's turns changed between two user messages (inclusive), like OpenCode's
+ * GET /api/session/{id}/diff: nothing outside a git repository (verified on the real one).
+ */
+function sessionDiff(session, from, to) {
+  if (!existsSync(path.join(session.directory, ".git"))) return [];
+  const turns = session.messages.filter((m) => m.type === "user").map((m) => m.id);
+  const start = from ? turns.indexOf(from) : turns.length - 1;
+  const end = to ? turns.indexOf(to) : start;
+  if (start < 0 || end < 0) return [];
+  const inRange = new Set(turns.slice(start, end + 1));
+  const byFile = new Map();
+  for (const e of session.edits.filter((x) => inRange.has(x.turn))) {
+    const first = byFile.get(e.file);
+    byFile.set(e.file, { file: e.file, before: first ? first.before : e.before, after: e.after });
+  }
+  return [...byFile.values()].map(({ file, before, after }) => {
+    const old = before === null ? [] : before.replace(/\n$/, "").split("\n");
+    const now = after.replace(/\n$/, "").split("\n");
+    const patch = [`diff --git a/${file} b/${file}`, `--- ${before === null ? "/dev/null" : `a/${file}`}`, `+++ b/${file}`, `@@ -1,${old.length} +1,${now.length} @@`, ...old.map((l) => `-${l}`), ...now.map((l) => `+${l}`)].join("\n");
+    return { file, status: before === null ? "added" : "modified", additions: now.length, deletions: old.length, patch };
+  });
 }
 
 function defaultReply(session, text) {
@@ -325,6 +353,7 @@ const server = http.createServer(async (req, res) => {
       messages: [],
       inbox: [],
       forms: [],
+      edits: [],
       running: false,
       usage: { cost: 0, tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } } },
       parentID: body.parentID ?? null,
@@ -391,6 +420,7 @@ const server = http.createServer(async (req, res) => {
       const next = more ? Buffer.from(JSON.stringify({ id: data[data.length - 1].id, order: "desc", direction: "next" })).toString("base64url") : null;
       return send(res, 200, { data, cursor: { previous: null, next } });
     }
+    if (rest === "/diff") return send(res, 200, { data: sessionDiff(session, url.searchParams.get("from"), url.searchParams.get("to")) });
     if (rest === "/inbox") return send(res, 200, { data: session.inbox.map(({ resume, ...i }) => i) });
     if ((s = rest.match(/^\/inbox\/(.+)$/)) && req.method === "DELETE") {
       session.inbox = session.inbox.filter((i) => i.id !== s[1]);

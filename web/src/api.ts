@@ -79,6 +79,15 @@ export interface Task {
   updatedAt: number;
 }
 
+/** One file a task changed, with its unified diff. */
+export interface TaskChange {
+  file: string;
+  status: "added" | "modified" | "deleted";
+  additions: number;
+  deletions: number;
+  patch: string;
+}
+
 export interface Plan {
   goal: string;
   status: "none" | "proposed" | "approved" | "changes-requested";
@@ -564,6 +573,8 @@ export const api = {
   resumeTeam: (projectId: string) => call<Project>("POST", `/projects/${projectId}/resume`),
   pauseAll: () => call<{ paused: string[] }>("POST", "/pause-all"),
   plan: (projectId: string) => call<Plan>("GET", `/projects/${projectId}/plan`),
+  taskChanges: (projectId: string, taskId: string) => call<{ files: TaskChange[]; note?: string }>("GET", `/projects/${projectId}/plan/tasks/${taskId}/changes`),
+  markTask: (projectId: string, taskId: string, review: boolean) => call<Plan>("POST", `/projects/${projectId}/plan/tasks/${taskId}/mark`, { review }),
   reviewTask: (projectId: string, taskId: string, decision: "approve" | "send-back", note?: string) =>
     call<Plan>("POST", `/projects/${projectId}/plan/tasks/${taskId}/review`, { decision, note }),
   decidePlan: (projectId: string, approved: boolean, feedback?: string) =>

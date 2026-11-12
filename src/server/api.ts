@@ -482,6 +482,28 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     return c.json((await team.plan(project)).plan);
   });
 
+  // A task's changes (the files its helper's turns changed, with diffs), and its mark for the human's review.
+  api.get("/projects/:id/plan/tasks/:taskId/changes", async (c) => {
+    const project = withProject(c.req.param("id"));
+    try {
+      return c.json(await team.reviews.changes(project, c.req.param("taskId")));
+    } catch (err) {
+      throw new HttpError(404, (err as Error).message);
+    }
+  });
+
+  api.post("/projects/:id/plan/tasks/:taskId/mark", async (c) => {
+    const project = withProject(c.req.param("id"));
+    const { review } = await c.req.json<{ review?: boolean }>();
+    if (typeof review !== "boolean") return c.json({ error: "review (true/false) is required" }, 400);
+    try {
+      await team.reviews.mark(project, c.req.param("taskId"), review);
+    } catch (err) {
+      throw new HttpError(409, (err as Error).message);
+    }
+    return c.json((await team.plan(project)).plan);
+  });
+
   // The human's review of a finished task (team/review.ts): approve it, or send it back with a note.
   api.post("/projects/:id/plan/tasks/:taskId/review", async (c) => {
     const project = withProject(c.req.param("id"));
