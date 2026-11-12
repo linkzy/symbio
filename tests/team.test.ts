@@ -26,7 +26,7 @@ function fakeRuntime() {
     },
     synthetic: async (sessionId: string, text: string) => calls.push({ method: "NOTE", path: sessionId, body: text }),
     setInstruction: async () => {},
-    setPermissions: async () => {},
+    setPermissions: async (sessionId: string, permissions: any) => calls.push({ method: "PATCH", path: `/api/session/${sessionId}`, body: { permissions } }),
     removeInstruction: async () => {},
   };
   const runtime: any = Object.assign(new EventEmitter(), { client, state: "running" });
@@ -308,4 +308,34 @@ test("a helper that goes quiet without reporting is nudged once, then core is to
   await check(writer);
   assert.equal(prompts(calls, writer.sessionId).length, waiting, "no nudge while waiting for an asset");
   team.quiet.reported(writer);
+});
+
+test("chat modes: Plan sets core's session rules and refuses work-starting tools; messages to core carry the mode", async () => {
+  const { planModeRefusal } = await import("../src/server/tools.js");
+  assert.match(planModeRefusal("spawn_agent", {})!, /Plan mode.*creating helpers is blocked/);
+  assert.match(planModeRefusal("merge_work", { agent: "writer" })!, /merging work/);
+  assert.match(planModeRefusal("send_message", { to: "writer", kind: "request", message: "go" })!, /asking helpers to do things/);
+  assert.equal(planModeRefusal("send_message", { to: "writer", kind: "info", message: "fyi" }), null, "telling helpers things is fine");
+  assert.equal(planModeRefusal("send_message", { to: "core", kind: "request", message: "x" }), null);
+  assert.equal(planModeRefusal("github_api", { method: "GET", path: "/repos/x" }), null, "reading is fine");
+  assert.match(planModeRefusal("github_api", { method: "POST", path: "/repos/x/pulls" })!, /changing things/);
+  assert.equal(planModeRefusal("submit_plan", {}), null, "planning is the point");
+  assert.equal(planModeRefusal("list_team", {}), null);
+
+  const { project, team, calls, core } = await setup();
+  core.sessionId = "ses_core_modes";
+  const rulesSent = () => calls.filter((c) => c.method === "PATCH" && c.path === `/api/session/${core.sessionId}`).at(-1)?.body?.permissions ?? [];
+  await team.setCoreMode(project, "plan");
+  assert.equal(project.coreMode, "plan");
+  assert.ok(rulesSent().some((r: any) => r.action === "edit" && r.resource === "*" && r.effect === "deny"), "edits denied in core's session");
+  await team.sendFromHuman(project, core, "Let's think about the menu");
+  assert.match(prompts(calls, core.sessionId).at(-1)!.body, /Let's think about the menu\n\n\[Mode: Plan — /);
+
+  await team.setCoreMode(project, "act");
+  assert.ok(!rulesSent().some((r: any) => r.action === "edit" && r.resource === "*"), "edits allowed again");
+  await team.sendFromHuman(project, core, "Fix the typo");
+  assert.match(prompts(calls, core.sessionId).at(-1)!.body, /\[Mode: Act — /);
+  await team.setCoreMode(project, "auto");
+  await team.sendFromHuman(project, core, "Hello");
+  assert.equal(prompts(calls, core.sessionId).at(-1)!.body, "Hello", "Auto adds nothing");
 });

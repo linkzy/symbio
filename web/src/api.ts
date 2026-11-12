@@ -123,6 +123,8 @@ export interface Approval {
   createdAt: number;
 }
 
+export type CoreMode = "auto" | "plan" | "act";
+
 export interface Project {
   id: string;
   name: string;
@@ -140,6 +142,8 @@ export interface Project {
   helperWorkspace?: "own" | "shared";
   rulesRegister?: boolean;
   subRepositories?: boolean;
+  /** How core handles the human's messages (the selector in its chat box). Unset = auto. */
+  coreMode?: CoreMode;
   heldMessages?: { agentId: string; text: string }[];
   agents: Agent[];
   createdAt: number;
@@ -499,7 +503,7 @@ export const api = {
     call<{ path: string; content: string }>("GET", `/projects/${id}/docs/file?path=${encodeURIComponent(path)}`),
   writeDoc: (id: string, path: string, content: string) =>
     call<{ ok: true }>("PUT", `/projects/${id}/docs/file`, { path, content }),
-  updateProject: (id: string, patch: Partial<Pick<Project, "name" | "allowedModels" | "coordinatorModel" | "connections" | "allowedPatterns" | "messageLimit" | "renewSessions" | "helperWorkspace" | "rulesRegister" | "subRepositories">>) =>
+  updateProject: (id: string, patch: Partial<Pick<Project, "name" | "allowedModels" | "coordinatorModel" | "connections" | "allowedPatterns" | "messageLimit" | "renewSessions" | "helperWorkspace" | "rulesRegister" | "subRepositories" | "coreMode">>) =>
     call<Project>("PATCH", `/projects/${id}`, patch),
   connections: () => call<ConnectionView[]>("GET", "/connections"),
   createConnection: (body: Record<string, unknown>) => call<ConnectionView>("POST", "/connections", body),

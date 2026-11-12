@@ -18,29 +18,19 @@ Reliability first: Symbio shouldn't be shown to new people while it can stall or
 - **Split `team.ts`.** Done for the next release: its self-contained parts (the watchdog, model
   fallback, permission requests, housekeeping, quiet helpers, the shared-asset protocol, usage,
   processes, the message limit) are modules in `src/server/team/`, each with its own state.
-- Next up: chat modes.
+- **Chat modes: Auto, Plan and Act.** Done for the next release, with Plan enforced by Symbio
+  (tools that start work refused, edits and writing commands denied in core's session).
 
 ## Next
 
-1. **Chat modes: Auto, Plan and Act.** A selector in core's chat box, as in VS Code and other
-   agent tools, choosing how core handles a message:
-   - **Auto** (the default): as today; core decides whether to talk, plan or delegate.
-   - **Plan**: core discusses, studies and proposes a plan, but starts nothing. Enforced by Symbio,
-     not just asked: no helpers created, no tasks assigned, no merges, no changes to the project.
-   - **Act**: for small things, core skips proposing a plan and gets on with it. Shared assets,
-     approvals for remote actions and permissions apply as always.
-
-   Applies to core only (helpers do the tasks they're given); each sent message shows the mode it
-   was sent in. Talk to Symbio can reuse the selector as a voice toggle.
-   *(Suggested by a user.)*
-2. **Review what the team changed.** Per task and per helper: the files changed and their diffs,
+1. **Review what the team changed.** Per task and per helper: the files changed and their diffs,
    before and after a merge, readable in the browser (and on a phone). Today the human has to trust
    core's summary or open the files; every serious tool in this space has this.
-3. **Notifications.** When something needs the human (a question, an approval, a plan to review, a
+2. **Notifications.** When something needs the human (a question, an approval, a plan to review, a
    stuck agent) or a task finishes, send it where they are: browser/phone notifications, and
    optionally a messaging app (e.g. Telegram) or e-mail, with per-project choices. Essential for
    steering Symbio away from the computer.
-4. **Talk to Symbio.** A spoken conversation with core, hands-free: e.g. from a phone connected to
+3. **Talk to Symbio.** A spoken conversation with core, hands-free: e.g. from a phone connected to
    the car over Bluetooth, with Symbio working on the computer at home (remote access). Not just
    dictation into the chat box:
    - Only what core says to the human is read aloud: never tool calls, command output, messages
@@ -55,28 +45,28 @@ Reliability first: Symbio shouldn't be shown to new people while it can stall or
    Builds on the phone layout and on telling apart, in core's replies, what's for the human from
    the team's work. To check first: the browsers' own speech recognition and voices (quality,
    languages, whether they keep working with the screen off) against a speech service.
-5. **Budgets per project.** A spending limit per project (and optionally per day), with a warning
+4. **Budgets per project.** A spending limit per project (and optionally per day), with a warning
    at a threshold and the team paused when it's reached, using the cost tracking Symbio already
    has.
-6. **Scheduled work.** Ask core for recurring jobs ("refresh the data every night", "check the site
+5. **Scheduled work.** Ask core for recurring jobs ("refresh the data every night", "check the site
    every Monday"): Symbio wakes core at the set time with the job, and the human sees the runs and
    their results.
-7. **Linux and macOS.** Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
+6. **Linux and macOS.** Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
    Keychain on macOS); headless Linux (a server or container) has no keyring, so it needs a
    fallback, such as a key file readable only by the user.
-8. **Make it showable.** Before inviting others: a sample project to try in five minutes, a
+7. **Make it showable.** Before inviting others: a sample project to try in five minutes, a
    two-minute video of core running a team on a non-coding project, and a short GitHub Pages site
    with screenshots. First audience: the OpenCode community.
-9. **Create a project from a git repository.** In the New project dialog, an option to clone a
+8. **Create a project from a git repository.** In the New project dialog, an option to clone a
    repository (GitHub, Azure DevOps or any git URL, using the matching connection when it's private)
    into a folder and open it as a project, e.g. to continue on another computer. Tucked under an
    advanced option, so it doesn't get in the way of people who don't use git.
-10. **Rules register on import.** When importing an existing project, offer to build the register
-    from the project and from sources the human points to (e-mails, meeting notes, manuals), marking
-    rules found only in the work as unsourced.
-11. **Translations.** The UI in other languages, starting with Portuguese. *(good first
+9. **Rules register on import.** When importing an existing project, offer to build the register
+   from the project and from sources the human points to (e-mails, meeting notes, manuals), marking
+   rules found only in the work as unsourced.
+10. **Translations.** The UI in other languages, starting with Portuguese. *(good first
     contribution, once the strings are extracted)*
-12. **A public demo.** A container on a VPS with a light model, connections and other sensitive
+11. **A public demo.** A container on a VPS with a light model, connections and other sensitive
     options disabled, and visitors' data reset every few minutes (needs Linux headless support).
 
 ## Ideas

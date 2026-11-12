@@ -146,6 +146,59 @@ export function readRefusal(action: string, resources: string[]): string | null 
 const rules = (action: string, effect: PermissionRule["effect"], patterns: string[]): PermissionRule[] =>
   patterns.map((resource) => ({ action, resource, effect }));
 
+// Plan mode (core's chat): it may read and look around, but not change anything. With every edit
+// denied OpenCode doesn't even offer the write/edit tools; the shell keeps read-only commands
+// (verified live, docs/opencode-api.md). Patterns, not a sandbox: they catch the usual ways.
+const PLAN_MODE_SHELL = [
+  "* > *",
+  "* >> *",
+  "*| tee *",
+  "*|tee *",
+  "tee *",
+  "git commit*",
+  "git push*",
+  "git merge*",
+  "git rebase*",
+  "git reset*",
+  "git checkout*",
+  "git switch*",
+  "git restore*",
+  "git rm *",
+  "git mv *",
+  "git stash*",
+  "git apply*",
+  "git cherry-pick*",
+  "git revert*",
+  "git tag*",
+  "git init*",
+  "git clone*",
+  "rm *",
+  "rmdir *",
+  "del *",
+  "erase *",
+  "rd *",
+  "mv *",
+  "move *",
+  "cp *",
+  "copy *",
+  "xcopy *",
+  "robocopy *",
+  "mkdir *",
+  "md *",
+  "touch *",
+  "sed -i*",
+  "New-Item*",
+  "Remove-Item*",
+  "Move-Item*",
+  "Copy-Item*",
+  "Rename-Item*",
+  "Set-Content*",
+  "Add-Content*",
+  "Out-File*",
+  "Clear-Content*",
+];
+export const PLAN_MODE_PERMISSIONS: PermissionRule[] = [...rules("edit", "deny", ["*"]), ...rules("shell", "deny", PLAN_MODE_SHELL)];
+
 // Any matching deny blocks a call; otherwise any ask prompts. Deny rules come last
 // so they also win under "last match wins".
 export const AGENT_PERMISSIONS: PermissionRule[] = [

@@ -6,7 +6,7 @@ import { randomBytes } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { AssetRegister } from "./assets.js";
-import { AGENT_PERMISSIONS, readRefusal, wildcardMatch } from "./guard.js";
+import { AGENT_PERMISSIONS, PLAN_MODE_PERMISSIONS } from "./guard.js";
 import { bus } from "./bus.js";
 import { privateDocsInstruction } from "./docs.js";
 import type { McpResolver } from "./mcp.js";
@@ -14,9 +14,9 @@ import { parseModel, type OpencodeClient, type OpencodeEvent } from "./opencode/
 import type { OpencodeRuntime } from "./opencode/runtime.js";
 import { PlanStore, type TaskInput, type TaskStatus } from "./plan.js";
 import type { RemoteOps } from "./remote.js";
-import { coordinatorBrief, kickoffMessage, workerBrief } from "./prompts.js";
+import { coordinatorBrief, kickoffMessage, modeNote, workerBrief } from "./prompts.js";
 import { git } from "./git.js";
-import { DEFAULT_MESSAGE_LIMIT, globalDir, newId, type Agent, type HelperWorkspace, type LoggedMessage, type MessageKind, type Project, type Store } from "./store.js";
+import { DEFAULT_MESSAGE_LIMIT, globalDir, newId, type Agent, type CoreMode, type HelperWorkspace, type LoggedMessage, type MessageKind, type Project, type Store } from "./store.js";
 import { accountChildUsage, accountUsage, emptyUsage, sessionUsage } from "./costs.js";
 import { AGENT_UPDATES, unseenUpdates, updatesNote } from "./updates.js";
 import { cleanBuildOutputs, dailyBackup, gb, helperFolders, lastBackup, unpushedWork, type FolderUsage, type UnpushedBranch } from "./housekeeping.js";
@@ -218,6 +218,29 @@ export class Team implements TeamCore {
     return on
       ? `Done: helpers' own copies now come from one of ${repos.join(", ")} (spawn_agent repo), merges and pushes go there. Your instructions were updated.`
       : "Done: Symbio works in the outer repository again. Your instructions were updated.";
+  }
+
+  /**
+   * The chat mode for core (the selector in its chat box), applied at once: in Plan mode its
+   * session also gets rules that deny edits and writing commands (PLAN_MODE_PERMISSIONS), and its
+   * tools refuse to start work (tools.ts).
+   */
+  async setCoreMode(project: Project, mode: CoreMode): Promise<void> {
+    if ((project.coreMode ?? "auto") === mode) return;
+    project.coreMode = mode;
+    await this.store.update(project);
+    const core = this.coordinator(project);
+    if (core && core.status !== "stopped") {
+      await this.client()
+        .setPermissions(core.sessionId, this.permissionsFor(project, core))
+        .catch((err) => console.error("[mode]", err.message));
+    }
+    bus.publish({ type: "project.updated", projectId: project.id });
+  }
+
+  /** An agent's session rules: the guard for everyone, plus Plan mode's for core. */
+  permissionsFor(project: Project, agent: Pick<Agent, "role">) {
+    return agent.role === "coordinator" && project.coreMode === "plan" ? [...AGENT_PERMISSIONS, ...PLAN_MODE_PERMISSIONS] : AGENT_PERMISSIONS;
   }
 
   async setRulesRegister(project: Project, on: boolean): Promise<void> {
@@ -432,7 +455,7 @@ export class Team implements TeamCore {
       title: `${project.name} · core`,
       directory: project.directory,
       model: parseModel(project.coordinatorModel),
-      permissions: AGENT_PERMISSIONS,
+      permissions: this.permissionsFor(project, { role: "coordinator" }),
     });
 
     const agent: Agent = {
@@ -634,7 +657,7 @@ export class Team implements TeamCore {
       title: `${project.name} · ${agent.name}`,
       directory: agent.directory,
       model: parseModel(agent.model),
-      permissions: AGENT_PERMISSIONS,
+      permissions: this.permissionsFor(project, agent),
     });
     agent.previousSessions = [...(agent.previousSessions ?? []), { sessionId: oldSession, endedAt: Date.now() }];
     agent.sessionId = session.id;
@@ -864,8 +887,8 @@ export class Team implements TeamCore {
     if (agent.role === "worker") this.quiet.reported(agent);
     await this.log(project, { from: "human", to: agent.id, kind: urgent ? "urgent" : "chat", text });
     await this.prepare(project, agent);
-    // The coordinator talks with the human directly; for helpers, say who is speaking.
-    const body = agent.role === "coordinator" ? text : `[from: human · ${urgent ? "urgent" : "chat"}]\n${text}`;
+    // The coordinator talks with the human directly (in the chat mode they chose); for helpers, say who is speaking.
+    const body = agent.role === "coordinator" ? text + modeNote(project.coreMode) : `[from: human · ${urgent ? "urgent" : "chat"}]\n${text}`;
     await this.client().prompt(agent.sessionId, body, urgent ? "steer" : "queue");
     this.setStatus(project, agent, "busy");
   }
@@ -1013,7 +1036,7 @@ export class Team implements TeamCore {
     const client = this.client();
     await client.setInstruction(agent.sessionId, "symbio-role", brief);
     // Also covers sessions created before the guard existed.
-    await client.setPermissions(agent.sessionId, AGENT_PERMISSIONS);
+    await client.setPermissions(agent.sessionId, this.permissionsFor(project, agent));
     this.docsSynced.delete(agent.id);
     await this.syncPrivateDocs(project, agent);
   }

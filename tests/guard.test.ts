@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { AGENT_PERMISSIONS, readRefusal, wildcardMatch } from "../src/server/guard.js";
+import { AGENT_PERMISSIONS, PLAN_MODE_PERMISSIONS, readRefusal, wildcardMatch } from "../src/server/guard.js";
 import { sumProcessTree } from "../src/server/opencode/runtime.js";
 
 test("wildcard matching (OpenCode semantics)", () => {
@@ -74,4 +74,33 @@ test("PDFs are read with read_document, not the read tool (which would put the w
   assert.match(readRefusal("read", ["/proj/docs/manual.pdf"]) ?? "", /read_document/);
   assert.equal(readRefusal("read", ["/proj/notes.md"]), null);
   assert.equal(readRefusal("edit", ["/proj/a.pdf"]), null, "only reading is refused");
+});
+
+test("Plan mode (core's chat): every edit and the usual writing commands are denied; reading and looking around aren't", () => {
+  const verdict = (action: string, resource: string) => {
+    const matches = [...AGENT_PERMISSIONS, ...PLAN_MODE_PERMISSIONS].filter((r) => r.action === action && wildcardMatch(r.resource, resource));
+    return matches.some((r) => r.effect === "deny") ? "deny" : matches.some((r) => r.effect === "ask") ? "ask" : "default";
+  };
+  for (const file of ["notes.txt", "src/app.ts", String.raw`C:\project\docs\plan.md`]) assert.equal(verdict("edit", file), "deny", `edit ${file}`);
+  for (const cmd of [
+    "echo hello > notes.txt",
+    "echo more >> notes.txt",
+    "git commit -m wip",
+    "git push origin main",
+    "git checkout -b x",
+    "rm -rf build",
+    "del notes.txt",
+    "mv a b",
+    "mkdir out",
+    "Remove-Item notes.txt",
+    "Set-Content notes.txt hi",
+    "sed -i s/a/b/ f.txt",
+    "cat a | tee b",
+  ]) {
+    assert.equal(verdict("shell", cmd), "deny", cmd);
+  }
+  for (const cmd of ["git status", "git log --oneline -5", "git diff", "ls -la", "dir", "cat README.md", "npm test 2>&1", "git --version", "md5sum file.bin"]) {
+    assert.equal(verdict("shell", cmd), "default", `${cmd} stays allowed`);
+  }
+  assert.equal(verdict("read", "README.md"), "default");
 });

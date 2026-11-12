@@ -96,6 +96,12 @@ export interface Project {
    * changes. Unset = never decided (see repos.ts, the sub_repositories tool).
    */
   subRepositories?: boolean;
+  /**
+   * How core handles the human's messages (the selector in its chat box). "plan": discuss and plan
+   * only, with starting work blocked by Symbio; "act": get it done without a plan to approve.
+   * Unset = "auto" (core decides).
+   */
+  coreMode?: CoreMode;
   /** Keep a rules register (rules.json next to the docs, shown in the Docs tab). Unset = off. */
   rulesRegister?: boolean;
   /** Agent-facing Symbio updates (updates.ts) the coordinator has been told about. */
@@ -109,6 +115,8 @@ export interface Project {
 export const DEFAULT_MESSAGE_LIMIT = 20;
 
 export type HelperWorkspace = "own" | "shared";
+
+export type CoreMode = "auto" | "plan" | "act";
 
 export interface ProjectConnection {
   id: string;

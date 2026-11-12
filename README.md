@@ -66,6 +66,9 @@ place. Here Symbio was restarted mid-task, and it told the helper to pick up whe
   database, a spreadsheet) can be declared a *shared asset*. Agents request it from core, wait for
   the grant and release it when done. Changes to an asset an agent wasn't granted are flagged at
   merge.
+- **Choose how core takes your message.** A selector in the chat box: *Auto* (core decides),
+  *Plan* (discuss and plan only: Symbio blocks starting work and editing files until you switch)
+  or *Act* (get it done without a plan to approve).
 - **Attach files to a message.** Upload, drag in or paste images and documents into the chat, as in
   other AI chats. Agents get them as files they can open (images as scaled-down copies, PDF, Word,
   Excel and PowerPoint as text), and each project's **Files** tab keeps everything sent, to open,

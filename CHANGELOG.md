@@ -5,6 +5,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Chat modes in core's chat box: **Auto** (as before), **Plan** (discuss and plan only: Symbio blocks
+  creating helpers, assigning tasks, merging, pushing and editing files until you switch) and **Act**
+  (get it done without a plan to approve). Messages show the mode they were sent in.
 - Helpers that go quiet: a helper that ends its turn without reporting on the work core gave it is
   reminded once, and if it stays quiet core is told, instead of the work stalling unseen (seen with
   smaller models).

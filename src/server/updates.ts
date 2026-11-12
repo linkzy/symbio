@@ -155,6 +155,15 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "Symbio reminds it once; if it still doesn't report, Symbio tells you it has gone quiet, so check on it. Waiting for a shared " +
       "asset or for the human doesn't count as going quiet.",
   },
+  {
+    id: "2026-11-12-chat-modes",
+    text:
+      "Chat modes: the human can now choose how you handle their messages, with a selector in your chat box. A message in Plan " +
+      "or Act mode ends with a [Mode: …] note. Plan: discuss, study and propose, but start nothing; Symbio refuses creating " +
+      "helpers, assigning tasks, merging, pushing and editing files until the human switches mode (reading and read-only commands " +
+      "still work). Act: the human wants it done without a plan to approve, so do it or delegate it right away and report. No " +
+      "note means Auto, as before.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */

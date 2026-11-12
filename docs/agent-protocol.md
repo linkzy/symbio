@@ -83,6 +83,15 @@ being merged (unless core forces the merge).
   *in progress*. Tasks with unfinished dependencies can't be assigned.
 - Helpers report with `update_task`: `in-progress`, `blocked` (with the reason) or `review`
   (finished, with a summary, which is their report to core).
+- **Chat modes** (the selector in core's chat box, `Project.coreMode`). **Plan**: core discusses and
+  proposes but starts nothing. Symbio enforces it: core's tools refuse creating helpers, assigning
+  tasks, merging, moving helpers, cleaning folders, connection actions that change things (pushes,
+  deploys, non-GET API calls) and asking helpers to do things (`send_message` of kind request,
+  blocking or urgent); and core's session gets `PLAN_MODE_PERMISSIONS` (`guard.ts`): every edit and
+  the usual writing commands are denied, reading and read-only commands stay allowed. **Act**: the
+  human wants it done without a plan to approve. Messages to core in Plan or Act end with a
+  `[Mode: …]` note (`modeNote` in `prompts.ts`), shown as a label in the chat. The mode applies at
+  once and stays until changed; helpers already working carry on.
 - A helper given work by core (a task, or a `request`/`blocking`/`urgent` message) owes core a
   report: an `update_task`, a message to core, or a question to the human. If it ends its turn
   without one, Symbio waits a moment (`SYMBIO_QUIET_HELPER_SECONDS`, default 20, in case more turns

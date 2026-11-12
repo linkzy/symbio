@@ -61,6 +61,12 @@ and idle), `session.text.*`, `session.reasoning.*`, `session.tool.*` (live outpu
 
 ## Behaviors worth knowing
 
+- **An `edit` deny on `*` takes the editing tools away.** With `{action: "edit", resource: "*",
+  effect: "deny"}` in a session's rules, the model isn't offered its write/edit tools at all ("I
+  don't have a write or edit tool"); shell denies such as `* > *` refuse those commands
+  ("Permission denied: shell") while `git --version` or reading files still work (verified live with
+  Haiku on 2.1.4; Plan mode relies on it). There is no built-in read-only "plan" agent to switch a
+  session to in 2.1.4: `GET /api/agent` lists none, and turns run as the implicit `build` agent.
 - **Notes wait in the inbox.** `synthetic` with `resume: false` doesn't add to the conversation
   at once: the note sits in the session's inbox (`GET …/inbox`) and joins the conversation when the
   next turn starts, which is how Symbio tells core something without waking it.

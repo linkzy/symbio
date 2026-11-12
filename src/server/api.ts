@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { bus, type UiEvent } from "./bus.js";
 import type { OpencodeRuntime } from "./opencode/runtime.js";
-import type { Store, Project, DocsLocation, HelperWorkspace, ProjectConnection } from "./store.js";
+import type { CoreMode, Store, Project, DocsLocation, HelperWorkspace, ProjectConnection } from "./store.js";
 import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 import os from "node:os";
@@ -332,7 +332,9 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       helperWorkspace?: HelperWorkspace;
       rulesRegister?: boolean;
       subRepositories?: boolean;
+      coreMode?: CoreMode;
     }>();
+    if (body.coreMode === "auto" || body.coreMode === "plan" || body.coreMode === "act") await team.setCoreMode(project, body.coreMode);
     if (typeof body.subRepositories === "boolean") {
       try {
         await team.useSubRepositories(project, body.subRepositories, "the human");

@@ -6,7 +6,7 @@ import path from "node:path";
 import { docsPaths } from "./docs.js";
 import { PROCESS_RULES } from "./guard.js";
 import { listRepositories, projectRepositoriesSync } from "./repos.js";
-import type { Agent, Project } from "./store.js";
+import type { Agent, CoreMode, Project } from "./store.js";
 
 // Seen live: a coordinator read eight 2–4 MB images, its conversation reached 25 MB and the
 // provider gave up receiving it ("Timed out reading request body"), whatever the model.
@@ -70,6 +70,12 @@ ${onboarding(project)}
    review; the project documentation; merging and other coordination; trivial
    setup that unblocks helpers (a few lines); or when the human explicitly asks
    *you* to do it.
+5. **Chat modes.** The human picks how you handle their messages; a message in
+   Plan or Act mode ends with a \`[Mode: …]\` note. **Plan**: discuss, study and
+   propose, but start nothing; Symbio refuses creating helpers, assigning tasks,
+   merging, pushing and file edits until the human switches. **Act**: they want it
+   done without a plan to approve; do it or delegate it right away, then report.
+   No note means Auto: work as described above.
 5. **Keep the team as small as the work allows.** A single helper is the default
    for doing the work. Only add helpers when there is genuinely independent work
    that can proceed in parallel, and justify each one.
@@ -154,6 +160,24 @@ ${connectionsSection(connections)}
 ${PROCESS_RULES}
 ${KEEP_CONVERSATION_SMALL}
 `;
+}
+
+/** Added to each human message to core in Plan or Act mode (the chat UI shows it as a label). */
+export function modeNote(mode: CoreMode | undefined): string {
+  if (mode === "plan") {
+    return (
+      "\n\n[Mode: Plan — the human wants to discuss and plan first. Study, ask, and propose (submit_plan, or describe the work); " +
+      "don't start anything: Symbio blocks creating helpers, assigning tasks, merging, editing files and pushing until the human " +
+      "switches to Auto or Act.]"
+    );
+  }
+  if (mode === "act") {
+    return (
+      "\n\n[Mode: Act — the human wants this done without a plan to approve: do it, or delegate it, right away. Keep to what was " +
+      "asked, and report when it's done.]"
+    );
+  }
+  return "";
 }
 
 /** Where helpers work, for the coordinator's tool list. */

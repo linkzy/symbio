@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowUp, Brain, Check, CircleAlert, CircleStop, Folder, FolderInput, GitBranch, Info, Loader2, Pencil, RefreshCw, Repeat, RotateCcw, Wrench, X } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { api, subscribe, type Agent, type Project } from "./api";
+import { api, subscribe, type Agent, type Project, type CoreMode } from "./api";
 import { PendingForms } from "./FormCard";
 import { AttachButton, DropOverlay, MessageAttachments, PendingFiles, splitAttachmentNote, usePendingFiles } from "./Attachments";
 import { Avatar, statusText } from "./ui";
@@ -507,7 +507,13 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
           <PendingFiles projectId={project.id} files={pending.files} onRemove={pending.remove} />
           <textarea
             value={draft}
-            placeholder={busy ? `${agent.name} is working — your message will be queued` : `Message ${agent.name}…`}
+            placeholder={
+              busy
+                ? `${agent.name} is working — your message will be queued`
+                : agent.role === "coordinator" && project.coreMode === "plan"
+                  ? `Message ${agent.name}… (Plan: nothing starts)`
+                  : `Message ${agent.name}…`
+            }
             onChange={(e) => setDraft(e.target.value)}
             onPaste={(e) => {
               // A screenshot or copied files (not text that happens to come with an image).
@@ -528,6 +534,7 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
           />
           <div className="composer-bar">
             <AttachButton onFiles={pending.add} />
+            {agent.role === "coordinator" && <ModeSelector project={project} />}
             <span className="composer-hint">
               <span className="kbd">Enter</span> to send · <span className="kbd">Shift</span>+<span className="kbd">Enter</span> for a new line
             </span>
@@ -545,6 +552,47 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
         </div>
       </div>
       )}
+    </div>
+  );
+}
+
+// The note Symbio adds to a message sent to core in Plan or Act mode (prompts.ts modeNote).
+const MODE_NOTE = /\n\n\[Mode: (Plan|Act) — [^\]]*\]\s*$/;
+
+/** A message to core without its mode note, and the mode it was sent in (null = Auto). */
+function splitModeNote(text: string): { text: string; mode: "Plan" | "Act" | null } {
+  const m = text.match(MODE_NOTE);
+  return m ? { text: text.slice(0, m.index), mode: m[1] as "Plan" | "Act" } : { text, mode: null };
+}
+
+const MODES: { id: CoreMode; label: string; hint: string }[] = [
+  { id: "auto", label: "Auto", hint: "core decides whether to talk, plan or start the work" },
+  { id: "plan", label: "Plan", hint: "Discuss and plan only: core can't start work, edit files or push until you switch" },
+  { id: "act", label: "Act", hint: "Get it done without a plan to approve" },
+];
+
+/** How core handles your messages; applies at once (switch to Plan to stop it starting things). */
+function ModeSelector({ project }: { project: Project }) {
+  const mode = project.coreMode ?? "auto";
+  const [saving, setSaving] = useState(false);
+  async function choose(next: CoreMode) {
+    if (next === mode || saving) return;
+    setSaving(true);
+    try {
+      await api.updateProject(project.id, { coreMode: next });
+    } catch (e) {
+      alert((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+  return (
+    <div className="seg mode-seg" role="radiogroup" aria-label="How core handles your messages">
+      {MODES.map((m) => (
+        <button key={m.id} role="radio" aria-checked={mode === m.id} className={`${mode === m.id ? "on" : ""} mode-${m.id}`} title={m.hint} onClick={() => choose(m.id)}>
+          {m.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -589,9 +637,15 @@ function HistoryItem({ message: m, projectId }: { message: any; projectId: strin
         </motion.div>
       );
     }
-    const { body, files } = splitAttachmentNote(text);
+    const { text: plain, mode } = splitModeNote(text);
+    const { body, files } = splitAttachmentNote(plain);
     return (
       <motion.div className="msg-user" {...anim}>
+        {mode && (
+          <span className={`mode-tag ${mode.toLowerCase()}`} title={`Sent in ${mode} mode`}>
+            {mode}
+          </span>
+        )}
         {body}
         <MessageAttachments projectId={projectId} files={files} />
       </motion.div>

@@ -67,6 +67,11 @@ Every agent session gets permission rules from `src/server/guard.ts`:
 | **Ask** before installing software (`winget`, `choco`, `npm -g`, `pip install`…) and "download and run" commands (`… \| sh`, `… \| bash -s`, `… \| sudo bash`, `… \| iex`) | You approve installs from the *Needs you* inbox |
 | **Refuse** reading image files (png, jpg, gif, webp, bmp) and PDFs with the read tool; Symbio answers with a pointer to `view_image` or `read_document` | The read tool puts the whole file in the conversation, re-sent every turn; a few large ones made one too big to send |
 
+**Plan mode** (core's chat) adds `PLAN_MODE_PERMISSIONS` to core's session: every edit denied, and
+the usual writing commands (redirects to a file, `git commit`/`push`/`checkout`…, deleting, moving,
+copying, `Set-Content`…) denied, while reading stays allowed; Symbio's own tools refuse anything
+that starts work. Like the rest, these are patterns that catch the usual ways, not a sandbox.
+
 These are pattern rules, not a sandbox: an agent can still do damage with commands the patterns
 don't catch, and any program running as your user, agents included, could in principle read the OS
 credential store. Keep projects under version control, review what gets merged, and only give a

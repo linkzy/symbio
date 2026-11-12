@@ -730,5 +730,62 @@ function withInbox(tool: Tool): Tool {
   };
 }
 
+/**
+ * Plan mode (the human's choice in core's chat): core may study, discuss and propose, but nothing
+ * that starts work. Returns why a call is refused, or null. File edits and writing commands are
+ * blocked by core's session rules (PLAN_MODE_PERMISSIONS in guard.ts).
+ */
+export function planModeRefusal(tool: string, args: any): string | null {
+  const what = (() => {
+    switch (tool) {
+      case "spawn_agent":
+        return "creating helpers";
+      case "assign_task":
+        return "assigning tasks";
+      case "merge_work":
+        return "merging work";
+      case "move_to_project_folder":
+        return "moving helpers";
+      case "clean_build_outputs":
+        return "cleaning helpers' folders";
+      case "remote_exec":
+      case "remote_upload":
+        return "running things on servers";
+      case "git_push":
+      case "git_pull":
+        return "pushing and pulling";
+      case "github_api":
+      case "azure_devops_api":
+        return String(args?.method ?? "GET").toUpperCase() === "GET" ? null : "changing things through the API (reading is fine)";
+      case "sub_repositories":
+        return args?.action === "use" || args?.action === "stop" ? "switching repositories" : null;
+      case "send_message":
+        return String(args?.to ?? "").toLowerCase() !== "core" && ["request", "blocking", "urgent"].includes(String(args?.kind ?? "info"))
+          ? "asking helpers to do things"
+          : null;
+      default:
+        return null;
+    }
+  })();
+  return what
+    ? `Plan mode: the human wants to discuss and plan before anything starts, so ${what} is blocked. Propose the work instead ` +
+        "(submit_plan, or describe what you'd do); the human switches to Auto or Act to let it start."
+    : null;
+}
+
+/** Core's tools in Plan mode: refused when they'd start work (see planModeRefusal). */
+function planGuard(tool: Tool): Tool {
+  return {
+    ...tool,
+    run(args, ctx) {
+      if (ctx.agent.role === "coordinator" && ctx.project.coreMode === "plan") {
+        const refusal = planModeRefusal(tool.name, args);
+        if (refusal) throw new Error(refusal);
+      }
+      return tool.run(args, ctx);
+    },
+  };
+}
+
 export const workerTools: Tool[] = COMMON.map(withInbox);
-export const coordinatorTools: Tool[] = [...COMMON, ...COORDINATOR_ONLY.map(coordinatorOnly)].map(withInbox);
+export const coordinatorTools: Tool[] = [...COMMON, ...COORDINATOR_ONLY.map(coordinatorOnly)].map(planGuard).map(withInbox);

@@ -770,3 +770,12 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); margi
   .dialog-foot { flex-wrap: wrap; }
   .drawer { width: 100vw; max-width: 100vw; }
 }
+
+/* Chat modes: the selector in core's chat box, and the label on messages sent in Plan or Act. */
+.mode-seg { flex: none; }
+.mode-seg button { height: 22px; padding: 0 8px; font-size: 11.5px; }
+.mode-seg button.mode-plan.on { color: var(--blue); background: var(--blue-soft); box-shadow: 0 0 0 1px rgba(76, 141, 246, 0.4); }
+.mode-seg button.mode-act.on { color: var(--amber); background: var(--amber-soft); box-shadow: 0 0 0 1px rgba(212, 160, 58, 0.4); }
+.mode-tag { display: block; width: fit-content; margin: -2px 0 4px auto; padding: 0 6px; border-radius: 999px; font-size: 10.5px; font-weight: 600; line-height: 16px; white-space: normal; }
+.mode-tag.plan { color: var(--blue); background: var(--blue-soft); }
+.mode-tag.act { color: var(--amber); background: var(--amber-soft); }

@@ -165,6 +165,16 @@ async function callSymbio(session, name, args) {
 
 const samePath = (a, b) => path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
 
+// Session permission rules, as OpenCode applies them (verified live): a matching deny blocks the call.
+function wildcard(pattern, value) {
+  const body = pattern
+    .split("")
+    .map((ch) => (ch === "*" ? ".*" : ch === "?" ? "." : ch.replace(/[.+^${}()|[\]\\]/g, "\\$&")))
+    .join("");
+  return new RegExp(`^${body}$`, "s").test(value) || (pattern.endsWith(" *") && value === pattern.slice(0, -2));
+}
+const denied = (session, action, resource) => session.permissions.some((r) => r.action === action && r.effect === "deny" && wildcard(r.resource, resource));
+
 async function runStep(session, step, ctl) {
   switch (step.kind) {
     case "say":
@@ -180,6 +190,7 @@ async function runStep(session, step, ctl) {
     }
     case "shell":
       return toolStep(session, "shell", { command: step.rest }, async () => {
+        if (denied(session, "shell", step.rest)) return { error: "Permission denied: shell" };
         try {
           const out = execSync(step.rest, { cwd: session.directory, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
           return { text: out, metadata: { status: "completed", truncated: false, exit: 0 } };
@@ -190,6 +201,7 @@ async function runStep(session, step, ctl) {
     case "write": {
       const m = step.rest.match(/^(\S+)\s+([\s\S]*)$/);
       return toolStep(session, "write", { path: m[1], content: m[2] }, async () => {
+        if (denied(session, "edit", m[1])) return { error: "Permission denied: edit" };
         const file = path.resolve(session.directory, m[1]);
         mkdirSync(path.dirname(file), { recursive: true });
         writeFileSync(file, m[2].replace(/\\n/g, "\n") + "\n");
