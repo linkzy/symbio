@@ -779,3 +779,11 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); margi
 .mode-tag { display: block; width: fit-content; margin: -2px 0 4px auto; padding: 0 6px; border-radius: 999px; font-size: 10.5px; font-weight: 600; line-height: 16px; white-space: normal; }
 .mode-tag.plan { color: var(--blue); background: var(--blue-soft); }
 .mode-tag.act { color: var(--amber); background: var(--amber-soft); }
+
+/* The human's review of a task: the helper's guide, approve / send back. */
+.review-guide { border: 1px solid var(--border); border-radius: var(--r); background: var(--bg-sunken); padding: 10px 12px; font-size: 13px; }
+.review-guide-head { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+.review-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.review-actions.column { flex-direction: column; align-items: stretch; }
+.review-box { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid rgba(212, 160, 58, 0.45); border-radius: var(--r-lg); background: var(--amber-soft); margin-bottom: 14px; }
+.review-box-head { font-weight: 600; color: var(--amber); font-size: 13px; }

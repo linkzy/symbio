@@ -222,20 +222,24 @@ const listTasks: Tool = {
 const updateTask: Tool = {
   name: "update_task",
   description:
-    "Update one of your tasks: in-progress, blocked (say why), or review (finished — summarize what you did; this is your report to the coordinator). The coordinator can update any task, including done.",
+    "Update one of your tasks: in-progress, blocked (say why), or review (finished: summarize what you did, and give a guide for checking it; this is your report to the coordinator). The coordinator can update any task, including done.",
   inputSchema: obj(
     {
       task_id: str("Task id, e.g. T3"),
       status: { type: "string", enum: [...TASK_STATUSES] },
       note: str("What happened: progress, blocker, or a summary of the finished work"),
       summary: str("Same as note (either name works)"),
+      guide: str(
+        "With review: how the human can check the work. Where to look (URLs, files, folders), the steps and what they should see, " +
+          "and whether you already ran them. Required when the human reviews the project's work.",
+      ),
     },
     ["task_id"],
   ),
-  async run({ task_id, status, note, summary }, { team, project, agent }) {
+  async run({ task_id, status, note, summary, guide }, { team, project, agent }) {
     // Agents often call it "summary"; dropping it silently lost their review notes.
     const text = note ?? summary;
-    return team.updateTask(project, agent, String(task_id), status, text ? String(text) : undefined);
+    return team.updateTask(project, agent, String(task_id), status, text ? String(text) : undefined, guide ? String(guide) : undefined);
   },
 };
 

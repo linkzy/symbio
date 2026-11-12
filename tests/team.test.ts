@@ -339,3 +339,49 @@ test("chat modes: Plan sets core's session rules and refuses work-starting tools
   await team.sendFromHuman(project, core, "Hello");
   assert.equal(prompts(calls, core.sessionId).at(-1)!.body, "Hello", "Auto adds nothing");
 });
+
+test("review by the human: a guide is required, done waits for the human, approve finishes it, send back reopens it", async () => {
+  const { project, team, calls, core, writer } = await setup();
+  core.sessionId = "ses_core_review";
+  writer.sessionId = "ses_writer_review";
+  const plan = await team.plan(project);
+  await plan.propose("Two chapters", [
+    { key: "one", title: "Chapter 1", description: "Write it" },
+    { key: "two", title: "Chapter 2", description: "Write it", depends_on: ["one"] },
+  ]);
+  await plan.decide(true, null);
+  const [t1, t2] = plan.plan.tasks;
+  await team.assignTask(project, core, t1.id, writer);
+
+  // Core reviews (the default): done is done, a guide is optional.
+  await team.updateTask(project, writer, t1.id, "review", "Written");
+  await team.updateTask(project, core, t1.id, "done", undefined);
+  assert.equal(plan.task(t1.id).status, "done");
+  await plan.update(t1.id, { status: "in-progress" });
+
+  // The human reviews every task.
+  project.reviewBy = "every";
+  await assert.rejects(team.updateTask(project, writer, t1.id, "review", "Written"), /report it with a guide/);
+  await team.updateTask(project, writer, t1.id, "review", "Written", "Open chapters/01.md; the hook is in the first paragraph. I re-read it myself.");
+  assert.match(plan.task(t1.id).guide!, /chapters\/01\.md/);
+  assert.match(await team.updateTask(project, core, t1.id, "done", "Looks good"), /waits for the human's review/);
+  assert.equal(plan.task(t1.id).status, "review");
+  assert.equal(plan.task(t1.id).humanReview?.state, "waiting");
+  assert.deepEqual(plan.openDependencies(plan.task(t2.id)).map((t) => t.id), [t1.id], "chapter 2 waits");
+
+  // Sent back: reopened, the note goes to the helper, core is told.
+  await team.reviews.sendBack(project, t1.id, "The hook is too long");
+  assert.equal(plan.task(t1.id).status, "in-progress");
+  assert.match(prompts(calls, writer.sessionId).at(-1)!.body, /sent back by the human[\s\S]*The hook is too long/);
+  assert.match(notes(calls, core.sessionId).at(-1)!.body, /sent back by the human[\s\S]*went back to writer/);
+  await assert.rejects(team.reviews.approve(project, t1.id), /isn't waiting for your review/);
+
+  // Reported again, done again, approved: done, and core is told.
+  await team.updateTask(project, writer, t1.id, "review", "Shorter hook", "Same file, first paragraph.");
+  assert.equal(plan.task(t1.id).humanReview, undefined, "a fresh review");
+  await team.updateTask(project, core, t1.id, "done", undefined);
+  await team.reviews.approve(project, t1.id, "Great");
+  assert.equal(plan.task(t1.id).status, "done");
+  assert.equal(plan.openDependencies(plan.task(t2.id)).length, 0, "chapter 2 can start");
+  assert.match(prompts(calls, core.sessionId).at(-1)!.body, /the human approved .*Chapter 1.*\(Great\)/);
+});

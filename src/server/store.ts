@@ -103,6 +103,12 @@ export interface Project {
    * Unset = "auto" (core decides).
    */
   coreMode?: CoreMode;
+  /**
+   * Who reviews the team's work. "core" (unset): core does, nothing waits on the human. "every":
+   * every finished task waits for the human's approval before it's done; "marked": only the tasks
+   * marked in the plan. See team/review.ts.
+   */
+  reviewBy?: ReviewBy;
   /** Keep a rules register (rules.json next to the docs, shown in the Docs tab). Unset = off. */
   rulesRegister?: boolean;
   /** Agent-facing Symbio updates (updates.ts) the coordinator has been told about. */
@@ -118,6 +124,8 @@ export const DEFAULT_MESSAGE_LIMIT = 20;
 export type HelperWorkspace = "own" | "shared";
 
 export type CoreMode = "auto" | "plan" | "act";
+
+export type ReviewBy = "core" | "every" | "marked";
 
 export interface ProjectConnection {
   id: string;

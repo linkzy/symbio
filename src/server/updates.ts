@@ -164,6 +164,16 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "still work). Act: the human wants it done without a plan to approve, so do it or delegate it right away and report. No " +
       "note means Auto, as before.",
   },
+  {
+    id: "2026-11-12-human-review",
+    text:
+      "Review guides and the human's review: helpers now report a task for review with a guide (update_task guide=…): where to look " +
+      "(URLs, files or folders), the steps to check it and what should be seen, and whether they ran it themselves. Ask helpers " +
+      "for one. The human can choose, per project, to review the work themselves (Settings → Team → Who reviews the work): then a " +
+      "task you merge or mark done waits in their \"To review\" list with its guide, and is done only when they approve it; tasks " +
+      "that depend on it wait meanwhile. If they send it back, their note goes straight to the helper and you're told. When they " +
+      "review, don't send them review lists in the chat: the list and the guides are in Symbio. Your brief says which applies.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */

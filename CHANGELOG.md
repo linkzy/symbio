@@ -5,6 +5,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Review guides: helpers report each finished task with a guide for checking it (where to look, the
+  steps, what you should see, and whether they ran it). New setting, Settings → Team → **Who reviews
+  the work**: *core* (as before) or *me, every task*: then finished tasks wait in a **To review** list
+  (Needs you and the Plan tab) until you approve them or send them back with a note, which goes to
+  the helper that did the work.
 ## [0.10.0]
 
 - Fixed: on Windows, saving Symbio's state could fail when another program (antivirus, search

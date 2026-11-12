@@ -24,6 +24,12 @@ export interface TeamCore {
   /** A message between agents: logged, delivered (it wakes the recipient), loop-guarded. */
   deliver(project: Project, from: Agent, to: Agent, kind: MessageKind, text: string, opts?: { protocol?: boolean }): Promise<void>;
   setStatus(project: Project, agent: Agent, status: Agent["status"]): void;
+  /** A message from the human to an agent (what they type in its chat). */
+  sendFromHuman(project: Project, agent: Agent, text: string, urgent?: boolean): Promise<void>;
+  /** With "after-task" renewal, a helper with no other task under way gets a fresh session. */
+  renewAfterTask(project: Project, agent: Agent, reason: string): Promise<boolean>;
+  /** Tells the browser the plan changed. */
+  planChanged(project: Project): void;
   coordinator(project: Project): Agent | undefined;
   assets(project: Project): Promise<AssetRegister>;
   /** Tells the browser the shared assets changed. */

@@ -14,6 +14,13 @@ export interface TaskNote {
   text: string;
 }
 
+/** The human's review of a finished task (Project.reviewBy). */
+export interface HumanReview {
+  state: "waiting" | "approved" | "sent-back";
+  at: number;
+  note?: string;
+}
+
 export interface Task {
   id: string; // T1, T2…
   title: string;
@@ -23,6 +30,11 @@ export interface Task {
   dependsOn: string[];
   assets: string[];
   notes: TaskNote[];
+  /** How the human checks the work (where to look, steps, what they should see), from the review report. */
+  guide?: string;
+  /** Marked for the human's review (Project.reviewBy "marked"). */
+  review?: boolean;
+  humanReview?: HumanReview;
   createdAt: number;
   updatedAt: number;
 }
@@ -153,13 +165,19 @@ export class PlanStore {
     return task;
   }
 
-  async update(id: string, change: { status?: TaskStatus; assignee?: string | null; note?: { by: string; text: string } }) {
+  async update(
+    id: string,
+    change: { status?: TaskStatus; assignee?: string | null; note?: { by: string; text: string }; guide?: string; humanReview?: HumanReview | null },
+  ) {
     const task = this.task(id);
     if (change.status) {
       if (!TASK_STATUSES.includes(change.status)) throw new Error(`Status must be one of: ${TASK_STATUSES.join(", ")}.`);
       task.status = change.status;
     }
     if (change.assignee !== undefined) task.assignee = change.assignee;
+    if (change.guide?.trim()) task.guide = change.guide.trim();
+    if (change.humanReview === null) delete task.humanReview;
+    else if (change.humanReview) task.humanReview = change.humanReview;
     if (change.note?.text.trim()) task.notes.push({ time: Date.now(), by: change.note.by, text: change.note.text.trim() });
     task.updatedAt = Date.now();
     this.plan.updatedAt = task.updatedAt;

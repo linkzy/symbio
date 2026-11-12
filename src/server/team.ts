@@ -16,12 +16,13 @@ import { PlanStore, type TaskInput, type TaskStatus } from "./plan.js";
 import type { RemoteOps } from "./remote.js";
 import { coordinatorBrief, kickoffMessage, modeNote, workerBrief } from "./prompts.js";
 import { git } from "./git.js";
-import { DEFAULT_MESSAGE_LIMIT, globalDir, newId, type Agent, type CoreMode, type HelperWorkspace, type LoggedMessage, type MessageKind, type Project, type Store } from "./store.js";
+import { DEFAULT_MESSAGE_LIMIT, globalDir, newId, type Agent, type CoreMode, type HelperWorkspace, type ReviewBy, type LoggedMessage, type MessageKind, type Project, type Store } from "./store.js";
 import { accountChildUsage, accountUsage, emptyUsage, sessionUsage } from "./costs.js";
 import { AGENT_UPDATES, unseenUpdates, updatesNote } from "./updates.js";
 import { cleanBuildOutputs, dailyBackup, gb, helperFolders, lastBackup, unpushedWork, type FolderUsage, type UnpushedBranch } from "./housekeeping.js";
 import { coordinatorTools, workerTools, type ToolContext } from "./tools.js";
 import { SharedAssets } from "./team/asset-protocol.js";
+import { Reviews } from "./team/review.js";
 import { active, type TeamCore } from "./team/core.js";
 import { ModelFallback } from "./team/fallback.js";
 import { Housekeeper } from "./team/housekeeper.js";
@@ -89,6 +90,7 @@ export class Team implements TeamCore {
   readonly usage = new Usage(this);
   readonly quiet = new QuietHelpers(this);
   readonly sharedAssets = new SharedAssets(this);
+  readonly reviews = new Reviews(this);
   readonly watchdog = new Watchdog(this, () => this.permissions.size);
   private loopGuard = new LoopGuard(this);
 
@@ -243,6 +245,15 @@ export class Team implements TeamCore {
     return agent.role === "coordinator" && project.coreMode === "plan" ? [...AGENT_PERMISSIONS, ...PLAN_MODE_PERMISSIONS] : AGENT_PERMISSIONS;
   }
 
+/** Who reviews the team's work (team/review.ts). Briefs change with it. */
+  async setReviewBy(project: Project, by: ReviewBy): Promise<void> {
+    if ((project.reviewBy ?? "core") === by) return;
+    project.reviewBy = by;
+    await this.store.update(project);
+    bus.publish({ type: "project.updated", projectId: project.id });
+    for (const agent of project.agents.filter(active)) await this.refreshInstructions(project, agent).catch(() => {});
+  }
+
   async setRulesRegister(project: Project, on: boolean): Promise<void> {
     if (!!project.rulesRegister === on) return;
     project.rulesRegister = on;
@@ -317,7 +328,7 @@ export class Team implements TeamCore {
     return plan;
   }
 
-  private planChanged(project: Project) {
+  planChanged(project: Project) {
     bus.publish({ type: "plan.updated", projectId: project.id });
   }
 
@@ -389,14 +400,40 @@ export class Team implements TeamCore {
     return `Assigned ${task.id} to ${helper.name}.`;
   }
 
-  async updateTask(project: Project, agent: Agent, taskId: string, status: TaskStatus | undefined, note: string | undefined): Promise<string> {
+  async updateTask(
+    project: Project,
+    agent: Agent,
+    taskId: string,
+    status: TaskStatus | undefined,
+    note: string | undefined,
+    guide?: string,
+  ): Promise<string> {
     const store = await this.plan(project);
     const task = store.task(taskId);
     if (agent.role !== "coordinator" && task.assignee !== agent.id) {
       throw new Error(`${task.id} isn't assigned to you. Ask the coordinator.`);
     }
+    const reviewed = this.reviews.gated(project, task);
+    if (agent.role === "worker" && status === "review" && reviewed && !guide?.trim()) {
+      throw new Error(
+        "The human reviews this task, so report it with a guide: where to look (URLs, files or folders), the steps to check it and " +
+          "what they should see, and whether you already ran those steps yourself. Call update_task again with guide.",
+      );
+    }
     if (agent.role === "worker") this.quiet.reported(agent); // any update on its task is news for core
-    await store.update(task.id, { status, note: note ? { by: agent.name, text: note } : undefined });
+    // Finished work the human reviews isn't done until they approve it.
+    if (status === "done" && reviewed && task.humanReview?.state !== "approved") {
+      if (note || guide) await store.update(task.id, { note: note ? { by: agent.name, text: note } : undefined, guide });
+      await this.reviews.complete(project, task.id, agent.name);
+      return `${task.id} now waits for the human's review (they check it with its guide); it's done when they approve, and tasks that depend on it wait meanwhile. You don't need to remind them.`;
+    }
+    await store.update(task.id, {
+      status,
+      note: note ? { by: agent.name, text: note } : undefined,
+      guide,
+      // Reported again after being sent back: the next review starts fresh.
+      ...(agent.role === "worker" && status === "review" ? { humanReview: null } : {}),
+    });
     this.planChanged(project);
 
     // A helper's review/blocked update is its report to the coordinator.
@@ -409,9 +446,10 @@ export class Team implements TeamCore {
         status === "review" ? "task-review" : "task-blocked",
         `${task.id} "${task.title}" → ${status}${note ? `: ${note}` : ""}` +
           (status === "review"
-            ? agent.branch
-              ? `\nMerge with merge_work("${agent.name}") when it looks right.`
-              : `\nIts work is already in the project folder; check it there, then mark the task done (update_task) or send it back.`
+            ? (agent.branch
+                ? `\nMerge with merge_work("${agent.name}") when it looks right.`
+                : `\nIts work is already in the project folder; check it there, then mark the task done (update_task) or send it back.`) +
+              (reviewed ? "\nThen it waits for the human's review, with the helper's guide." : "")
             : ""),
       );
       return `${task.id} is now ${status}. The coordinator has been notified — no separate report needed.`;
@@ -775,7 +813,7 @@ export class Team implements TeamCore {
   }
 
   /** With "after-task" renewal, a helper with no other task under way gets a fresh session. */
-  private async renewAfterTask(project: Project, agent: Agent, reason: string): Promise<boolean> {
+  async renewAfterTask(project: Project, agent: Agent, reason: string): Promise<boolean> {
     const plan = await this.plan(project);
     const renew =
       project.renewSessions === "after-task" &&
@@ -803,14 +841,15 @@ export class Team implements TeamCore {
     agent.workSince = Date.now();
     await this.store.update(project);
 
-    // Merged work completes the helper's tasks that were waiting for review.
+    // Merged work completes the helper's tasks that were waiting for review (or hands them to the
+    // human, when they review the work).
     const plan = await this.plan(project);
     const completed: string[] = [];
-    for (const task of plan.plan.tasks.filter((t) => t.assignee === agent.id && t.status === "review")) {
-      await plan.update(task.id, { status: "done", note: { by: "symbio", text: "merged" } });
-      completed.push(task.id);
+    const waiting: string[] = [];
+    for (const task of plan.plan.tasks.filter((t) => t.assignee === agent.id && t.status === "review" && t.humanReview?.state !== "waiting")) {
+      if ((await this.reviews.complete(project, task.id, "symbio (merged)")) === "done") completed.push(task.id);
+      else waiting.push(task.id);
     }
-    if (completed.length) this.planChanged(project);
     if (!(completed.length > 0 && (await this.renewAfterTask(project, agent, "its task was merged")))) {
       await this.system(
         project,
@@ -821,7 +860,8 @@ export class Team implements TeamCore {
     }
     return (
       `${result.summary}\n${result.files.map((f) => `- ${f}`).join("\n")}` +
-      (completed.length ? `\nMarked done: ${completed.join(", ")}.` : "")
+      (completed.length ? `\nMarked done: ${completed.join(", ")}.` : "") +
+      (waiting.length ? `\nWaiting for the human's review: ${waiting.join(", ")} (done when they approve).` : "")
     );
   }
 

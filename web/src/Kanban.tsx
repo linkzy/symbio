@@ -5,6 +5,7 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { api, type Agent, type Plan, type Project, type Task, type TaskStatus } from "./api";
 import { Avatar, Drawer, EmptyState, clock } from "./ui";
+import { ReviewActions, ReviewGuide, waitingForReview } from "./Review";
 
 const COLUMNS: { status: TaskStatus; title: string; icon: React.ReactNode }[] = [
   { status: "todo", title: "To do", icon: <Circle size={14} /> },
@@ -92,7 +93,9 @@ export function Kanban({ project, plan }: { project: Project; plan: Plan | null 
         </div>
       </LayoutGroup>
 
-      <AnimatePresence>{task && <TaskDetail task={task} agent={task.assignee ? agentById.get(task.assignee) : undefined} onClose={() => setOpenTask(null)} />}</AnimatePresence>
+      <AnimatePresence>
+        {task && <TaskDetail projectId={project.id} task={task} agent={task.assignee ? agentById.get(task.assignee) : undefined} onClose={() => setOpenTask(null)} />}
+      </AnimatePresence>
     </div>
   );
 }
@@ -118,6 +121,7 @@ function TaskCard({ task: t, agent, waitingOn, onOpen }: { task: Task; agent?: A
     >
       <div className="task-top">
         <span className="task-id">{t.id}</span>
+        {waitingForReview(t) && <span className="tag amber">Waiting for you</span>}
         {waitingOn.length > 0 && t.status === "todo" && (
           <span className="row" style={{ gap: 3 }} title="Waiting on these tasks">
             <Link2 size={11} />
@@ -156,7 +160,7 @@ function TaskCard({ task: t, agent, waitingOn, onOpen }: { task: Task; agent?: A
   );
 }
 
-function TaskDetail({ task: t, agent, onClose }: { task: Task; agent?: Agent; onClose: () => void }) {
+function TaskDetail({ projectId, task: t, agent, onClose }: { projectId: string; task: Task; agent?: Agent; onClose: () => void }) {
   const column = COLUMNS.find((c) => c.status === t.status);
   return (
     <Drawer title={`${t.id} · ${t.title}`} onClose={onClose}>
@@ -197,9 +201,22 @@ function TaskDetail({ task: t, agent, onClose }: { task: Task; agent?: Agent; on
           </>
         )}
       </dl>
+      {waitingForReview(t) && (
+        <div className="review-box">
+          <div className="review-box-head">Waiting for your review</div>
+          <ReviewGuide guide={t.guide} />
+          <ReviewActions projectId={projectId} task={t} onDone={onClose} />
+        </div>
+      )}
       <div className="md">
         <Markdown remarkPlugins={[remarkGfm]}>{t.description || "_No description._"}</Markdown>
       </div>
+      {!waitingForReview(t) && t.guide && (
+        <>
+          <h3>How to check it</h3>
+          <ReviewGuide guide={t.guide} />
+        </>
+      )}
       {t.notes.length > 0 && (
         <>
           <h3>History</h3>

@@ -71,6 +71,10 @@ export interface Task {
   dependsOn: string[];
   assets: string[];
   notes: { time: number; by: string; text: string }[];
+  /** How the human checks the work, from its helper's review report. */
+  guide?: string;
+  review?: boolean;
+  humanReview?: { state: "waiting" | "approved" | "sent-back"; at: number; note?: string };
   createdAt: number;
   updatedAt: number;
 }
@@ -144,6 +148,8 @@ export interface Project {
   subRepositories?: boolean;
   /** How core handles the human's messages (the selector in its chat box). Unset = auto. */
   coreMode?: CoreMode;
+  /** Who reviews the team's work: core (unset), the human for every task, or for the tasks marked in the plan. */
+  reviewBy?: "core" | "every" | "marked";
   heldMessages?: { agentId: string; text: string }[];
   agents: Agent[];
   createdAt: number;
@@ -503,7 +509,7 @@ export const api = {
     call<{ path: string; content: string }>("GET", `/projects/${id}/docs/file?path=${encodeURIComponent(path)}`),
   writeDoc: (id: string, path: string, content: string) =>
     call<{ ok: true }>("PUT", `/projects/${id}/docs/file`, { path, content }),
-  updateProject: (id: string, patch: Partial<Pick<Project, "name" | "allowedModels" | "coordinatorModel" | "connections" | "allowedPatterns" | "messageLimit" | "renewSessions" | "helperWorkspace" | "rulesRegister" | "subRepositories" | "coreMode">>) =>
+  updateProject: (id: string, patch: Partial<Pick<Project, "name" | "allowedModels" | "coordinatorModel" | "connections" | "allowedPatterns" | "messageLimit" | "renewSessions" | "helperWorkspace" | "rulesRegister" | "subRepositories" | "coreMode" | "reviewBy">>) =>
     call<Project>("PATCH", `/projects/${id}`, patch),
   connections: () => call<ConnectionView[]>("GET", "/connections"),
   createConnection: (body: Record<string, unknown>) => call<ConnectionView>("POST", "/connections", body),
@@ -558,6 +564,8 @@ export const api = {
   resumeTeam: (projectId: string) => call<Project>("POST", `/projects/${projectId}/resume`),
   pauseAll: () => call<{ paused: string[] }>("POST", "/pause-all"),
   plan: (projectId: string) => call<Plan>("GET", `/projects/${projectId}/plan`),
+  reviewTask: (projectId: string, taskId: string, decision: "approve" | "send-back", note?: string) =>
+    call<Plan>("POST", `/projects/${projectId}/plan/tasks/${taskId}/review`, { decision, note }),
   decidePlan: (projectId: string, approved: boolean, feedback?: string) =>
     call<Plan>("POST", `/projects/${projectId}/plan/decision`, { approved, feedback }),
 };

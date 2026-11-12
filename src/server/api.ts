@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { bus, type UiEvent } from "./bus.js";
 import type { OpencodeRuntime } from "./opencode/runtime.js";
-import type { CoreMode, Store, Project, DocsLocation, HelperWorkspace, ProjectConnection } from "./store.js";
+import type { CoreMode, ReviewBy, Store, Project, DocsLocation, HelperWorkspace, ProjectConnection } from "./store.js";
 import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 import os from "node:os";
@@ -333,7 +333,9 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       rulesRegister?: boolean;
       subRepositories?: boolean;
       coreMode?: CoreMode;
+      reviewBy?: ReviewBy;
     }>();
+    if (body.reviewBy === "core" || body.reviewBy === "every" || body.reviewBy === "marked") await team.setReviewBy(project, body.reviewBy);
     if (body.coreMode === "auto" || body.coreMode === "plan" || body.coreMode === "act") await team.setCoreMode(project, body.coreMode);
     if (typeof body.subRepositories === "boolean") {
       try {
@@ -474,6 +476,20 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     if (!body.approved && !body.feedback?.trim()) return c.json({ error: "Say what should change" }, 400);
     try {
       await team.decidePlan(project, body.approved, body.feedback ?? null);
+    } catch (err) {
+      throw new HttpError(409, (err as Error).message);
+    }
+    return c.json((await team.plan(project)).plan);
+  });
+
+  // The human's review of a finished task (team/review.ts): approve it, or send it back with a note.
+  api.post("/projects/:id/plan/tasks/:taskId/review", async (c) => {
+    const project = withProject(c.req.param("id"));
+    const body = await c.req.json<{ decision?: "approve" | "send-back"; note?: string }>();
+    try {
+      if (body.decision === "approve") await team.reviews.approve(project, c.req.param("taskId"), body.note);
+      else if (body.decision === "send-back") await team.reviews.sendBack(project, c.req.param("taskId"), body.note ?? "");
+      else return c.json({ error: 'decision must be "approve" or "send-back"' }, 400);
     } catch (err) {
       throw new HttpError(409, (err as Error).message);
     }

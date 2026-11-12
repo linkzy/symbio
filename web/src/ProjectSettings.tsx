@@ -133,14 +133,16 @@ function Team({ project, onChanged }: { project: Project; onChanged: (p: Project
   const [renew, setRenew] = useState(currentRenew);
   const currentWorkspace = project.helperWorkspace ?? "own";
   const [workspace, setWorkspace] = useState(currentWorkspace);
+  const currentReview = project.reviewBy ?? "core";
+  const [review, setReview] = useState(currentReview);
   const [saving, setSaving] = useState(false);
   const parsed = Number(value);
   const valid = value.trim() !== "" && Number.isInteger(parsed) && parsed >= 0 && parsed <= 1000;
-  const dirty = valid && (parsed !== current || renew !== currentRenew || workspace !== currentWorkspace);
+  const dirty = valid && (parsed !== current || renew !== currentRenew || workspace !== currentWorkspace || review !== currentReview);
   async function save() {
     setSaving(true);
     try {
-      onChanged(await api.updateProject(project.id, { messageLimit: parsed, renewSessions: renew, helperWorkspace: workspace }));
+      onChanged(await api.updateProject(project.id, { messageLimit: parsed, renewSessions: renew, helperWorkspace: workspace, reviewBy: review }));
     } catch (e) {
       alert((e as Error).message);
     } finally {
@@ -175,6 +177,22 @@ function Team({ project, onChanged }: { project: Project; onChanged: (p: Project
         </div>
         {project.subRepositories !== undefined && <RepositoriesChoice project={project} onChanged={onChanged} />}
         <div className="field">
+          <span>Who reviews the work</span>
+          <div className="seg">
+            <button className={review === "core" ? "on" : ""} onClick={() => setReview("core")}>
+              core
+            </button>
+            <button className={review === "every" ? "on" : ""} onClick={() => setReview("every")}>
+              Me, every task
+            </button>
+          </div>
+          <span className="hint">
+            {review === "core"
+              ? "core reviews and merges the helpers' work, and tasks are done when it says so. Nothing waits on you; each task still has a guide for checking it, in the Plan tab."
+              : "When a task's work is finished, it waits in your list (Needs you, and the Plan tab) with its helper's guide: where to look and how to check it. It's done when you approve it; tasks that depend on it wait meanwhile. Sending it back gives your note to the helper that did it."}
+          </span>
+        </div>
+        <div className="field">
           <span>Fresh sessions for helpers</span>
           <div className="seg">
             <button className={renew === "manual" ? "on" : ""} onClick={() => setRenew("manual")}>
@@ -208,6 +226,7 @@ function Team({ project, onChanged }: { project: Project; onChanged: (p: Project
           setValue(String(current));
           setRenew(currentRenew);
           setWorkspace(currentWorkspace);
+          setReview(currentReview);
         }}
       />
     </section>

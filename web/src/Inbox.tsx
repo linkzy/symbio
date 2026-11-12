@@ -1,17 +1,20 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { CircleAlert, ClipboardList, KeyRound, MessageCircleQuestion, Plug, ShieldQuestion } from "lucide-react";
+import { CircleAlert, ClipboardList, KeyRound, MessageCircleQuestion, Plug, ShieldQuestion, ListChecks } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { api, subscribe, type Approval, type LoggedMessage, type PermissionRequest, type Plan, type Project } from "./api";
+import { api, subscribe, type Approval, type LoggedMessage, type PermissionRequest, type Plan, type Project, type Task } from "./api";
 import { openQuestions } from "./Messages";
 import { AgentForms } from "./FormCard";
+import { ReviewActions, ReviewGuide, waitingForReview } from "./Review";
 import { Avatar, Drawer, timeAgo } from "./ui";
 
 export interface InboxData {
   approvals: Approval[];
   permissions: PermissionRequest[];
   questions: LoggedMessage[];
+  /** Finished tasks waiting for the human's review. */
+  toReview: Task[];
   count: number;
 }
 
@@ -42,7 +45,8 @@ export function useInbox(project: Project | null, log: LoggedMessage[] | null, p
   const questions = openQuestions(log ?? []);
   const stuck = project?.agents.filter((a) => a.problem && a.status !== "stopped").length ?? 0;
   const planWaiting = plan?.status === "proposed" ? 1 : 0;
-  return { approvals, permissions, questions, count: approvals.length + permissions.length + questions.length + stuck + planWaiting };
+  const toReview = plan?.tasks.filter(waitingForReview) ?? [];
+  return { approvals, permissions, questions, toReview, count: approvals.length + permissions.length + questions.length + stuck + planWaiting + toReview.length };
 }
 
 export function InboxDrawer({
@@ -96,6 +100,16 @@ export function InboxDrawer({
             </div>
           </Item>
         )}
+
+        {data.toReview.map((t) => (
+          <Item key={`review-${t.id}`} icon={<ListChecks size={14} />} kind="To review" agent={t.assignee ? nameOf(t.assignee) : undefined} time={t.humanReview?.at}>
+            <div className="small">
+              <strong>{t.id}</strong> {t.title}
+            </div>
+            <ReviewGuide guide={t.guide} />
+            <ReviewActions projectId={project.id} task={t} />
+          </Item>
+        ))}
 
         {data.approvals.map((a) => (
           <ApprovalItem key={a.id} project={project} approval={a} />

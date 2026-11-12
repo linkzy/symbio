@@ -83,6 +83,13 @@ being merged (unless core forces the merge).
   *in progress*. Tasks with unfinished dependencies can't be assigned.
 - Helpers report with `update_task`: `in-progress`, `blocked` (with the reason) or `review`
   (finished, with a summary, which is their report to core).
+- **Review guides and the human's review** (`Project.reviewBy`, `team/review.ts`). A helper reporting a
+  task for review gives a guide (`update_task` `guide`): where to look, the steps to check it and what
+  should be seen, and whether it ran them. *core* (the default): core's review is enough, done is
+  done. *every*: a task merged or marked done waits in the human's "To review" list (Needs you, the
+  Plan tab) and is done only when they approve it; reporting without a guide is refused; tasks that
+  depend on it wait. *Send back* reopens the task and gives the human's note to its helper (core is
+  told). *marked* (only the tasks marked in the plan) comes with the next step.
 - **Chat modes** (the selector in core's chat box, `Project.coreMode`). **Plan**: core discusses and
   proposes but starts nothing. Symbio enforces it: core's tools refuse creating helpers, assigning
   tasks, merging, moving helpers, cleaning folders, connection actions that change things (pushes,

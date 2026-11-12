@@ -63,6 +63,7 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 | `team/asset-protocol.ts` | The shared-asset protocol: request (free ones granted at once), grant, deny, release |
 | `team/watchdog.ts` | Hung agents interrupted and told why, OpenCode restarted before its memory makes it crash, interrupted agents woken after a restart |
 | `team/fallback.ts` | Failing providers: switch to the next allowed model, a fresh session when the conversation is too large, resuming stuck agents |
+| `team/review.ts` | The human's review of finished tasks (`reviewBy`): the gate on done, approve, send back |
 | `team/quiet-helpers.ts` | Helpers that end their turn without reporting: reminded once, then core is told |
 | `team/permissions.ts` | OpenCode permission requests: answered from known rules, or held for the human |
 | `team/housekeeper.ts` | The hourly and daily housekeeping run (see `housekeeping.ts`) and its reports |

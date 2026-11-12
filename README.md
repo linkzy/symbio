@@ -66,6 +66,9 @@ place. Here Symbio was restarted mid-task, and it told the helper to pick up whe
   database, a spreadsheet) can be declared a *shared asset*. Agents request it from core, wait for
   the grant and release it when done. Changes to an asset an agent wasn't granted are flagged at
   merge.
+- **Review the work your way.** Helpers report each finished task with a guide for checking it:
+  where to look, the steps and what you should see. Let core review (the default), or review every
+  task yourself from a "To review" list: approve it, or send it back with a note to the helper.
 - **Choose how core takes your message.** A selector in the chat box: *Auto* (core decides),
   *Plan* (discuss and plan only: Symbio blocks starting work and editing files until you switch)
   or *Act* (get it done without a plan to approve).

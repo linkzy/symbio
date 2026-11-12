@@ -6,13 +6,30 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 
 ## Now
 
-Nothing in progress; the top of Next is what comes up.
+- **Reviewing the team's work, step 1.** Done for the next release: review guides, the "To review"
+  list (approve, send back), and the setting with *core* and *me, every task*. Next: step 2, the
+  tasks marked in the plan and the changes view (Next, item 1).
 
 ## Next
 
-1. **Review what the team changed.** Per task and per helper: the files changed and their diffs,
-   before and after a merge, readable in the browser (and on a phone). Today the human has to trust
-   core's summary or open the files; every serious tool in this space has this.
+1. **Reviewing the team's work.** Today the human chases reviews in the chat ("what's pending?",
+   "send me the URLs and how to validate"), and the lists get lost as the chat moves on. Instead:
+   - **A guide with every task in review**, written by the helper: where to look (URLs, files,
+     folders, a document), the steps and what should be seen, and whether the helper already ran
+     it. Generic, not only for software: a script, a set of images or a report are reviewed the
+     same way.
+   - **A "To review" list**: everything waiting on the human, each with its guide; *approve*, or
+     *send back* with a note (it goes straight to the helper that did the work, and core is told).
+   - **A per-project setting, "Who reviews the work"**: *core* (the default: view only, nothing
+     waits on the human; e.g. when review happens outside Symbio, in Jira), *me, every task*, or
+     *me, the tasks marked in the plan* (core marks the ones that need the human when it proposes
+     the plan, and the human ticks or unticks them; for pipelines with a few checkpoints).
+   - The gate holds a task's **done**, not its merge: work is merged and visible (e.g. running on
+     localhost), and the task waits for the human; tasks that depend on it don't start meanwhile.
+   - **The changes**: files changed and their diffs (images as before/after), a click away.
+
+   Step 1 (the guide, the "To review" list, *core* / *every task*) is done; step 2 is marked tasks
+   and the changes view.
 2. **Notifications.** When something needs the human (a question, an approval, a plan to review, a
    stuck agent) or a task finishes, send it where they are: browser/phone notifications, and
    optionally a messaging app (e.g. Telegram) or e-mail, with per-project choices. Essential for
