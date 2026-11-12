@@ -25,6 +25,7 @@ node bin/symbio.js run     # foreground, http://127.0.0.1:4310
 | `npm run build` | Production build: Vite for the UI, `tsc` for the server |
 | `npm start` | Same as `sym`: starts the built app in the background and opens the browser (`node bin/symbio.js run` runs it in the foreground) |
 | `npm test` | Unit tests (`node:test` via tsx, `tests/*.test.ts`) |
+| `npm run test:contract` | The OpenCode API as Symbio uses it, against a real `opencode serve` (`tests/contract/`) |
 | `npm run typecheck` | Type-checks the server and the UI |
 | `prepublishOnly` | Runs typecheck, tests and build before `npm publish` |
 
@@ -88,6 +89,11 @@ docs/                  This documentation
   credentials are never touched.
 - Git behavior (worktrees, merges, conflicts, restoring workspaces) is tested against real
   temporary repositories in `tests/workspaces.test.ts`.
+- `npm run test:contract` starts the bundled OpenCode (or `SYMBIO_OPENCODE_BIN`) with its data in a
+  temporary folder and checks every endpoint Symbio relies on that doesn't need a model. CI runs it
+  on each push, and daily against the newest OpenCode too (`.github/workflows/opencode-contract.yml`).
+- A Symbio started with a temporary `SYMBIO_HOME` still uses your own OpenCode data (sessions,
+  sign-ins) unless you also set the `XDG_*` folders (see [opencode-api.md](opencode-api.md)).
 - For UI changes, look at the result. `scripts/screenshot.mjs` captures screens with your installed
   Edge or Chrome (via `playwright-core`):
 

@@ -43,7 +43,8 @@
     "start": "node bin/symbio.js",
     "test": "tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p web/tsconfig.json",
-    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+    "prepublishOnly": "npm run typecheck && npm test && npm run build",
+    "test:contract": "tsx --test tests/contract/*.test.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",

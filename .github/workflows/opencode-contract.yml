@@ -1,0 +1,32 @@
+name: OpenCode contract
+
+# Every day, the OpenCode API checks (tests/contract) against the bundled OpenCode and against
+# the newest release, so a change in OpenCode (much of the API Symbio uses is experimental) is
+# caught before users meet it, and before Symbio upgrades. A failed scheduled run e-mails the
+# repository owner.
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  contract:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        opencode: [bundled, latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install the newest OpenCode
+        if: matrix.opencode == 'latest'
+        shell: bash
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/opencode" @opencode/cli@latest
+          echo "SYMBIO_OPENCODE_BIN=$RUNNER_TEMP/opencode/node_modules/@opencode/cli/bin/opencode.exe" >> "$GITHUB_ENV"
+      - run: npm run test:contract

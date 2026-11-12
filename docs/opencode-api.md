@@ -4,6 +4,11 @@ Symbio drives OpenCode v2 through its HTTP API. Much of that API is new or marke
 everything here was **verified against OpenCode 2.1.4** by calling it, not taken from memory.
 When OpenCode changes, re-verify before relying on a behavior, and update this page.
 
+`tests/contract/opencode.test.ts` (`npm run test:contract`) checks the endpoints below that don't
+need a model turn, plus the inbox and failed-turn behaviors, against a real `opencode serve`. CI
+runs it on every push and every day, also against the newest OpenCode release (2.2.7 passed on
+2026-11-11). Extend it when Symbio starts relying on another endpoint or behavior.
+
 The live OpenAPI document is served by OpenCode itself at `/openapi.json`. With Symbio running you
 can read it, and any other GET endpoint, through Symbio's read-only debug proxy (start Symbio with
 `SYMBIO_DEBUG=1`, and send the UI key as shown in [development.md](development.md)):
@@ -56,6 +61,17 @@ and idle), `session.text.*`, `session.reasoning.*`, `session.tool.*` (live outpu
 
 ## Behaviors worth knowing
 
+- **Notes wait in the inbox.** `synthetic` with `resume: false` doesn't add to the conversation
+  at once: the note sits in the session's inbox (`GET …/inbox`) and joins the conversation when the
+  next turn starts, which is how Symbio tells core something without waking it.
+- **A turn takes one inbox item, the oldest.** After a turn that *fails*, the rest stay queued until
+  something starts another turn (a new prompt): they are not delivered on their own.
+- **A model that doesn't exist fails each turn at once** (`idle` message with `outcome: "failed"`,
+  `error.type: "provider.no-route"`, "Model unavailable: …"), with no network call. The contract
+  test uses that to exercise turns without a model or a sign-in.
+- **OpenCode's data follows the XDG folders** (`XDG_DATA_HOME`, `XDG_CONFIG_HOME`, `XDG_STATE_HOME`,
+  `XDG_CACHE_HOME`) on every platform, Windows included; set them to keep a test's sessions out of
+  your own OpenCode database. Without sign-ins it still offers its free `opencode/…` models.
 - **Images read with the read tool stay in the conversation as data** and are sent with every
   request. A session with eight 2–4 MB images (about 25 MB) failed on every model with "Timed out
   reading request body. Try again, or use a smaller request size." (GitHub Copilot), even with
