@@ -6,20 +6,7 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 
 ## Now
 
-Reliability first: Symbio shouldn't be shown to new people while it can stall or break silently.
-
-- **A safety net for changes.** Done for the next release: a contract test of the OpenCode API as
-  Symbio uses it (on every push, and daily against the newest OpenCode), and end-to-end tests of the
-  whole app in a browser against a stand-in OpenCode with a scripted model (chat, drafts, a helper's
-  work merged, questions, attachments, several repositories, navigation, the phone layout), in CI.
-- **A way back from a bad release.** Done for the next release: `sym update --to <version>`, and
-  releases only published when every test passes.
-- **Helpers that go quiet.** Done for the next release: reminded once, then core is told.
-- **Split `team.ts`.** Done for the next release: its self-contained parts (the watchdog, model
-  fallback, permission requests, housekeeping, quiet helpers, the shared-asset protocol, usage,
-  processes, the message limit) are modules in `src/server/team/`, each with its own state.
-- **Chat modes: Auto, Plan and Act.** Done for the next release, with Plan enforced by Symbio
-  (tools that start work refused, edits and writing commands denied in core's session).
+Nothing in progress; the top of Next is what comes up.
 
 ## Next
 
@@ -111,6 +98,10 @@ Collected, not sorted or promised yet.
 
 Newest first; details per version in [CHANGELOG.md](../CHANGELOG.md).
 
+- **0.10** — Chat modes (Auto, Plan, Act) with Plan enforced by Symbio; helpers that go quiet are
+  reminded, then core is told; `sym update --to` to go back after a bad release; releases gated on
+  unit, OpenCode contract and end-to-end tests; `team.ts` split into modules; *New project…* in the
+  project switcher.
 - **0.9** — Usable on phones (one column, the team in a drawer, scrolling tabs, bottom-sheet
   dialogs); switching projects from the name at the top; answering questions in *Needs you*;
   drafts kept until sent; Symbio's version in the top bar and a green badge for a new one; hourly
