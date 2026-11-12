@@ -140,7 +140,7 @@ All agents:
 | `stop_process` | Stop one of them by shell id; the only way agents may stop processes |
 | `list_connections` | Connections the project may use and whether actions need approval |
 | `remote_exec` | Run a non-interactive command on a server over SSH |
-| `remote_upload` | Upload files from the working folder to a server |
+| `remote_upload` | Upload files from the working folder to a server (SFTP) or an FTP account |
 | `git_push` / `git_pull` | Push or pull with GitHub or Azure DevOps; Symbio applies the token. From the project folder of a folder of several repositories, `repo` says which |
 | `github_api` | Call the GitHub REST API (GET calls never need approval) |
 | `azure_devops_api` | Call the Azure DevOps REST API of the connection's organization, e.g. to open a pull request (GET calls never need approval) |
@@ -167,8 +167,10 @@ a form the human answers.
 
 ## Remote actions
 
-Connections are GitHub accounts, Azure DevOps organizations or SSH servers configured in Settings
-and enabled per project.
+Connections are GitHub accounts, Azure DevOps organizations, servers (SSH; SFTP-only hosting tests as
+such) or FTP accounts (FTP or FTPS; uploads only) configured in Settings and enabled per project.
+The brief puts the project's own tools first: a deploy script or a configured CLI is run like any
+command, and agents don't ask for a connection when the project already has its own access.
 Agents never see their credentials: they call `git_push`, `github_api`, `azure_devops_api`, `remote_exec` or
 `remote_upload`, and Symbio runs the action itself. Credentials that belong to the project (its
 config files) or that the human gives are a different matter: agents may use them for the task, but

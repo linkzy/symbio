@@ -9,6 +9,9 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 - **Reviewing the team's work.** Done for the next release: review guides, the "To review" list
   (approve, send back), the setting with *core*, *me, every task* and *me, the tasks marked in the
   plan*, and a task's changes (files and diffs). Left for later: images as before/after.
+- **FTP connections.** Done for the next release: FTP and FTPS accounts for uploads, servers that
+  only allow SFTP, and agents running the project's own deploy scripts instead of asking for a
+  connection.
 
 ## Next
 
@@ -82,6 +85,11 @@ Collected, not sorted or promised yet.
   or Claude Code?"; most people won't install another agent runtime. Big: Symbio is built on
   OpenCode's HTTP API (sessions, tools, permissions, events), so each runtime needs an adapter.
   First candidate to move into Next once the reliability work is done.
+- **A generic connection** *(when a specific type isn't enough)*. Named secret values that Symbio
+  hands to a command it runs as environment variables (e.g. `FTP_PASSWORD` for a project's deploy
+  script, or any CLI), with the output scrubbed and *Ask me* by default. Weaker than the other
+  types: the command could print or save the value, so only the approval protects it. Today the
+  project's own scripts are run directly, and FTP has its own type.
 - **A beta channel for updates** *(when there are more users)*. Publish to a beta first (npm
   `next`) for those who opt in, and to everyone after a few quiet days. With two users it would only
   add work; until then, releases are gated on the tests and `sym update --to` goes back.

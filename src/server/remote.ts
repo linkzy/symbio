@@ -1,4 +1,4 @@
-// Actions agents take through connections (SSH commands and uploads, git push/pull,
+// Actions agents take through connections (SSH commands and uploads, FTP uploads, git push/pull,
 // GitHub and Azure DevOps APIs). Symbio runs them itself with credentials from the
 // vault — agents only see results. Connections set to "ask" queue an approval for
 // the human; the result is delivered to the agent as a message once approved.
@@ -11,6 +11,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { bus } from "./bus.js";
 import type { AzureConnection, Connection, Connections, GithubConnection, ServerConnection } from "./connections.js";
+import { ftpUpload } from "./ftp.js";
 import { sshExec, sshUpload } from "./ssh.js";
 import { globalDir, newId, type Agent, type Project, type ProjectConnection } from "./store.js";
 
@@ -66,7 +67,11 @@ export class RemoteOps {
   describeFor(project: Project): string {
     const list = this.enabled(project);
     if (list.length === 0) {
-      return "This project has no connections. If the work needs GitHub, Azure DevOps or a server, tell the human to add one in the project's Settings (Connections).";
+      return (
+        "This project has no connections. That's fine when the project has its own way (e.g. a deploy script): use it. " +
+        "Only if the work needs GitHub, Azure DevOps, a server or an FTP account and the project has no access of its own, " +
+        "tell the human to add one in the project's Settings (Connections)."
+      );
     }
     return list
       .map(({ conn, link }) => {
@@ -75,7 +80,9 @@ export class RemoteOps {
             ? `GitHub${conn.account ? ` account ${conn.account}` : ""} — git_push, git_pull, github_api`
             : conn.type === "azure"
               ? `Azure DevOps organization ${conn.organization}${conn.account ? ` (as ${conn.account})` : ""} — git_push, git_pull, azure_devops_api`
-              : `server ${conn.username}@${conn.host} — remote_exec, remote_upload`;
+              : conn.type === "ftp"
+                ? `FTP account ${conn.username}@${conn.host}${conn.security === "none" ? "" : " (FTPS)"} — remote_upload only (FTP can't run commands)`
+                : `server ${conn.username}@${conn.host} — remote_exec, remote_upload`;
         return `- "${conn.name}": ${what} (${link.policy === "ask" ? "each action needs the human's approval" : "allowed without approval"})`;
       })
       .join("\n");
@@ -159,15 +166,20 @@ export class RemoteOps {
       const names = this.enabled(project).map(({ conn }) => conn.name).join(", ") || "none";
       throw new Error(`No connection "${connectionRef}" in this project. Available: ${names}.`);
     }
-    const needs: Connection["type"][] = kind.startsWith("remote_")
-      ? ["server"]
-      : kind === "github_api"
+    if (kind === "remote_exec" && found.conn.type === "ftp") {
+      throw new Error(`"${found.conn.name}" is an FTP connection: FTP can only upload files (remote_upload), not run commands.`);
+    }
+    const needs: Connection["type"][] = kind === "remote_upload"
+      ? ["server", "ftp"]
+      : kind === "remote_exec"
+        ? ["server"]
+        : kind === "github_api"
         ? ["github"]
         : kind === "azure_devops_api"
           ? ["azure"]
           : ["github", "azure"]; // git_push / git_pull
     if (!needs.includes(found.conn.type)) {
-      const label = (t: string) => (t === "azure" ? "Azure DevOps" : t === "github" ? "GitHub" : "server");
+      const label = (t: string) => (t === "azure" ? "Azure DevOps" : t === "github" ? "GitHub" : t === "ftp" ? "FTP" : "server");
       throw new Error(`"${found.conn.name}" is a ${label(found.conn.type)} connection; ${kind} needs a ${needs.map(label).join(" or ")} connection.`);
     }
     return found;
@@ -220,7 +232,10 @@ export class RemoteOps {
       }
       case "remote_upload": {
         const local = insideWorkspace(agent, a.localPath);
-        const count = await sshUpload(await this.connections.sshTarget(conn as ServerConnection), local, a.remotePath);
+        const count =
+          conn.type === "ftp"
+            ? await ftpUpload(await this.connections.ftpTarget(conn), local, a.remotePath)
+            : await sshUpload(await this.connections.sshTarget(conn as ServerConnection), local, a.remotePath);
         return `Uploaded ${count} file(s) to ${a.remotePath} (skipping .git, node_modules and .symbio).`;
       }
       case "git_push":

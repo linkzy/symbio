@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { Cloud, GitBranch, Server } from "lucide-react";
+import { Cloud, FolderUp, GitBranch, Server } from "lucide-react";
 import { api, type ConnectionView, type ProjectConnection } from "./api";
 
 export function ConnIcon({ type, small }: { type: ConnectionView["type"]; small?: boolean }) {
   const size = small ? 12 : 15;
   return (
     <span className={`conn-icon ${small ? "sm" : ""}`}>
-      {type === "github" ? <GitBranch size={size} /> : type === "azure" ? <Cloud size={size} /> : <Server size={size} />}
+      {type === "github" ? <GitBranch size={size} /> : type === "azure" ? <Cloud size={size} /> : type === "ftp" ? <FolderUp size={size} /> : <Server size={size} />}
     </span>
   );
 }
@@ -15,6 +15,7 @@ export function ConnIcon({ type, small }: { type: ConnectionView["type"]; small?
 export function connectionLabel(c: ConnectionView): string {
   if (c.type === "github") return c.account ? `GitHub · ${c.account}` : "GitHub";
   if (c.type === "azure") return `Azure DevOps · ${c.organization}${c.account ? ` · ${c.account}` : ""}`;
+  if (c.type === "ftp") return `FTP · ${c.username}@${c.host}`;
   return `${c.username}@${c.host}`;
 }
 

@@ -58,7 +58,18 @@ export type ConnectionView =
       username: string;
       auth: "key" | "password";
       keyPath: string | null;
+    })
+  | (ConnectionBase & {
+      type: "ftp";
+      host: string;
+      port: number;
+      username: string;
+      security: FtpSecurity;
+      acceptAnyCertificate: boolean;
     });
+
+/** "explicit": FTPS via AUTH TLS (the usual), "implicit": FTPS from the start (port 990), "none": plain FTP. */
+export type FtpSecurity = "explicit" | "implicit" | "none";
 
 export type TaskStatus = "todo" | "in-progress" | "blocked" | "review" | "done";
 

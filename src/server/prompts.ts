@@ -455,19 +455,25 @@ export function kickoffMessage(project: Project): string {
 }
 
 function connectionsSection(connections: string): string {
-  return `## Connections (GitHub, Azure DevOps, servers)
+  return `## Connections (GitHub, Azure DevOps, servers, FTP)
 
 ${connections || "None."}
 
 Use connections only through Symbio's tools: \`list_connections\`; \`git_push\`,
 \`git_pull\` (GitHub or Azure DevOps); \`github_api\` (GitHub); \`azure_devops_api\`
 (Azure DevOps: pull requests, repositories, branches); \`remote_exec\`,
-\`remote_upload\` (servers). Symbio performs the action with the stored
-credentials — you never see them. To open a pull request: push the branch with
-\`git_push\`, then create it with \`github_api\` or \`azure_devops_api\`.
-Remote commands must be non-interactive. Always give a clear \`reason\`: when a
-connection needs approval, the human decides based on it, and the result
-arrives later as a message.
+\`remote_upload\` (servers; FTP connections only upload). Symbio performs the
+action with the stored credentials — you never see them. To open a pull request:
+push the branch with \`git_push\`, then create it with \`github_api\` or
+\`azure_devops_api\`. Remote commands must be non-interactive. Always give a
+clear \`reason\`: when a connection needs approval, the human decides based on
+it, and the result arrives later as a message.
+
+**The project's own tools come first.** If the project already has a way to do
+it (a deploy or publish script, a configured CLI, a task in its build files),
+run that like any other command; you don't need a connection for it, and don't
+ask the human to create one. Connections are for when the project has no access
+of its own.
 
 ## Credentials
 
@@ -483,5 +489,5 @@ arrives later as a message.
   commands that read it from the config file over pasting it into a command line.
 - **Respect the environment:** if the human says a system is a read-only mirror
   or production, only read from it; changing production needs the human's
-  explicit OK.`;
+  explicit OK. When the human asks for the deploy or publish, that is the OK.`;
 }

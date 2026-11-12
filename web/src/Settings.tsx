@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { ArrowLeft, Check, Pencil, Plug, Plus, ShieldCheck, Trash2, X } from "lucide-react";
-import { api, type ConnectionView } from "./api";
+import { api, type ConnectionView, type FtpSecurity } from "./api";
 import { ConnIcon } from "./ConnectionsPicker";
 import { ProvidersSection } from "./Providers";
 import { PricesSection } from "./Usage";
@@ -32,7 +32,7 @@ function useBackLabel(): string {
 
 export function Settings() {
   const [connections, setConnections] = useState<ConnectionView[] | null>(null);
-  const [editing, setEditing] = useState<ConnectionView | "new-github" | "new-azure" | "new-server" | null>(null);
+  const [editing, setEditing] = useState<ConnectionView | `new-${ConnectionView["type"]}` | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const backLabel = useBackLabel();
@@ -94,7 +94,7 @@ export function Settings() {
           <div>
             <h2>Connections</h2>
             <p>
-              GitHub accounts, Azure DevOps organizations and servers agents can use to push, open pull requests and deploy. Credentials are encrypted on this computer, tied to your Windows
+              GitHub accounts, Azure DevOps organizations, servers and FTP accounts agents can use to push, open pull requests and deploy. Credentials are encrypted on this computer, tied to your Windows
               login, and never shown to agents — they ask Symbio to act, and Symbio uses the credentials itself.
             </p>
           </div>
@@ -111,6 +111,10 @@ export function Settings() {
               <Plus size={13} />
               Server
             </button>
+            <button className="btn sm" onClick={() => setEditing("new-ftp")}>
+              <Plus size={13} />
+              FTP
+            </button>
           </div>
         </div>
 
@@ -121,7 +125,7 @@ export function Settings() {
         )}
         {connections?.length === 0 && (
           <EmptyState icon={<Plug size={20} />} title="No connections yet">
-            Add a GitHub account, an Azure DevOps organization or a server (SSH) so agents can push code, open pull requests or deploy for you.
+            Add a GitHub account, an Azure DevOps organization, a server (SSH, SFTP) or an FTP account so agents can push code, open pull requests or deploy for you.
           </EmptyState>
         )}
 
@@ -139,7 +143,9 @@ export function Settings() {
                         : "GitHub · not tested yet"
                       : c.type === "azure"
                         ? `Azure DevOps · ${c.organization}${c.account ? ` · ${c.account}` : " · not tested yet"}`
-                        : `${c.username}@${c.host}${c.port !== 22 ? `:${c.port}` : ""} · ${c.auth === "password" ? "password" : c.keyPath ? `key file ${c.keyPath}` : "stored key"}`}
+                        : c.type === "ftp"
+                          ? `FTP · ${c.username}@${c.host}${c.port !== 21 ? `:${c.port}` : ""} · ${c.security === "none" ? "unencrypted" : c.security === "implicit" ? "implicit FTPS" : "FTPS"}`
+                          : `${c.username}@${c.host}${c.port !== 22 ? `:${c.port}` : ""} · ${c.auth === "password" ? "password" : c.keyPath ? `key file ${c.keyPath}` : "stored key"}`}
                   </div>
                   {c.lastTest && (
                     <div className={`conn-test ${c.lastTest.ok ? "ok" : "bad"}`}>
@@ -176,7 +182,7 @@ export function Settings() {
         {editing && (
           <ConnectionForm
             existing={typeof editing === "string" ? null : editing}
-            type={typeof editing === "string" ? (editing === "new-github" ? "github" : editing === "new-azure" ? "azure" : "server") : editing.type}
+            type={typeof editing === "string" ? (editing.slice(4) as ConnectionView["type"]) : editing.type}
             onClose={() => setEditing(null)}
             onSaved={async (id) => {
               setEditing(null);
@@ -202,12 +208,15 @@ function ConnectionForm({
   onSaved: (id: string) => void;
 }) {
   const server = existing?.type === "server" ? existing : null;
+  const ftp = existing?.type === "ftp" ? existing : null;
   const [name, setName] = useState(existing?.name ?? "");
   const [token, setToken] = useState("");
   const [organization, setOrganization] = useState(existing?.type === "azure" ? existing.organization : "");
-  const [host, setHost] = useState(server?.host ?? "");
-  const [port, setPort] = useState(String(server?.port ?? 22));
-  const [username, setUsername] = useState(server?.username ?? "");
+  const [host, setHost] = useState(server?.host ?? ftp?.host ?? "");
+  const [port, setPort] = useState(String(server?.port ?? ftp?.port ?? (type === "ftp" ? 21 : 22)));
+  const [username, setUsername] = useState(server?.username ?? ftp?.username ?? "");
+  const [security, setSecurity] = useState<FtpSecurity>(ftp?.security ?? "explicit");
+  const [acceptAnyCertificate, setAcceptAnyCertificate] = useState(ftp?.acceptAnyCertificate ?? false);
   const [auth, setAuth] = useState<"key" | "password">(server?.auth ?? "key");
   const [keySource, setKeySource] = useState<"file" | "paste">(server?.keyPath ? "file" : server ? "paste" : "file");
   const [keyPath, setKeyPath] = useState(server?.keyPath ?? "~/.ssh/id_ed25519");
@@ -228,7 +237,9 @@ function ConnectionForm({
         ? { type, name, token }
         : type === "azure"
           ? { type, name, organization, token }
-          : {
+          : type === "ftp"
+            ? { type, name, host, port: Number(port) || 21, username, security, acceptAnyCertificate, password: password || undefined }
+            : {
             type,
             name,
             host,
@@ -251,7 +262,7 @@ function ConnectionForm({
 
   return (
     <Dialog
-      title={`${existing ? "Edit" : "New"} ${type === "github" ? "GitHub connection" : type === "azure" ? "Azure DevOps connection" : "server connection"}`}
+      title={`${existing ? "Edit" : "New"} ${type === "github" ? "GitHub connection" : type === "azure" ? "Azure DevOps connection" : type === "ftp" ? "FTP connection" : "server connection"}`}
       onClose={onClose}
       footer={
         <>
@@ -266,7 +277,7 @@ function ConnectionForm({
     >
       <label className="field">
         <span>Name</span>
-        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={type === "github" ? "My GitHub" : type === "azure" ? "Company Azure DevOps" : "My VPS"} />
+        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={type === "github" ? "My GitHub" : type === "azure" ? "Company Azure DevOps" : type === "ftp" ? "Site hosting" : "My VPS"} />
       </label>
 
       {type === "github" ? (
@@ -292,6 +303,64 @@ function ConnectionForm({
               Azure DevOps → User settings → Personal access tokens. Give it access to this organization only, with Code (Read &amp; write) so
               agents can push and open pull requests; add Work Items if they should update boards. Pick a short expiry and renew it here.
             </span>
+          </label>
+        </>
+      ) : type === "ftp" ? (
+        <>
+          <div className="field-row">
+            <label className="field" style={{ flex: 3 }}>
+              <span>Host</span>
+              <input value={host} onChange={(e) => setHost(e.target.value)} placeholder="ftp.example.com" />
+            </label>
+            <label className="field" style={{ flex: 1 }}>
+              <span>Port</span>
+              <input value={port} onChange={(e) => setPort(e.target.value)} />
+            </label>
+          </div>
+          <div className="field">
+            <span>Security</span>
+            <div className="seg">
+              {(
+                [
+                  ["explicit", "FTPS", "21"],
+                  ["implicit", "Implicit FTPS", "990"],
+                  ["none", "Plain FTP", "21"],
+                ] as const
+              ).map(([value, label, defaultPort]) => (
+                <button
+                  key={value}
+                  className={security === value ? "on" : ""}
+                  onClick={() => {
+                    setSecurity(value);
+                    if (port === "21" || port === "990") setPort(defaultPort);
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <span className="hint">
+              {security === "none"
+                ? "Unencrypted: the password and files travel in the clear. Use it only if the hosting has nothing else."
+                : security === "implicit"
+                  ? "TLS from the first byte, usually on port 990. For older hostings."
+                  : "The usual: FTP upgraded to TLS. Your hosting panel shows which it supports."}
+            </span>
+          </div>
+          {security !== "none" && (
+            <label className="check">
+              <input type="checkbox" checked={acceptAnyCertificate} onChange={(e) => setAcceptAnyCertificate(e.target.checked)} />
+              Accept the server's certificate as it is (self-signed, or issued for the hosting company's name)
+            </label>
+          )}
+          <label className="field">
+            <span>User</span>
+            <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="user@example.com" />
+          </label>
+          <label className="field">
+            <span>Password</span>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={keep("password")} />
+            <span className="hint">FTP only uploads files: agents use it with remote_upload. For a server with SSH or SFTP, add a Server connection instead.</span>
           </label>
         </>
       ) : (

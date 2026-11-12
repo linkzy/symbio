@@ -107,6 +107,10 @@ project the connections it needs.
 - **SSH servers** are pinned on first use: the host key fingerprint seen on the first connection is
   stored, and a different key is refused. Editing and saving the connection clears the pin, for a
   reinstalled server.
+- **FTP accounts** use FTPS (TLS, explicit or implicit) by default, with the certificate verified;
+  "Accept the server's certificate as it is" turns verification off for hostings with self-signed or
+  mismatched certificates, and *Plain FTP* sends the password and files unencrypted (the form says
+  so). FTP only uploads, from inside the agent's working folder, like SSH uploads.
 - **Approvals** for remote actions are stored in `~/.symbio/approvals/`, outside the project, so an
   agent can't edit what you're about to approve. A connection set to **Ask me** makes every action
   wait for your approval; read-only API calls (GET, GitHub or Azure DevOps) don't need approval.

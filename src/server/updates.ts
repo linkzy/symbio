@@ -183,6 +183,15 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "wait for their approval. The human can also see each task's changed files and diffs in Symbio, so you don't need to " +
       "list them in the chat.",
   },
+  {
+    id: "2026-11-12-own-tools-and-ftp",
+    text:
+      "The project's own tools come first: if the project already has a way to deploy or publish (a script, a configured CLI, " +
+      "a task in its build files), run it like any other command; don't ask the human for a connection for it. When the human " +
+      "asks for the deploy, that is their OK for changing production. Connections are for when the project has no access of " +
+      "its own; they can now also be FTP accounts (FTP or FTPS), which only upload files with remote_upload. Tell your helpers " +
+      "if one of them is waiting on a connection for something the project's own script can do.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */

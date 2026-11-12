@@ -1,17 +1,18 @@
 // Global connections (set once in Settings, used by any project): GitHub accounts,
-// Azure DevOps organizations and servers reachable over SSH. Public details live in
-// ~/.symbio/connections.json; secrets live in the encrypted vault and are never
-// returned by the API.
+// Azure DevOps organizations, servers reachable over SSH and FTP accounts. Public
+// details live in ~/.symbio/connections.json; secrets live in the encrypted vault and
+// are never returned by the API.
 
 import { promises as fs, readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { ftpCheck, type FtpSecurity, type FtpTarget } from "./ftp.js";
 import { SecretVault } from "./secrets.js";
-import { sshExec, type SshTarget } from "./ssh.js";
+import { sftpCheck, sshExec, type SshTarget } from "./ssh.js";
 import { globalDir, newId } from "./store.js";
 import { replaceFile } from "./fsutil.js";
 
-export type ConnectionType = "github" | "azure" | "server";
+export type ConnectionType = "github" | "azure" | "server" | "ftp";
 
 export interface ConnectionTest {
   ok: boolean;
@@ -54,7 +55,17 @@ export interface AzureConnection extends Base {
   account: string | null;
 }
 
-export type Connection = GithubConnection | AzureConnection | ServerConnection;
+/** An FTP or FTPS account (e.g. web hosting): uploads only, FTP can't run commands. */
+export interface FtpConnection extends Base {
+  type: "ftp";
+  host: string;
+  port: number;
+  username: string;
+  security: FtpSecurity;
+  acceptAnyCertificate: boolean;
+}
+
+export type Connection = GithubConnection | AzureConnection | ServerConnection | FtpConnection;
 
 /** Organization from what people paste: "org", https://dev.azure.com/org/…, https://org.visualstudio.com/…. */
 export function azureOrganization(value: string): string {
@@ -82,12 +93,16 @@ export interface ConnectionInput {
   privateKey?: string;
   passphrase?: string;
   password?: string;
+  // ftp (also host, port, username, password)
+  security?: FtpSecurity;
+  acceptAnyCertificate?: boolean;
 }
 
 const SECRET_FIELDS: Record<ConnectionType, string[]> = {
   github: ["token"],
   azure: ["token"],
   server: ["privateKey", "passphrase", "password"],
+  ftp: ["password"],
 };
 
 export class Connections {
@@ -118,7 +133,9 @@ export class Connections {
   }
 
   async create(input: ConnectionInput): Promise<Connection> {
-    if (input.type !== "github" && input.type !== "azure" && input.type !== "server") throw new Error("type must be github, azure or server");
+    if (input.type !== "github" && input.type !== "azure" && input.type !== "server" && input.type !== "ftp") {
+      throw new Error("type must be github, azure, server or ftp");
+    }
     const now = Date.now();
     const base = { id: newId("con"), name: "", createdAt: now, updatedAt: now, lastTest: null };
     const conn: Connection =
@@ -126,7 +143,9 @@ export class Connections {
         ? { ...base, type: "github", account: null }
         : input.type === "azure"
           ? { ...base, type: "azure", organization: "", account: null }
-          : { ...base, type: "server", host: "", port: 22, username: "", auth: "key", keyPath: null };
+          : input.type === "ftp"
+            ? { ...base, type: "ftp", host: "", port: 21, username: "", security: "explicit", acceptAnyCertificate: false }
+            : { ...base, type: "server", host: "", port: 22, username: "", auth: "key", keyPath: null };
     this.apply(conn, input);
     if (!conn.name) throw new Error("Give the connection a name.");
     this.validate(conn);
@@ -178,10 +197,30 @@ export class Connections {
         const projects = await this.azureRequest(conn, "GET", "_apis/projects").catch(() => null);
         const count = Array.isArray(projects?.value) ? ` — ${projects.value.length} project(s) visible` : "";
         result = { ok: true, message: `Signed in to ${conn.organization}${conn.account ? ` as ${conn.account}` : ""}${count}`, time: Date.now() };
+      } else if (conn.type === "ftp") {
+        result = { ok: true, message: await ftpCheck(await this.ftpTarget(conn)), time: Date.now() };
       } else {
-        const res = await sshExec(await this.sshTarget(conn), "uname -srm 2>/dev/null || ver", 30_000);
-        const out = (res.stdout || res.stderr).trim().split("\n")[0];
-        result = { ok: res.code === 0, message: res.code === 0 ? `Connected — ${out}` : `Connected, but the test command failed: ${out}`, time: Date.now() };
+        const target = await this.sshTarget(conn);
+        // Hosting accounts often allow SFTP but no commands: the command is refused, fails, or
+        // hangs (OpenSSH's ForceCommand internal-sftp). Uploads still work, so say that.
+        const sftpOnly = async () => {
+          const sftp = await sftpCheck(target).catch(() => null);
+          return sftp ? { sftpOnly: sftp } : null;
+        };
+        const res = await sshExec(target, "uname -srm 2>/dev/null || ver", 30_000).then(
+          async (r) => (r.code === 0 ? r : ((await sftpOnly()) ?? r)),
+          async (err: Error) => {
+            const sftp = await sftpOnly();
+            if (!sftp) throw err;
+            return sftp;
+          },
+        );
+        if ("sftpOnly" in res) {
+          result = { ok: true, message: `Connected (SFTP only: uploads work, commands don't): ${res.sftpOnly}`, time: Date.now() };
+        } else {
+          const out = (res.stdout || res.stderr).trim().split("\n")[0];
+          result = { ok: res.code === 0, message: res.code === 0 ? `Connected — ${out}` : `Connected, but the test command failed: ${out}`, time: Date.now() };
+        }
       }
     } catch (err) {
       result = { ok: false, message: (err as Error).message, time: Date.now() };
@@ -212,6 +251,13 @@ export class Connections {
       target.passphrase = await this.vault.get(`${conn.id}:passphrase`);
     }
     return target;
+  }
+
+  /** FTP credentials for an FTP connection (server-side use only). */
+  async ftpTarget(conn: FtpConnection): Promise<FtpTarget> {
+    const password = await this.vault.get(`${conn.id}:password`);
+    if (!password) throw new Error(`No password stored for "${conn.name}".`);
+    return { host: conn.host, port: conn.port, username: conn.username, password, security: conn.security, acceptAnyCertificate: conn.acceptAnyCertificate };
   }
 
   /** Calls the Azure DevOps REST API of the connection's organization with its token. */
@@ -285,16 +331,23 @@ export class Connections {
       if (input.auth !== undefined) conn.auth = input.auth === "password" ? "password" : "key";
       if (input.keyPath !== undefined) conn.keyPath = input.keyPath?.trim() ? expandHome(input.keyPath.trim()) : null;
     }
+    if (conn.type === "ftp") {
+      if (input.host !== undefined) conn.host = ftpHost(input.host);
+      if (input.security !== undefined) conn.security = input.security === "implicit" || input.security === "none" ? input.security : "explicit";
+      if (input.port !== undefined) conn.port = Number(input.port) || (conn.security === "implicit" ? 990 : 21);
+      if (input.username !== undefined) conn.username = input.username.trim();
+      if (input.acceptAnyCertificate !== undefined) conn.acceptAnyCertificate = !!input.acceptAnyCertificate;
+    }
   }
 
   private validate(conn: Connection) {
     if (conn.type === "azure" && !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,62}$/.test(conn.organization)) {
       throw new Error("Give the organization, e.g. \"contoso\" or https://dev.azure.com/contoso.");
     }
-    if (conn.type === "server") {
+    if (conn.type === "server" || conn.type === "ftp") {
       if (!conn.host) throw new Error("Host is required.");
       if (!conn.username) throw new Error("User is required.");
-      if (conn.keyPath) readKeyFile(conn.keyPath); // fail early on a wrong path
+      if (conn.type === "server" && conn.keyPath) readKeyFile(conn.keyPath); // fail early on a wrong path
     }
   }
 
@@ -305,6 +358,7 @@ export class Connections {
       if (typeof value === "string" && value.trim()) await this.vault.set(`${conn.id}:${field}`, value.trim());
     }
     if ((conn.type === "github" || conn.type === "azure") && !(await this.vault.has(`${conn.id}:token`))) throw new Error("The token is required.");
+    if (conn.type === "ftp" && !(await this.vault.has(`${conn.id}:password`))) throw new Error("The password is required.");
     if (conn.type === "server") {
       if (conn.auth === "password" && !(await this.vault.has(`${conn.id}:password`))) throw new Error("The password is required.");
       if (conn.auth === "key" && !conn.keyPath && !(await this.vault.has(`${conn.id}:privateKey`))) {
@@ -319,6 +373,15 @@ export class Connections {
     await fs.writeFile(tmp, JSON.stringify(this.list, null, 2));
     await replaceFile(tmp, this.file);
   }
+}
+
+/** The host from what people paste: "ftp.example.com", "ftp://ftp.example.com/", "ftps://host:21". */
+export function ftpHost(value: string): string {
+  return value
+    .trim()
+    .replace(/^s?ftps?:\/\//i, "")
+    .replace(/^[^@/]*@/, "")
+    .replace(/[/:].*$/, "");
 }
 
 function expandHome(p: string) {

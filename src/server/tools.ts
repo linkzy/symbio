@@ -376,7 +376,7 @@ const reasonField = str("Why — the human sees this when approving");
 
 const listConnections: Tool = {
   name: "list_connections",
-  description: "List the connections (GitHub accounts, servers) this project may use, and whether actions need the human's approval.",
+  description: "List the connections (GitHub accounts, Azure DevOps, servers, FTP accounts) this project may use, and whether actions need the human's approval.",
   inputSchema: obj({}),
   run: (_args, { team, project }) => team.remote.describeFor(project),
 };
@@ -397,12 +397,12 @@ const remoteExec: Tool = {
 const remoteUpload: Tool = {
   name: "remote_upload",
   description:
-    "Upload a file or folder from your working folder to a server connection (recursively; skips .git, node_modules, .symbio).",
+    "Upload a file or folder from your working folder to a server (SFTP) or FTP connection (recursively; skips .git, node_modules, .symbio).",
   inputSchema: obj(
     {
-      connection: str("Server connection name"),
+      connection: str("Server or FTP connection name"),
       local_path: str("File or folder, relative to your working folder"),
-      remote_path: str("Destination path on the server (absolute, or relative to the user's home)"),
+      remote_path: str("Destination path on the server (absolute, or relative to where the account starts)"),
       reason: reasonField,
     },
     ["connection", "local_path", "remote_path", "reason"],

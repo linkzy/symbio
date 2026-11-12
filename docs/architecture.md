@@ -86,8 +86,8 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 | `rules.ts` | The rules register (`docs/rules.json`, or `rules.json` in private docs): validated writes, one at a time, ids that are never reused |
 | `docs.ts` | Project documentation (in the project, or private under `.symbio/docs`): list, read, write, search |
 | `guard.ts` | OpenCode permission rules for every agent (kill/secret denies, install asks) |
-| `connections.ts`, `secrets.ts` | GitHub, Azure DevOps and SSH connections, and the encrypted secret vault |
-| `remote.ts`, `ssh.ts` | Running remote actions for agents (SSH exec/upload, git push/pull, GitHub and Azure DevOps APIs) with approvals |
+| `connections.ts`, `secrets.ts` | GitHub, Azure DevOps, server (SSH) and FTP connections, and the encrypted secret vault |
+| `remote.ts`, `ssh.ts`, `ftp.ts` | Running remote actions for agents (SSH exec/upload, FTP upload, git push/pull, GitHub and Azure DevOps APIs) with approvals |
 | `providers.ts` | Listing, adding and removing OpenCode model providers |
 | `self-update.ts` | Checks npm for a newer version, applies it when allowed (the team idle, remote access off) and reports the result; the install itself runs in `bin/update-runner.mjs`, a separate process that waits for Symbio to exit, installs, keeps or restores the old version on failure, and starts Symbio again |
 | `remote-access.ts` | Optional remote access: Cloudflare quick tunnel, access code, remote sessions, the remote login page |

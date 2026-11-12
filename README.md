@@ -91,7 +91,7 @@ place. Here Symbio was restarted mid-task, and it told the helper to pick up whe
   software) and deploy approvals collect in a **Needs you** inbox. Pause one team or everything at
   once.
 - **Connections without exposing secrets.** Give agents a GitHub account, an Azure DevOps
-  organization or an SSH server. They ask Symbio to push, open pull requests, call the API or deploy, and Symbio does it with credentials the agents never
+  organization, a server (SSH, SFTP) or an FTP account. They ask Symbio to push, open pull requests, call the API or deploy, and Symbio does it with credentials the agents never
   see. Each connection can require your approval for every action.
 - **Resilient.** A supervisor restarts OpenCode if it crashes, a watchdog unsticks hung agents, and
   when a model fails (quota, outage) the agent switches to the next allowed model and carries on.
@@ -185,7 +185,7 @@ itself. Whoever gets in controls your agents, so keep the link and code to yours
 | **core** | The project's lead agent. It plans, delegates, reviews and merges; it coordinates rather than doing the work itself. |
 | **Helper** | An agent core creates for a piece of work. It works in its own git worktree (branch `symbio/<name>`) or, if the project is set to, in the project folder itself. |
 | **Shared asset** | Something more than one agent could change. Access goes through core: request, grant, release. |
-| **Connection** | A GitHub account, Azure DevOps organization or SSH server agents can use through Symbio, without ever seeing its credentials. |
+| **Connection** | A GitHub account, Azure DevOps organization, server (SSH, SFTP) or FTP account agents can use through Symbio, without ever seeing its credentials. |
 | **Allowed models** | The models a project's agents may run on. If one fails, agents fall back to the next. |
 
 ## Where your data lives

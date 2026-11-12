@@ -115,6 +115,19 @@ export async function sshExec(target: SshTarget, command: string, timeoutMs = 10
   }
 }
 
+/** Opens SFTP and lists the home folder: for servers that allow SFTP but no commands (hosting). */
+export async function sftpCheck(target: SshTarget): Promise<string> {
+  const client = await connect(target);
+  try {
+    const sftp = await new Promise<SFTPWrapper>((resolve, reject) => client.sftp((e, s) => (e ? reject(e) : resolve(s))));
+    const home = await new Promise<string>((resolve, reject) => sftp.realpath(".", (e, p) => (e ? reject(e) : resolve(p))));
+    const entries = await new Promise<unknown[]>((resolve, reject) => sftp.readdir(".", (e, list) => (e ? reject(e) : resolve(list))));
+    return `${home} (${entries.length} item(s))`;
+  } finally {
+    client.end();
+  }
+}
+
 /** Uploads a local file or folder (recursively) to a remote path. Returns the number of files. */
 export async function sshUpload(target: SshTarget, localPath: string, remotePath: string): Promise<number> {
   // SFTP doesn't expand "~"; relative paths are already relative to the home folder.
