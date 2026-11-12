@@ -6,38 +6,15 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 
 ## Now
 
-- **Reviewing the team's work.** Done for the next release: review guides, the "To review" list
-  (approve, send back), the setting with *core*, *me, every task* and *me, the tasks marked in the
-  plan*, and a task's changes (files and diffs). Left for later: images as before/after.
-- **FTP connections.** Done for the next release: FTP and FTPS accounts for uploads and file
-  operations (list, create, move, delete), servers that
-  only allow SFTP, and agents running the project's own deploy scripts instead of asking for a
-  connection.
+Nothing in progress; the top of Next is what comes up.
 
 ## Next
 
-1. **Reviewing the team's work.** Today the human chases reviews in the chat ("what's pending?",
-   "send me the URLs and how to validate"), and the lists get lost as the chat moves on. Instead:
-   - **A guide with every task in review**, written by the helper: where to look (URLs, files,
-     folders, a document), the steps and what should be seen, and whether the helper already ran
-     it. Generic, not only for software: a script, a set of images or a report are reviewed the
-     same way.
-   - **A "To review" list**: everything waiting on the human, each with its guide; *approve*, or
-     *send back* with a note (it goes straight to the helper that did the work, and core is told).
-   - **A per-project setting, "Who reviews the work"**: *core* (the default: view only, nothing
-     waits on the human; e.g. when review happens outside Symbio, in Jira), *me, every task*, or
-     *me, the tasks marked in the plan* (core marks the ones that need the human when it proposes
-     the plan, and the human ticks or unticks them; for pipelines with a few checkpoints).
-   - The gate holds a task's **done**, not its merge: work is merged and visible (e.g. running on
-     localhost), and the task waits for the human; tasks that depend on it don't start meanwhile.
-   - **The changes**: files changed and their diffs (images as before/after), a click away.
-
-   Done (see Now), except images as before/after: the changes view shows text diffs only.
-2. **Notifications.** When something needs the human (a question, an approval, a plan to review, a
+1. **Notifications.** When something needs the human (a question, an approval, a plan to review, a
    stuck agent) or a task finishes, send it where they are: browser/phone notifications, and
    optionally a messaging app (e.g. Telegram) or e-mail, with per-project choices. Essential for
    steering Symbio away from the computer.
-3. **Talk to Symbio.** A spoken conversation with core, hands-free: e.g. from a phone connected to
+2. **Talk to Symbio.** A spoken conversation with core, hands-free: e.g. from a phone connected to
    the car over Bluetooth, with Symbio working on the computer at home (remote access). Not just
    dictation into the chat box:
    - Only what core says to the human is read aloud: never tool calls, command output, messages
@@ -52,34 +29,35 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
    Builds on the phone layout and on telling apart, in core's replies, what's for the human from
    the team's work. To check first: the browsers' own speech recognition and voices (quality,
    languages, whether they keep working with the screen off) against a speech service.
-4. **Budgets per project.** A spending limit per project (and optionally per day), with a warning
+3. **Budgets per project.** A spending limit per project (and optionally per day), with a warning
    at a threshold and the team paused when it's reached, using the cost tracking Symbio already
    has.
-5. **Scheduled work.** Ask core for recurring jobs ("refresh the data every night", "check the site
+4. **Scheduled work.** Ask core for recurring jobs ("refresh the data every night", "check the site
    every Monday"): Symbio wakes core at the set time with the job, and the human sees the runs and
    their results.
-6. **Linux and macOS.** Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
+5. **Linux and macOS.** Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
    Keychain on macOS); headless Linux (a server or container) has no keyring, so it needs a
    fallback, such as a key file readable only by the user.
-7. **Make it showable.** Before inviting others: a sample project to try in five minutes, a
+6. **Make it showable.** Before inviting others: a sample project to try in five minutes, a
    two-minute video of core running a team on a non-coding project, and a short GitHub Pages site
    with screenshots. First audience: the OpenCode community.
-8. **Create a project from a git repository.** In the New project dialog, an option to clone a
+7. **Create a project from a git repository.** In the New project dialog, an option to clone a
    repository (GitHub, Azure DevOps or any git URL, using the matching connection when it's private)
    into a folder and open it as a project, e.g. to continue on another computer. Tucked under an
    advanced option, so it doesn't get in the way of people who don't use git.
-9. **Rules register on import.** When importing an existing project, offer to build the register
+8. **Rules register on import.** When importing an existing project, offer to build the register
    from the project and from sources the human points to (e-mails, meeting notes, manuals), marking
    rules found only in the work as unsourced.
-10. **Translations.** The UI in other languages, starting with Portuguese. *(good first
+9. **Translations.** The UI in other languages, starting with Portuguese. *(good first
     contribution, once the strings are extracted)*
-11. **A public demo.** A container on a VPS with a light model, connections and other sensitive
+10. **A public demo.** A container on a VPS with a light model, connections and other sensitive
     options disabled, and visitors' data reset every few minutes (needs Linux headless support).
 
 ## Ideas
 
 Collected, not sorted or promised yet.
 
+- **Images as before and after** in a task's changes, side by side, instead of a text diff.
 - **Claude Code and Codex (other agent CLIs).** Run teams on the agent tools people already use and
   pay for, not only OpenCode, and switch between them (e.g. from the OpenCode menu at the top).
   The first question from almost everyone who has seen Symbio running: "can I use it with my Codex
@@ -123,6 +101,11 @@ Collected, not sorted or promised yet.
 
 Newest first; details per version in [CHANGELOG.md](../CHANGELOG.md).
 
+- **0.11** — Reviewing the team's work: helpers' guides for checking a task, *Who reviews the work*
+  (core, me for every task, or me for the tasks marked in the plan), a To review list with approve
+  and send back, and each task's changed files and diffs; FTP and FTPS connections (uploads and file
+  operations), SFTP-only servers; agents run the project's own deploy scripts instead of asking for
+  a connection.
 - **0.10** — Chat modes (Auto, Plan, Act) with Plan enforced by Symbio; helpers that go quiet are
   reminded, then core is told; `sym update --to` to go back after a bad release; releases gated on
   unit, OpenCode contract and end-to-end tests; `team.ts` split into modules; *New project…* in the

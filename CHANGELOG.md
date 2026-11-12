@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.0]
+
 - Review guides: helpers report each finished task with a guide for checking it (where to look, the
   steps, what you should see, and whether they ran it). New setting, Settings → Team → **Who reviews
   the work**: *core* (as before) or *me, every task*: then finished tasks wait in a **To review** list
