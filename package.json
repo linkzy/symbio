@@ -44,7 +44,8 @@
     "test": "tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p web/tsconfig.json",
     "prepublishOnly": "npm run typecheck && npm test && npm run build",
-    "test:contract": "tsx --test tests/contract/*.test.ts"
+    "test:contract": "tsx --test tests/contract/*.test.ts",
+    "test:e2e": "tsx --test --test-concurrency=1 tests/e2e/*.test.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",

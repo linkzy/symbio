@@ -26,10 +26,12 @@ node bin/symbio.js run     # foreground, http://127.0.0.1:4310
 | `npm start` | Same as `sym`: starts the built app in the background and opens the browser (`node bin/symbio.js run` runs it in the foreground) |
 | `npm test` | Unit tests (`node:test` via tsx, `tests/*.test.ts`) |
 | `npm run test:contract` | The OpenCode API as Symbio uses it, against a real `opencode serve` (`tests/contract/`) |
+| `npm run test:e2e` | The whole app (built first) against a stand-in OpenCode, driven in Edge/Chrome (`tests/e2e/`) |
 | `npm run typecheck` | Type-checks the server and the UI |
 | `prepublishOnly` | Runs typecheck, tests and build before `npm publish` |
 
-CI (`.github/workflows/ci.yml`) runs typecheck, tests and build on every push and pull request.
+CI (`.github/workflows/ci.yml`) runs typecheck, unit tests, the OpenCode contract test, build and the
+end-to-end tests on every push and pull request.
 Releases (`.github/workflows/release.yml`) publish to npm when a `vX.Y.Z` tag is pushed (versions
 with a `-` go to the `next` tag); the tag must match `package.json`.
 
@@ -94,7 +96,7 @@ docs/                  This documentation
   on each push, and daily against the newest OpenCode too (`.github/workflows/opencode-contract.yml`).
 - A Symbio started with a temporary `SYMBIO_HOME` still uses your own OpenCode data (sessions,
   sign-ins) unless you also set the `XDG_*` folders (see [opencode-api.md](opencode-api.md)).
-- For UI changes, look at the result. `scripts/screenshot.mjs` captures screens with your installed
+- For UI changes, add or extend an end-to-end test (below), and look at the result. `scripts/screenshot.mjs` captures screens with your installed
   Edge or Chrome (via `playwright-core`):
 
   ```sh
@@ -145,6 +147,31 @@ version means re-verifying the APIs in [opencode-api.md](opencode-api.md) first.
 - OpenCode logs to its own data folder (`~/.local/share/opencode/log/` on every platform).
 - Every agent is an OpenCode session; `opencode -s <session-id>` opens one in the terminal.
 - The message log of a project is `<project>/.symbio/messages.jsonl`.
+
+## End-to-end tests
+
+`npm run test:e2e` (after `npm run build`) starts the real, built Symbio for each file in
+`tests/e2e/`, with everything in temporary folders, against `tests/e2e/fake-opencode.mjs`: a stand-in
+for `opencode serve` with the same API, events and stored messages (recorded from OpenCode 2.1.4 in
+`tests/e2e/fixtures/opencode-turns.json`), and a scripted "model". The tests drive Symbio through its
+API and a real browser (Edge, or `BROWSER_CHANNEL=chrome`).
+
+The script is written in the messages. A line `@<agent> <step>` is run by that agent (`core`, or a
+helper's name), so a task given to a helper can carry the helper's own lines:
+
+| Step | Does |
+|---|---|
+| `say <text>` | A text reply |
+| `tool <name> <json>` | Calls one of Symbio's tools (`spawn_agent`, `merge_work`, `send_message`…), as a real model would |
+| `shell <command>` | Runs a command in the agent's folder (e.g. `git commit`) |
+| `write <path> <text>` | Writes a file in the agent's folder |
+| `question <title> \| <option> \| …` | Asks through OpenCode's question form and waits for the answer |
+| `wait <ms>` | Pauses |
+
+A session on the model `fake/unavailable` fails every turn at once. `tests/e2e/harness.ts` has the
+helpers (`startSymbio`, `projectWithCore`, `idle`, `history`, `openPage` for a desktop or phone page).
+When OpenCode changes how a turn looks, record it again with a real model and update the stand-in to
+match.
 
 ## Testing remote access
 

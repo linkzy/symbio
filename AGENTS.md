@@ -19,10 +19,14 @@ npm install
 npm run typecheck
 npm test
 npm run build
+npm run test:e2e   # the whole app in a browser, against a stand-in OpenCode (after build)
+npm run test:contract  # the OpenCode API as Symbio uses it, against the real OpenCode
 npm run dev        # server (watch) + UI on http://localhost:5173
 ```
 
-Before you finish: `npm run typecheck`, `npm test` and `npm run build` must pass.
+Before you finish: `npm run typecheck`, `npm test`, `npm run build` and `npm run test:e2e` must pass
+(and `npm run test:contract` when you touch how Symbio calls OpenCode). A user-visible change gets an
+end-to-end test in `tests/e2e/` (see [docs/development.md](docs/development.md#end-to-end-tests)).
 
 ## Rules
 

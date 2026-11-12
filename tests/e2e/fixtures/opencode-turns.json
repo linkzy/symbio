@@ -1,0 +1,1432 @@
+{
+  "capturedWith": "opencode 2.1.4, github-copilot/claude-haiku-4.5",
+  "sessionID": "ses_e328f463effepudKv28GMaUiks",
+  "turns": {
+    "reply": [
+      "session.inbox.enqueued",
+      "session.execution.started",
+      "session.instructions.updated",
+      "session.inbox.delivered",
+      "session.step.started",
+      "session.text.started",
+      "session.text.delta",
+      "session.text.ended",
+      "session.step.streamed",
+      "session.step.ended",
+      "session.usage.updated",
+      "session.execution.succeeded"
+    ],
+    "shell": [
+      "session.inbox.enqueued",
+      "session.execution.started",
+      "session.inbox.delivered",
+      "session.step.started",
+      "session.tool.input.started",
+      "session.tool.input.ended",
+      "session.tool.called",
+      "session.step.streamed",
+      "session.tool.progress",
+      "session.tool.success",
+      "session.step.ended",
+      "session.usage.updated",
+      "session.step.started",
+      "session.text.started",
+      "session.text.delta",
+      "session.text.ended",
+      "session.step.streamed",
+      "session.step.ended",
+      "session.usage.updated",
+      "session.execution.succeeded"
+    ],
+    "form": {
+      "id": "frm_1cd70d4f5001LKme45kz2Kx7yy",
+      "sessionID": "ses_e328f463effepudKv28GMaUiks",
+      "title": "Questions",
+      "metadata": {
+        "kind": "question",
+        "tool": {
+          "messageID": "msg_1cd70ce15001pD6wZw4mrLKtUT",
+          "id": "toolu_01GW92f8HG5Z1XmG16RTrTQQ"
+        }
+      },
+      "fields": [
+        {
+          "key": "q0",
+          "title": "Tea or Coffee?",
+          "description": "Which beverage do you prefer?",
+          "type": "string",
+          "options": [
+            {
+              "value": "Tea",
+              "label": "Tea",
+              "description": "A warm, comforting tea"
+            },
+            {
+              "value": "Coffee",
+              "label": "Coffee",
+              "description": "A bold, energizing coffee"
+            }
+          ],
+          "custom": true
+        }
+      ]
+    },
+    "question": [
+      "session.inbox.enqueued",
+      "session.execution.started",
+      "session.inbox.delivered",
+      "session.step.started",
+      "session.tool.input.started",
+      "session.tool.input.ended",
+      "session.tool.called",
+      "session.step.streamed",
+      "form.replied",
+      "session.tool.success",
+      "session.step.ended",
+      "session.usage.updated",
+      "session.step.started",
+      "session.text.started",
+      "session.text.delta",
+      "session.text.ended",
+      "session.step.streamed",
+      "session.step.ended",
+      "session.usage.updated",
+      "session.execution.succeeded"
+    ]
+  },
+  "events": [
+    {
+      "id": "evt_1cd70bc0600198IUeRfTsErS6C",
+      "created": 1794448079878,
+      "type": "session.inbox.enqueued",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "inboxID": "msg_1cd70ba32001z881Asvxzdy2NR",
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "item": {
+          "type": "user",
+          "payload": {
+            "text": "Reply with exactly: Hello from the capture."
+          },
+          "delivery": "queue"
+        }
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 1,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70bc080011ZRYMU6IhOlMUb",
+      "created": 1794448079880,
+      "type": "session.execution.started",
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks"
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 2,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70bc170016FXhM7A2W7HKut",
+      "created": 1794448079895,
+      "metadata": {
+        "instructions": {
+          "initial": true
+        }
+      },
+      "type": "session.instructions.updated",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "delta": {
+          "core/codemode": "fde2b06ee106023d05b191c8f3838a0794aa4178bb49e1ced73b4acafa8bc795",
+          "core/skill-guidance": "8394362d28c82fa4d13c7a9f5568c05680f6687e07db8f426a0e3c92f3027dc9",
+          "core/date": "8fda1d364fef8b5fbcccb039ef94b1ebe3705b3b3a6d558d6d10f92e84ff9e33",
+          "core/environment": "a8cec31748ce88b206e2374405db631dcb0cb327f47628703cb7f340fb523b9b"
+        }
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 3,
+        "version": 2
+      }
+    },
+    {
+      "id": "evt_1cd70bc1a001fe1u189f62Phl7",
+      "created": 1794448079898,
+      "type": "session.inbox.delivered",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "inboxID": "msg_1cd70ba32001z881Asvxzdy2NR"
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 4,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70c45e001o8wl4uYKpV8AXV",
+      "created": 1794448082014,
+      "type": "session.step.started",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "agent": "build",
+        "model": {
+          "id": "claude-haiku-4.5",
+          "providerID": "github-copilot",
+          "variant": "default"
+        },
+        "assistantMessageID": "msg_1cd70bc210012IAZHGYZQPydVp",
+        "started": 1794448079913
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 5,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70c460001SAiuLZiNOFmMVN",
+      "created": 1794448082016,
+      "type": "session.text.started",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70bc210012IAZHGYZQPydVp",
+        "ordinal": 0
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 6,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70c462001Qs8Oq35ZlxHzNd",
+      "created": 1794448082018,
+      "type": "session.text.delta",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70bc210012IAZHGYZQPydVp",
+        "ordinal": 0,
+        "delta": "Hello from the capture."
+      }
+    },
+    {
+      "id": "evt_1cd70c462002IiKrlAZrXA6AdD",
+      "created": 1794448082018,
+      "type": "session.text.ended",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70bc210012IAZHGYZQPydVp",
+        "ordinal": 0,
+        "text": "Hello from the capture."
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 7,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70c4640010kFHM7jq9ux5JY",
+      "created": 1794448082020,
+      "type": "session.step.streamed",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70bc210012IAZHGYZQPydVp"
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 8,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70c465001B8y3QUZksJwKno",
+      "created": 1794448082021,
+      "type": "session.step.ended",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70bc210012IAZHGYZQPydVp",
+        "finish": "stop",
+        "rawFinish": "end_turn",
+        "cost": 0.009353,
+        "tokens": {
+          "input": 3,
+          "output": 8,
+          "reasoning": 0,
+          "cache": {
+            "read": 0,
+            "write": 7448
+          }
+        }
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 9,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70c4660015NiLOlD5OK2LmA",
+      "created": 1794448082022,
+      "type": "session.usage.updated",
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "cost": 0.009353,
+        "tokens": {
+          "input": 3,
+          "output": 8,
+          "reasoning": 0,
+          "cache": {
+            "read": 0,
+            "write": 7448
+          }
+        }
+      }
+    },
+    {
+      "id": "evt_1cd70c4670015Glxi13Cn9uIhU",
+      "created": 1794448082023,
+      "type": "session.execution.succeeded",
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks"
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 10,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70c60a001n53lzm0orOLyPr",
+      "created": 1794448082442,
+      "type": "session.inbox.enqueued",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "inboxID": "msg_1cd70c60900123K57HLoW0NrVW",
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "item": {
+          "type": "user",
+          "payload": {
+            "text": "Run the shell command `echo captured` with your shell tool, then reply in one short sentence."
+          },
+          "delivery": "queue"
+        }
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 11,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70c60b001sEwLLEVpDC7Sab",
+      "created": 1794448082443,
+      "type": "session.execution.started",
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks"
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 12,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70c60f001697jcYU0P1msqy",
+      "created": 1794448082447,
+      "type": "session.inbox.delivered",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "inboxID": "msg_1cd70c60900123K57HLoW0NrVW"
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 13,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70ca0e001eFljRB6jSUHL66",
+      "created": 1794448083470,
+      "type": "session.step.started",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "agent": "build",
+        "model": {
+          "id": "claude-haiku-4.5",
+          "providerID": "github-copilot",
+          "variant": "default"
+        },
+        "assistantMessageID": "msg_1cd70c6120011qpekh3xVEAalu",
+        "started": 1794448082457
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 14,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70ca10001kdwv4vbep5QGXA",
+      "created": 1794448083472,
+      "type": "session.tool.input.started",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70c6120011qpekh3xVEAalu",
+        "id": "toolu_01W3wi3HRQdS4BAhw4VYXPpd",
+        "name": "shell"
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 15,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70ca27001nqHXtOE3SdquuF",
+      "created": 1794448083495,
+      "type": "session.tool.input.ended",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70c6120011qpekh3xVEAalu",
+        "id": "toolu_01W3wi3HRQdS4BAhw4VYXPpd",
+        "text": "{\"command\": \"echo captured\"}"
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 16,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70ca29001GdqauQBuFtLYoA",
+      "created": 1794448083497,
+      "type": "session.tool.called",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70c6120011qpekh3xVEAalu",
+        "id": "toolu_01W3wi3HRQdS4BAhw4VYXPpd",
+        "input": {
+          "command": "echo captured"
+        },
+        "executed": false
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 17,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70ca30001MGKvH1c2zgUAuU",
+      "created": 1794448083504,
+      "type": "session.step.streamed",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70c6120011qpekh3xVEAalu"
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 18,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70ca47002JIbL28c0hicjhn",
+      "created": 1794448083527,
+      "type": "session.tool.progress",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70c6120011qpekh3xVEAalu",
+        "id": "toolu_01W3wi3HRQdS4BAhw4VYXPpd",
+        "metadata": {
+          "shellID": "sh_1cd70ca40001MSsBJ2WZyYuGBt"
+        }
+      }
+    },
+    {
+      "id": "evt_1cd70ca80001Ay8efL6sKRmBlq",
+      "created": 1794448083584,
+      "type": "session.tool.success",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70c6120011qpekh3xVEAalu",
+        "id": "toolu_01W3wi3HRQdS4BAhw4VYXPpd",
+        "content": [
+          {
+            "type": "text",
+            "text": "captured\n"
+          }
+        ],
+        "metadata": {
+          "status": "completed",
+          "truncated": false,
+          "exit": 0
+        },
+        "executed": false
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 19,
+        "version": 2
+      }
+    },
+    {
+      "id": "evt_1cd70ca82001aiRiUvqbl4xMkA",
+      "created": 1794448083586,
+      "type": "session.step.ended",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70c6120011qpekh3xVEAalu",
+        "finish": "tool-calls",
+        "rawFinish": "tool_use",
+        "cost": 0.0010128000000000001,
+        "tokens": {
+          "input": 3,
+          "output": 53,
+          "reasoning": 0,
+          "cache": {
+            "read": 7448,
+            "write": 31
+          }
+        }
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 20,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70ca83001tFifcRa3slWCpB",
+      "created": 1794448083587,
+      "type": "session.usage.updated",
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "cost": 0.0103658,
+        "tokens": {
+          "input": 6,
+          "output": 61,
+          "reasoning": 0,
+          "cache": {
+            "read": 7448,
+            "write": 7479
+          }
+        }
+      }
+    },
+    {
+      "id": "evt_1cd70cdf5001MXhc3qXbWsqgmI",
+      "created": 1794448084469,
+      "type": "session.step.started",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "agent": "build",
+        "model": {
+          "id": "claude-haiku-4.5",
+          "providerID": "github-copilot",
+          "variant": "default"
+        },
+        "assistantMessageID": "msg_1cd70ca89001iS4TX5RzPx6Qa1",
+        "started": 1794448083599
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 21,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70cdf60016Ry1g37Shc9qs9",
+      "created": 1794448084470,
+      "type": "session.text.started",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70ca89001iS4TX5RzPx6Qa1",
+        "ordinal": 0
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 22,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70cdf8001joYhjVGXoRSmoi",
+      "created": 1794448084472,
+      "type": "session.text.delta",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70ca89001iS4TX5RzPx6Qa1",
+        "ordinal": 0,
+        "delta": "The command ran successfully and output \"captured\"."
+      }
+    },
+    {
+      "id": "evt_1cd70cdf8002ldUQ2ZE5x21vOg",
+      "created": 1794448084472,
+      "type": "session.text.ended",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70ca89001iS4TX5RzPx6Qa1",
+        "ordinal": 0,
+        "text": "The command ran successfully and output \"captured\"."
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 23,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70cdfa001M6ViXXHTKfJ8vB",
+      "created": 1794448084474,
+      "type": "session.step.streamed",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70ca89001iS4TX5RzPx6Qa1"
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 24,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70cdfb001QQtboi2mBN2KAO",
+      "created": 1794448084475,
+      "type": "session.step.ended",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70ca89001iS4TX5RzPx6Qa1",
+        "finish": "stop",
+        "rawFinish": "end_turn",
+        "cost": 0.0008139000000000001,
+        "tokens": {
+          "input": 6,
+          "output": 12,
+          "reasoning": 0,
+          "cache": {
+            "read": 7479,
+            "write": 64
+          }
+        }
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 25,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70cdfc001WHvPwuCQ11eaVb",
+      "created": 1794448084476,
+      "type": "session.usage.updated",
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "cost": 0.011179699999999999,
+        "tokens": {
+          "input": 12,
+          "output": 73,
+          "reasoning": 0,
+          "cache": {
+            "read": 14927,
+            "write": 7543
+          }
+        }
+      }
+    },
+    {
+      "id": "evt_1cd70cdfd001YQW3jYD7SyEcYa",
+      "created": 1794448084477,
+      "type": "session.execution.succeeded",
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks"
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 26,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70ce0c002f8UuZnovmmXSY3",
+      "created": 1794448084492,
+      "type": "session.inbox.enqueued",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "inboxID": "msg_1cd70ce0c0012nnIwj7FBPOuQn",
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "item": {
+          "type": "user",
+          "payload": {
+            "text": "Use your question tool to ask me one multiple-choice question: Tea or Coffee? Then reply with my choice in one sentence."
+          },
+          "delivery": "queue"
+        }
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 27,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70ce0e001uIFImFVZiVNdiW",
+      "created": 1794448084494,
+      "type": "session.execution.started",
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks"
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 28,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70ce12001DSJplvPJ3hIx7s",
+      "created": 1794448084498,
+      "type": "session.inbox.delivered",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "inboxID": "msg_1cd70ce0c0012nnIwj7FBPOuQn"
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 29,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70d21c001nmcDaSdH1U5ybS",
+      "created": 1794448085532,
+      "type": "session.step.started",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "agent": "build",
+        "model": {
+          "id": "claude-haiku-4.5",
+          "providerID": "github-copilot",
+          "variant": "default"
+        },
+        "assistantMessageID": "msg_1cd70ce15001pD6wZw4mrLKtUT",
+        "started": 1794448084508
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 30,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70d21e001VJE3Qs6v86BugC",
+      "created": 1794448085534,
+      "type": "session.tool.input.started",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70ce15001pD6wZw4mrLKtUT",
+        "id": "toolu_01GW92f8HG5Z1XmG16RTrTQQ",
+        "name": "question"
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 31,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70d4f2001w3RPjNr6FAfGJv",
+      "created": 1794448086258,
+      "type": "session.tool.input.ended",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70ce15001pD6wZw4mrLKtUT",
+        "id": "toolu_01GW92f8HG5Z1XmG16RTrTQQ",
+        "text": "{\"questions\": [{\"question\":\"Which beverage do you prefer?\",\"header\":\"Tea or Coffee?\",\"options\":[{\"label\":\"Tea\",\"description\":\"A warm, comforting tea\"},{\"label\":\"Coffee\",\"description\":\"A bold, energizing coffee\"}],\"multiple\":false}]}"
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 32,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70d4f3001mf9wOpfmngRHd2",
+      "created": 1794448086259,
+      "type": "session.tool.called",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70ce15001pD6wZw4mrLKtUT",
+        "id": "toolu_01GW92f8HG5Z1XmG16RTrTQQ",
+        "input": {
+          "questions": [
+            {
+              "question": "Which beverage do you prefer?",
+              "header": "Tea or Coffee?",
+              "options": [
+                {
+                  "label": "Tea",
+                  "description": "A warm, comforting tea"
+                },
+                {
+                  "label": "Coffee",
+                  "description": "A bold, energizing coffee"
+                }
+              ],
+              "multiple": false
+            }
+          ]
+        },
+        "executed": false
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 33,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70d4f6001kvj8QcxiGj60t0",
+      "created": 1794448086262,
+      "type": "session.step.streamed",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70ce15001pD6wZw4mrLKtUT"
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 34,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70d60b001w3fhwIzGjT7GMc",
+      "created": 1794448086539,
+      "type": "form.replied",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "id": "frm_1cd70d4f5001LKme45kz2Kx7yy",
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "answer": {
+          "q0": "Coffee"
+        }
+      }
+    },
+    {
+      "id": "evt_1cd70d60b002tkOAfaTCMSJOy3",
+      "created": 1794448086539,
+      "type": "session.tool.success",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70ce15001pD6wZw4mrLKtUT",
+        "id": "toolu_01GW92f8HG5Z1XmG16RTrTQQ",
+        "content": [
+          {
+            "type": "text",
+            "text": "User has answered your questions: \"Which beverage do you prefer?\"=\"Coffee\". You can now continue with the user's answers in mind."
+          }
+        ],
+        "metadata": {
+          "answers": [
+            [
+              "Coffee"
+            ]
+          ],
+          "truncated": false
+        },
+        "executed": false
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 35,
+        "version": 2
+      }
+    },
+    {
+      "id": "evt_1cd70d60c001RTKg9YWF0MNVYR",
+      "created": 1794448086540,
+      "type": "session.step.ended",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70ce15001pD6wZw4mrLKtUT",
+        "finish": "tool-calls",
+        "rawFinish": "tool_use",
+        "cost": 0.0013573,
+        "tokens": {
+          "input": 3,
+          "output": 120,
+          "reasoning": 0,
+          "cache": {
+            "read": 7543,
+            "write": 44
+          }
+        }
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 36,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70d60e001xxFz2OVA0aLSHY",
+      "created": 1794448086542,
+      "type": "session.usage.updated",
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "cost": 0.012537,
+        "tokens": {
+          "input": 15,
+          "output": 193,
+          "reasoning": 0,
+          "cache": {
+            "read": 22470,
+            "write": 7587
+          }
+        }
+      }
+    },
+    {
+      "id": "evt_1cd70d9ae0016NNEZXIrRGGtFi",
+      "created": 1794448087470,
+      "type": "session.step.started",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "agent": "build",
+        "model": {
+          "id": "claude-haiku-4.5",
+          "providerID": "github-copilot",
+          "variant": "default"
+        },
+        "assistantMessageID": "msg_1cd70d613001bhtmJE2Qx71mzI",
+        "started": 1794448086553
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 37,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70d9b00019TU2APDUFeKalH",
+      "created": 1794448087472,
+      "type": "session.text.started",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70d613001bhtmJE2Qx71mzI",
+        "ordinal": 0
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 38,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70d9b1001p9H9eJQFjbgUmd",
+      "created": 1794448087473,
+      "type": "session.text.delta",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70d613001bhtmJE2Qx71mzI",
+        "ordinal": 0,
+        "delta": "You chose Coffee."
+      }
+    },
+    {
+      "id": "evt_1cd70d9b1002MX7B6x4B1qtSpU",
+      "created": 1794448087473,
+      "type": "session.text.ended",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70d613001bhtmJE2Qx71mzI",
+        "ordinal": 0,
+        "text": "You chose Coffee."
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 39,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70d9b3001rikKmSz5Ff5UCs",
+      "created": 1794448087475,
+      "type": "session.step.streamed",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70d613001bhtmJE2Qx71mzI"
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 40,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70d9b4001TktS0ibJsHJbSN",
+      "created": 1794448087476,
+      "type": "session.step.ended",
+      "location": {
+        "directory": "C:\\Users\\user\\AppData\\Local\\Temp\\oc-capture-IgaRxc"
+      },
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "assistantMessageID": "msg_1cd70d613001bhtmJE2Qx71mzI",
+        "finish": "stop",
+        "rawFinish": "end_turn",
+        "cost": 0.0007987000000000001,
+        "tokens": {
+          "input": 5,
+          "output": 7,
+          "reasoning": 0,
+          "cache": {
+            "read": 7587,
+            "write": 158
+          }
+        }
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 41,
+        "version": 1
+      }
+    },
+    {
+      "id": "evt_1cd70d9b5001GRrOxAD12OtR4b",
+      "created": 1794448087477,
+      "type": "session.usage.updated",
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks",
+        "cost": 0.013335699999999999,
+        "tokens": {
+          "input": 20,
+          "output": 200,
+          "reasoning": 0,
+          "cache": {
+            "read": 30057,
+            "write": 7745
+          }
+        }
+      }
+    },
+    {
+      "id": "evt_1cd70d9b5002gb9Oq33qU77wVy",
+      "created": 1794448087477,
+      "type": "session.execution.succeeded",
+      "data": {
+        "sessionID": "ses_e328f463effepudKv28GMaUiks"
+      },
+      "durable": {
+        "aggregateID": "ses_e328f463effepudKv28GMaUiks",
+        "seq": 42,
+        "version": 1
+      }
+    }
+  ],
+  "messages": [
+    {
+      "id": "msg_1cd70ba32001z881Asvxzdy2NR",
+      "time": {
+        "created": 1794448079898
+      },
+      "text": "Reply with exactly: Hello from the capture.",
+      "type": "user"
+    },
+    {
+      "id": "msg_1cd70bc210012IAZHGYZQPydVp",
+      "time": {
+        "created": 1794448079913,
+        "streamed": 1794448082020,
+        "completed": 1794448082021
+      },
+      "type": "assistant",
+      "agent": "build",
+      "model": {
+        "id": "claude-haiku-4.5",
+        "providerID": "github-copilot",
+        "variant": "default"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "Hello from the capture."
+        }
+      ],
+      "finish": "stop",
+      "rawFinish": "end_turn",
+      "cost": 0.009353,
+      "tokens": {
+        "input": 3,
+        "output": 8,
+        "reasoning": 0,
+        "cache": {
+          "read": 0,
+          "write": 7448
+        }
+      }
+    },
+    {
+      "id": "msg_1cd70c4670015Glxi13Cn9uIhU",
+      "time": {
+        "created": 1794448082023
+      },
+      "type": "idle",
+      "outcome": "succeeded"
+    },
+    {
+      "id": "msg_1cd70c60900123K57HLoW0NrVW",
+      "time": {
+        "created": 1794448082447
+      },
+      "text": "Run the shell command `echo captured` with your shell tool, then reply in one short sentence.",
+      "type": "user"
+    },
+    {
+      "id": "msg_1cd70c6120011qpekh3xVEAalu",
+      "time": {
+        "created": 1794448082457,
+        "streamed": 1794448083504,
+        "completed": 1794448083586
+      },
+      "type": "assistant",
+      "agent": "build",
+      "model": {
+        "id": "claude-haiku-4.5",
+        "providerID": "github-copilot",
+        "variant": "default"
+      },
+      "content": [
+        {
+          "type": "tool",
+          "id": "toolu_01W3wi3HRQdS4BAhw4VYXPpd",
+          "name": "shell",
+          "executed": false,
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "echo captured"
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "captured\n"
+              }
+            ],
+            "metadata": {
+              "status": "completed",
+              "truncated": false,
+              "exit": 0
+            }
+          },
+          "time": {
+            "created": 1794448083472,
+            "ran": 1794448083497,
+            "completed": 1794448083584
+          }
+        }
+      ],
+      "finish": "tool-calls",
+      "rawFinish": "tool_use",
+      "cost": 0.0010128000000000001,
+      "tokens": {
+        "input": 3,
+        "output": 53,
+        "reasoning": 0,
+        "cache": {
+          "read": 7448,
+          "write": 31
+        }
+      }
+    },
+    {
+      "id": "msg_1cd70ca89001iS4TX5RzPx6Qa1",
+      "time": {
+        "created": 1794448083599,
+        "streamed": 1794448084474,
+        "completed": 1794448084475
+      },
+      "type": "assistant",
+      "agent": "build",
+      "model": {
+        "id": "claude-haiku-4.5",
+        "providerID": "github-copilot",
+        "variant": "default"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "The command ran successfully and output \"captured\"."
+        }
+      ],
+      "finish": "stop",
+      "rawFinish": "end_turn",
+      "cost": 0.0008139000000000001,
+      "tokens": {
+        "input": 6,
+        "output": 12,
+        "reasoning": 0,
+        "cache": {
+          "read": 7479,
+          "write": 64
+        }
+      }
+    },
+    {
+      "id": "msg_1cd70cdfd001YQW3jYD7SyEcYa",
+      "time": {
+        "created": 1794448084477
+      },
+      "type": "idle",
+      "outcome": "succeeded"
+    },
+    {
+      "id": "msg_1cd70ce0c0012nnIwj7FBPOuQn",
+      "time": {
+        "created": 1794448084498
+      },
+      "text": "Use your question tool to ask me one multiple-choice question: Tea or Coffee? Then reply with my choice in one sentence.",
+      "type": "user"
+    },
+    {
+      "id": "msg_1cd70ce15001pD6wZw4mrLKtUT",
+      "time": {
+        "created": 1794448084508,
+        "streamed": 1794448086262,
+        "completed": 1794448086540
+      },
+      "type": "assistant",
+      "agent": "build",
+      "model": {
+        "id": "claude-haiku-4.5",
+        "providerID": "github-copilot",
+        "variant": "default"
+      },
+      "content": [
+        {
+          "type": "tool",
+          "id": "toolu_01GW92f8HG5Z1XmG16RTrTQQ",
+          "name": "question",
+          "executed": false,
+          "state": {
+            "status": "completed",
+            "input": {
+              "questions": [
+                {
+                  "question": "Which beverage do you prefer?",
+                  "header": "Tea or Coffee?",
+                  "options": [
+                    {
+                      "label": "Tea",
+                      "description": "A warm, comforting tea"
+                    },
+                    {
+                      "label": "Coffee",
+                      "description": "A bold, energizing coffee"
+                    }
+                  ],
+                  "multiple": false
+                }
+              ]
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "User has answered your questions: \"Which beverage do you prefer?\"=\"Coffee\". You can now continue with the user's answers in mind."
+              }
+            ],
+            "metadata": {
+              "answers": [
+                [
+                  "Coffee"
+                ]
+              ],
+              "truncated": false
+            }
+          },
+          "time": {
+            "created": 1794448085534,
+            "ran": 1794448086259,
+            "completed": 1794448086539
+          }
+        }
+      ],
+      "finish": "tool-calls",
+      "rawFinish": "tool_use",
+      "cost": 0.0013573,
+      "tokens": {
+        "input": 3,
+        "output": 120,
+        "reasoning": 0,
+        "cache": {
+          "read": 7543,
+          "write": 44
+        }
+      }
+    },
+    {
+      "id": "msg_1cd70d613001bhtmJE2Qx71mzI",
+      "time": {
+        "created": 1794448086553,
+        "streamed": 1794448087475,
+        "completed": 1794448087476
+      },
+      "type": "assistant",
+      "agent": "build",
+      "model": {
+        "id": "claude-haiku-4.5",
+        "providerID": "github-copilot",
+        "variant": "default"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "You chose Coffee."
+        }
+      ],
+      "finish": "stop",
+      "rawFinish": "end_turn",
+      "cost": 0.0007987000000000001,
+      "tokens": {
+        "input": 5,
+        "output": 7,
+        "reasoning": 0,
+        "cache": {
+          "read": 7587,
+          "write": 158
+        }
+      }
+    },
+    {
+      "id": "msg_1cd70d9b5002gb9Oq33qU77wVy",
+      "time": {
+        "created": 1794448087477
+      },
+      "type": "idle",
+      "outcome": "succeeded"
+    }
+  ]
+}

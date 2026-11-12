@@ -7,30 +7,26 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 ## Now
 
 Reliability first: Symbio shouldn't be shown to new people while it can stall or break silently.
-Working on Next items 1–4 (a safety net for changes, a beta channel, helpers that go quiet,
-splitting `team.ts`), then chat modes.
+
+- **A safety net for changes.** Done for the next release: a contract test of the OpenCode API as
+  Symbio uses it (on every push, and daily against the newest OpenCode), and end-to-end tests of the
+  whole app in a browser against a stand-in OpenCode with a scripted model (chat, drafts, a helper's
+  work merged, questions, attachments, several repositories, navigation, the phone layout), in CI.
+- Next up: a beta channel, helpers that go quiet, splitting `team.ts`, then chat modes.
 
 ## Next
 
-1. **A safety net for changes.** Today most end-to-end checks are one-off scripts that stay on the
-   developer's machine, the interface has no tests, and nothing warns when OpenCode changes the
-   experimental APIs Symbio depends on (instructions, tool registration). Needed:
-   - The end-to-end checks (attachments, several repositories, questions, drafts, the phone layout,
-     Settings navigation…) committed and run in CI against a stand-in OpenCode, plus interface
-     tests in a real browser.
-   - A daily check against the bundled OpenCode version (and the newest one) that exercises every
-     experimental endpoint Symbio uses, so a breaking change is caught before users hit it.
-2. **A beta channel for updates.** Releases go to everyone within the hour, so every user is a beta
+1. **A beta channel for updates.** Releases go to everyone within the hour, so every user is a beta
    tester (0.7 crashed on Node 18; a release tag once pointed at the wrong commit). Publish to a
    beta first (npm `next`), let those who opt in take it, and promote to everyone after a few
    quiet days; a setting in Settings → Updates.
-3. **Helpers that go quiet.** When a helper ends its turn without reporting (seen with smaller
+2. **Helpers that go quiet.** When a helper ends its turn without reporting (seen with smaller
    models), Symbio should notice (idle, task still in progress, no report since its last
    assignment) and nudge it once, then tell core, instead of core waiting until the human looks.
-4. **Split `team.ts`.** One class of ~1,900 lines holds messaging, the watchdog, permissions,
+3. **Split `team.ts`.** One class of ~1,900 lines holds messaging, the watchdog, permissions,
    housekeeping, workspaces, updates and session renewal; every feature touches it. Split it into
    modules with clear responsibilities before adding more.
-5. **Chat modes: Auto, Plan and Act.** A selector in core's chat box, as in VS Code and other
+4. **Chat modes: Auto, Plan and Act.** A selector in core's chat box, as in VS Code and other
    agent tools, choosing how core handles a message:
    - **Auto** (the default): as today; core decides whether to talk, plan or delegate.
    - **Plan**: core discusses, studies and proposes a plan, but starts nothing. Enforced by Symbio,
@@ -41,14 +37,14 @@ splitting `team.ts`), then chat modes.
    Applies to core only (helpers do the tasks they're given); each sent message shows the mode it
    was sent in. Talk to Symbio can reuse the selector as a voice toggle.
    *(Suggested by a user.)*
-6. **Review what the team changed.** Per task and per helper: the files changed and their diffs,
+5. **Review what the team changed.** Per task and per helper: the files changed and their diffs,
    before and after a merge, readable in the browser (and on a phone). Today the human has to trust
    core's summary or open the files; every serious tool in this space has this.
-7. **Notifications.** When something needs the human (a question, an approval, a plan to review, a
+6. **Notifications.** When something needs the human (a question, an approval, a plan to review, a
    stuck agent) or a task finishes, send it where they are: browser/phone notifications, and
    optionally a messaging app (e.g. Telegram) or e-mail, with per-project choices. Essential for
    steering Symbio away from the computer.
-8. **Talk to Symbio.** A spoken conversation with core, hands-free: e.g. from a phone connected to
+7. **Talk to Symbio.** A spoken conversation with core, hands-free: e.g. from a phone connected to
    the car over Bluetooth, with Symbio working on the computer at home (remote access). Not just
    dictation into the chat box:
    - Only what core says to the human is read aloud: never tool calls, command output, messages
@@ -63,28 +59,28 @@ splitting `team.ts`), then chat modes.
    Builds on the phone layout and on telling apart, in core's replies, what's for the human from
    the team's work. To check first: the browsers' own speech recognition and voices (quality,
    languages, whether they keep working with the screen off) against a speech service.
-9. **Budgets per project.** A spending limit per project (and optionally per day), with a warning
+8. **Budgets per project.** A spending limit per project (and optionally per day), with a warning
    at a threshold and the team paused when it's reached, using the cost tracking Symbio already
    has.
-10. **Scheduled work.** Ask core for recurring jobs ("refresh the data every night", "check the site
-    every Monday"): Symbio wakes core at the set time with the job, and the human sees the runs and
-    their results.
-11. **Linux and macOS.** Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
+9. **Scheduled work.** Ask core for recurring jobs ("refresh the data every night", "check the site
+   every Monday"): Symbio wakes core at the set time with the job, and the human sees the runs and
+   their results.
+10. **Linux and macOS.** Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
     Keychain on macOS); headless Linux (a server or container) has no keyring, so it needs a
     fallback, such as a key file readable only by the user.
-12. **Make it showable.** Before inviting others: a sample project to try in five minutes, a
+11. **Make it showable.** Before inviting others: a sample project to try in five minutes, a
     two-minute video of core running a team on a non-coding project, and a short GitHub Pages site
     with screenshots. First audience: the OpenCode community.
-13. **Create a project from a git repository.** In the New project dialog, an option to clone a
+12. **Create a project from a git repository.** In the New project dialog, an option to clone a
     repository (GitHub, Azure DevOps or any git URL, using the matching connection when it's private)
     into a folder and open it as a project, e.g. to continue on another computer. Tucked under an
     advanced option, so it doesn't get in the way of people who don't use git.
-14. **Rules register on import.** When importing an existing project, offer to build the register
+13. **Rules register on import.** When importing an existing project, offer to build the register
     from the project and from sources the human points to (e-mails, meeting notes, manuals), marking
     rules found only in the work as unsourced.
-15. **Translations.** The UI in other languages, starting with Portuguese. *(good first
+14. **Translations.** The UI in other languages, starting with Portuguese. *(good first
     contribution, once the strings are extracted)*
-16. **A public demo.** A container on a VPS with a light model, connections and other sensitive
+15. **A public demo.** A container on a VPS with a light model, connections and other sensitive
     options disabled, and visitors' data reset every few minutes (needs Linux headless support).
 
 ## Ideas

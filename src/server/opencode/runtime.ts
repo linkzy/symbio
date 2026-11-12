@@ -240,6 +240,8 @@ export function bundledOpencode(): string | null {
  */
 export function resolveOpencode(): { command: string; args: string[]; shell: boolean } {
   const override = process.env.SYMBIO_OPENCODE_BIN;
+  // A .js/.mjs file runs with this Node: the end-to-end tests' stand-in OpenCode (tests/e2e).
+  if (override && /\.m?js$/i.test(override)) return { command: process.execPath, args: [override], shell: false };
   if (override) return { command: override, args: [], shell: false };
   const bundled = bundledOpencode();
   if (bundled) return { command: bundled, args: [], shell: false };

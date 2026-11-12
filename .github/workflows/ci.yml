@@ -25,3 +25,5 @@ jobs:
       # The OpenCode API as Symbio uses it, against the bundled OpenCode (no model or sign-in needed).
       - run: npm run test:contract
       - run: npm run build
+      # The whole app against a stand-in OpenCode with a scripted model, in a real browser (Edge).
+      - run: npm run test:e2e
