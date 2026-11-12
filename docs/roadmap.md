@@ -6,9 +6,7 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 
 ## Now
 
-- **Open questions.** Done for the next release: the team's questions for the human in a list in
-  Needs you (numbered, with context and options), answered several at once; repeats refused; core's
-  replies to helpers' reports kept short so the chat doesn't scroll everything away.
+Nothing in progress; the top of Next is what comes up.
 
 ## Next
 
@@ -103,6 +101,9 @@ Collected, not sorted or promised yet.
 
 Newest first; details per version in [CHANGELOG.md](../CHANGELOG.md).
 
+- **0.12** — Open questions: the team's questions for the human wait in a list in *Needs you*
+  (numbered, with context and suggested answers), answered several at once; repeats refused;
+  core keeps its replies to helpers' reports short.
 - **0.11** — Reviewing the team's work: helpers' guides for checking a task, *Who reviews the work*
   (core, me for every task, or me for the tasks marked in the plan), a To review list with approve
   and send back, and each task's changed files and diffs; FTP and FTPS connections (uploads and file
