@@ -30,8 +30,13 @@ Nothing in progress; the top of Next is what comes up.
    video, a report, a spreadsheet), it shows up in the chat instead of as a path to go and find:
    - Images, video, audio and PDFs play or display in place; other files get a card with their
      name, size and a **Download** button, served by Symbio, so it works over remote access too.
-   - Agents share a file with a tool (path and a caption); paths of existing project files in
-     replies become links as well.
+   - Agents share a file with a tool (path and a caption).
+   - **Paths become links everywhere**, not only in the chat: in *Needs you* (questions, review
+     guides like "Abra docs/regras/checagem-ia.md. Linha 6"), the Plan tab and the Messages tab.
+     A link opens in a new tab: Markdown and other documents in the Docs view, formatted and at the
+     line mentioned (a raw `.md` file in the browser is unreadable); images, PDFs and pages the
+     browser can show, as they are; anything else downloads. A path on a helper's branch ("branch
+     symbio/ia") opens the helper's copy, where the file actually is before it's merged.
    - Only files inside the project's folders (and helpers' copies) can be shared or downloaded.
    - They're kept in the project's Files tab, next to the files the human sent.
 
