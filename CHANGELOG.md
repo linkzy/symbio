@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.13.0]
+
 - **A chat you can follow**: the team's work reads in plain words instead of the commands and
   scripts the model typed ("Message to setor", "Merged modulo-professor's work", "Waited for the app
   on port 7343", "Ran the tests"), and a run of steps folds into one line that leads with what

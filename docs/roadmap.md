@@ -6,51 +6,15 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 
 ## Now
 
-- **A chat you can follow.** Done for the next release: steps in plain words, runs of steps folded
-  into one line, helpers' reports as cards. Left: visual extras (tables are already rendered; charts
-  and live counters), to see whether they're still wanted.
-- **Files from agents, in the chat.** Done for the next release: `share_file` and file cards (in
-  place for images, video, audio), paths as links everywhere (Markdown formatted at the line, the
-  helper's copy for a file on its branch), the Files tab's *From the team*.
+Nothing in progress; the top of Next is what comes up.
 
 ## Next
 
-1. **A chat you can follow.** Today the chat shows the team's work as the model typed it: lines like
-   `shell git merge symbio/setor --no-edit 2>&1 | Select -Last 1; git diff …` or `execute
-   symbio.send_message`, and helpers' reports as one dense paragraph. Instead:
-   - **Steps in plain words.** Symbio's own tools read as what they did, from their arguments and
-     result: "Messaged setor: …", "Merged modulo-professor's work: 4 files, no conflicts", "Added
-     Q12 to your questions". Commands get labels from what they run (a git merge, waiting for the app
-     on port 7343, running the tests), since OpenCode records no description for them (checked: only
-     the command, a timeout and the folder); maybe a small model for the rest. The raw command stays
-     a click away.
-   - **Grouped.** A run of steps folds into one line ("Merged 2 helpers' work, checked the app is up
-     · 7 steps"), with what's running now shown live.
-   - **Reports as cards.** A helper's report shows the task, its status, a short summary and how to
-     check it, with the long text folded away.
-   - **Visual when it fits.** Tables, a chart for numbers, a counter while tests run.
-
-   Like the step lists of ChatGPT, Claude and the coding assistants: copy what works there.
-2. **Files from agents, in the chat.** When an agent produces a file the human needs (an image, a
-   video, a report, a spreadsheet), it shows up in the chat instead of as a path to go and find:
-   - Images, video, audio and PDFs play or display in place; other files get a card with their
-     name, size and a **Download** button, served by Symbio, so it works over remote access too.
-   - Agents share a file with a tool (path and a caption).
-   - **Paths become links everywhere**, not only in the chat: in *Needs you* (questions, review
-     guides like "Abra docs/regras/checagem-ia.md. Linha 6"), the Plan tab and the Messages tab.
-     A link opens in a new tab: Markdown and other documents in the Docs view, formatted and at the
-     line mentioned (a raw `.md` file in the browser is unreadable); images, PDFs and pages the
-     browser can show, as they are; anything else downloads. A path on a helper's branch ("branch
-     symbio/ia") opens the helper's copy, where the file actually is before it's merged.
-   - Only files inside the project's folders (and helpers' copies) can be shared or downloaded.
-   - They're kept in the project's Files tab, next to the files the human sent.
-
-   Like the file cards in ChatGPT or Claude.
-3. **Notifications.** When something needs the human (an open question, an approval, a plan to review, a
+1. **Notifications.** When something needs the human (an open question, an approval, a plan to review, a
    stuck agent) or a task finishes, send it where they are: browser/phone notifications, and
    optionally a messaging app (e.g. Telegram) or e-mail, with per-project choices. Essential for
    steering Symbio away from the computer.
-4. **Talk to Symbio.** A spoken conversation with core, hands-free: e.g. from a phone connected to
+2. **Talk to Symbio.** A spoken conversation with core, hands-free: e.g. from a phone connected to
    the car over Bluetooth, with Symbio working on the computer at home (remote access). Not just
    dictation into the chat box:
    - Only what core says to the human is read aloud: never tool calls, command output, messages
@@ -65,28 +29,28 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
    Builds on the phone layout and on telling apart, in core's replies, what's for the human from
    the team's work. To check first: the browsers' own speech recognition and voices (quality,
    languages, whether they keep working with the screen off) against a speech service.
-5. **Budgets per project.** A spending limit per project (and optionally per day), with a warning
+3. **Budgets per project.** A spending limit per project (and optionally per day), with a warning
    at a threshold and the team paused when it's reached, using the cost tracking Symbio already
    has.
-6. **Scheduled work.** Ask core for recurring jobs ("refresh the data every night", "check the site
+4. **Scheduled work.** Ask core for recurring jobs ("refresh the data every night", "check the site
    every Monday"): Symbio wakes core at the set time with the job, and the human sees the runs and
    their results.
-7. **Linux and macOS.** Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
+5. **Linux and macOS.** Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
    Keychain on macOS); headless Linux (a server or container) has no keyring, so it needs a
    fallback, such as a key file readable only by the user.
-8. **Make it showable.** Before inviting others: a sample project to try in five minutes, a
+6. **Make it showable.** Before inviting others: a sample project to try in five minutes, a
    two-minute video of core running a team on a non-coding project, and a short GitHub Pages site
    with screenshots. First audience: the OpenCode community.
-9. **Create a project from a git repository.** In the New project dialog, an option to clone a
+7. **Create a project from a git repository.** In the New project dialog, an option to clone a
    repository (GitHub, Azure DevOps or any git URL, using the matching connection when it's private)
    into a folder and open it as a project, e.g. to continue on another computer. Tucked under an
    advanced option, so it doesn't get in the way of people who don't use git.
-10. **Rules register on import.** When importing an existing project, offer to build the register
+8. **Rules register on import.** When importing an existing project, offer to build the register
    from the project and from sources the human points to (e-mails, meeting notes, manuals), marking
    rules found only in the work as unsourced.
-11. **Translations.** The UI in other languages, starting with Portuguese. *(good first
+9. **Translations.** The UI in other languages, starting with Portuguese. *(good first
     contribution, once the strings are extracted)*
-12. **A public demo.** A container on a VPS with a light model, connections and other sensitive
+10. **A public demo.** A container on a VPS with a light model, connections and other sensitive
     options disabled, and visitors' data reset every few minutes (needs Linux headless support).
 
 ## Ideas
@@ -152,6 +116,10 @@ Collected, not sorted or promised yet.
 
 Newest first; details per version in [CHANGELOG.md](../CHANGELOG.md).
 
+- **0.13** — A chat you can follow: the team's steps in plain words, runs of steps folded into one
+  line, helpers' reports as cards; files from the team in the chat (`share_file`, shown in place or
+  to download) and in the Files tab; paths as links everywhere, Markdown and code opening at the
+  line mentioned.
 - **0.12** — Open questions: the team's questions for the human wait in a list in *Needs you*
   (numbered, with context and suggested answers), answered several at once; repeats refused;
   core keeps its replies to helpers' reports short.
