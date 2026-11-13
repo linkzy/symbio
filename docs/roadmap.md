@@ -98,21 +98,22 @@ Collected, not sorted or promised yet.
   already look at images with `view_image`).
 - **Per-task model routing.** Cheap models for simple tasks, strong ones for hard ones.
 - **Installing without Node.js** *(important before inviting people who aren't developers)*. Today
-  Symbio needs Node 22+ and `npm install -g symbio`, so it only reaches people who have both, on top
-  of OpenCode. Do what OpenCode and Claude Code do (checked November 2026): one native executable
-  per platform, installed with a one-line command (`irm …/install.ps1 | iex` on Windows,
-  `curl … | bash` elsewhere) or a downloaded installer, and npm kept as another way to get the same
-  executable. Claude Code's native install updates itself in the background, so automatic updates
-  and *Check now* carry over: the new version is downloaded next to the old one and used from the
-  next start, and the previous one stays to go back to. To work out:
-  - Building one executable from the server and the UI (Bun's `--compile`, as OpenCode does, or
-    Node's single executable applications), with the native parts (the OS keyring module, SSH).
-  - OpenCode: today it comes as an npm dependency; the executable would download OpenCode's own
-    binary on first run, or ship with it.
-  - Trust on Windows: an unsigned `.exe` gets SmartScreen warnings and antivirus false positives,
-    which scare off exactly these users; a code-signing certificate costs money every year.
-  - The first run still needs a model provider: lead new users to Settings → Model providers.
-  - Moving npm installs over without losing anything (`~/.symbio` stays where it is).
+  Symbio needs Node 22+ and `npm install -g symbio`, so it only reaches people who have both. An
+  install script per system family, run with one line in a terminal (`irm …/install.ps1 | iex` in
+  PowerShell, `curl -fsSL …/install | bash` elsewhere), the way OpenCode and Claude Code install:
+  - It downloads a private copy of Node (the official zip from nodejs.org) into `~/.symbio/runtime`:
+    nothing installed system-wide, no admin rights, invisible to other programs, removed with
+    Symbio. Then it installs Symbio with that copy's npm (OpenCode comes along, as today) and adds
+    the `sym` command and a desktop / Start-menu shortcut, so the terminal is needed only once.
+  - It's still the npm package underneath, so automatic updates, *Check now*, `sym update --to` and
+    the release gate keep working; Symbio updates the private Node too when needed.
+  - No executable to build per platform and no code-signing certificate: SmartScreen warns about
+    files downloaded in a browser, not what a PowerShell script downloads (to confirm on a clean
+    machine), and Node's and OpenCode's binaries are signed by their makers.
+  - Hosted from the GitHub repository at first; on Symbio's own domain if the project grows
+    (e.g. `curl -fsSL https://<domain>/install | bash`).
+  - Node, not Bun: Symbio is built and tested on Node, and SSH, the keyring module and child
+    processes are where Bun's compatibility gaps show.
 - **Jira and Trello connections** *(low priority)*. Connect a board, like GitHub or Azure DevOps
   today, so core can read the work from it (issues, cards, their details) and turn it into the
   local plan for helpers, then mark items done on the board as their tasks finish.
