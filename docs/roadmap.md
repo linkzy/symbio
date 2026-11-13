@@ -14,7 +14,33 @@ Nothing in progress; the top of Next is what comes up.
    stuck agent) or a task finishes, send it where they are: browser/phone notifications, and
    optionally a messaging app (e.g. Telegram) or e-mail, with per-project choices. Essential for
    steering Symbio away from the computer.
-2. **Talk to Symbio.** A spoken conversation with core, hands-free: e.g. from a phone connected to
+2. **A chat you can follow.** Today the chat shows the team's work as the model typed it: lines like
+   `shell git merge symbio/setor --no-edit 2>&1 | Select -Last 1; git diff …` or `execute
+   symbio.send_message`, and helpers' reports as one dense paragraph. Instead:
+   - **Steps in plain words.** Symbio's own tools read as what they did, from their arguments and
+     result: "Messaged setor: …", "Merged modulo-professor's work: 4 files, no conflicts", "Added
+     Q12 to your questions". Commands get labels from what they run (a git merge, waiting for the app
+     on port 7343, running the tests), since OpenCode records no description for them (checked: only
+     the command, a timeout and the folder); maybe a small model for the rest. The raw command stays
+     a click away.
+   - **Grouped.** A run of steps folds into one line ("Merged 2 helpers' work, checked the app is up
+     · 7 steps"), with what's running now shown live.
+   - **Reports as cards.** A helper's report shows the task, its status, a short summary and how to
+     check it, with the long text folded away.
+   - **Visual when it fits.** Tables, a chart for numbers, a counter while tests run.
+
+   Like the step lists of ChatGPT, Claude and the coding assistants: copy what works there.
+3. **Files from agents, in the chat.** When an agent produces a file the human needs (an image, a
+   video, a report, a spreadsheet), it shows up in the chat instead of as a path to go and find:
+   - Images, video, audio and PDFs play or display in place; other files get a card with their
+     name, size and a **Download** button, served by Symbio, so it works over remote access too.
+   - Agents share a file with a tool (path and a caption); paths of existing project files in
+     replies become links as well.
+   - Only files inside the project's folders (and helpers' copies) can be shared or downloaded.
+   - They're kept in the project's Files tab, next to the files the human sent.
+
+   Like the file cards in ChatGPT or Claude.
+4. **Talk to Symbio.** A spoken conversation with core, hands-free: e.g. from a phone connected to
    the car over Bluetooth, with Symbio working on the computer at home (remote access). Not just
    dictation into the chat box:
    - Only what core says to the human is read aloud: never tool calls, command output, messages
@@ -29,28 +55,28 @@ Nothing in progress; the top of Next is what comes up.
    Builds on the phone layout and on telling apart, in core's replies, what's for the human from
    the team's work. To check first: the browsers' own speech recognition and voices (quality,
    languages, whether they keep working with the screen off) against a speech service.
-3. **Budgets per project.** A spending limit per project (and optionally per day), with a warning
+5. **Budgets per project.** A spending limit per project (and optionally per day), with a warning
    at a threshold and the team paused when it's reached, using the cost tracking Symbio already
    has.
-4. **Scheduled work.** Ask core for recurring jobs ("refresh the data every night", "check the site
+6. **Scheduled work.** Ask core for recurring jobs ("refresh the data every night", "check the site
    every Monday"): Symbio wakes core at the set time with the job, and the human sees the runs and
    their results.
-5. **Linux and macOS.** Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
+7. **Linux and macOS.** Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
    Keychain on macOS); headless Linux (a server or container) has no keyring, so it needs a
    fallback, such as a key file readable only by the user.
-6. **Make it showable.** Before inviting others: a sample project to try in five minutes, a
+8. **Make it showable.** Before inviting others: a sample project to try in five minutes, a
    two-minute video of core running a team on a non-coding project, and a short GitHub Pages site
    with screenshots. First audience: the OpenCode community.
-7. **Create a project from a git repository.** In the New project dialog, an option to clone a
+9. **Create a project from a git repository.** In the New project dialog, an option to clone a
    repository (GitHub, Azure DevOps or any git URL, using the matching connection when it's private)
    into a folder and open it as a project, e.g. to continue on another computer. Tucked under an
    advanced option, so it doesn't get in the way of people who don't use git.
-8. **Rules register on import.** When importing an existing project, offer to build the register
+10. **Rules register on import.** When importing an existing project, offer to build the register
    from the project and from sources the human points to (e-mails, meeting notes, manuals), marking
    rules found only in the work as unsourced.
-9. **Translations.** The UI in other languages, starting with Portuguese. *(good first
+11. **Translations.** The UI in other languages, starting with Portuguese. *(good first
     contribution, once the strings are extracted)*
-10. **A public demo.** A container on a VPS with a light model, connections and other sensitive
+12. **A public demo.** A container on a VPS with a light model, connections and other sensitive
     options disabled, and visitors' data reset every few minutes (needs Linux headless support).
 
 ## Ideas
@@ -84,12 +110,6 @@ Collected, not sorted or promised yet.
 - **Stronger isolation.** Optionally run agents in a container or sandbox (today they run with the
   user's own permissions, with pattern-based rules), for people who can't judge what an agent may
   do on their machine.
-- **Richer answers in the chat.** Show results visually when they fit: a chart for numbers, steps
-  for a procedure, a live counter while tests run.
-- **Files from agents, in the chat.** When an agent produces a file (an image, a report, a
-  spreadsheet), show it in the chat (images inline) with a link to download it, instead of the
-  human going to find it in a folder; and keep it in the project's gallery next to the files the
-  human sent.
 - **Agent graph.** A live view of agents and the messages flowing between them.
 - **Moving projects between machines.** Docs and plan travel with the folder, but agent sessions
   live in the local OpenCode database; reopening a project elsewhere should re-create its agents
