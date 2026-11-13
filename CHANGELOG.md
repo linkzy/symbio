@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.14.0]
+
 - **Models for core and for helpers**: in a project's models, the crown now marks every model core may use (click it on
   several), and a new lock keeps a model for core only. E.g. Kimi and GLM for core, GLM and DeepSeek for helpers; or
   everything for everyone, as before (the default). Fallback, new helpers and the model menu in each chat follow it.

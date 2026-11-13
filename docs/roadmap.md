@@ -6,9 +6,7 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 
 ## Now
 
-- **Quality-of-life batch.** Done for the next release: models for core and for helpers (crowns and locks), select
-  all / none, working agents first in the team list, new folders over remote access, files with answers and
-  send-backs, the price simulator.
+Nothing in progress; the top of Next is what comes up.
 
 ## Next
 
@@ -118,6 +116,9 @@ Collected, not sorted or promised yet.
 
 Newest first; details per version in [CHANGELOG.md](../CHANGELOG.md).
 
+- **0.14** — Models for core and for helpers (crowns and core-only locks), select all / none; working agents
+  first in the team list; new folders over remote access; files with answers and send-backs; a price
+  simulator in Settings.
 - **0.13** — A chat you can follow: the team's steps in plain words, runs of steps folded into one
   line, helpers' reports as cards; files from the team in the chat (`share_file`, shown in place or
   to download) and in the Files tab; paths as links everywhere, Markdown and code opening at the
