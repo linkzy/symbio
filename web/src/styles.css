@@ -858,3 +858,35 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); margi
 .report-title { font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .msg-agent .folded-toggle { margin: 0 8px 8px; }
 .msg-agent-head strong { white-space: nowrap; }
+
+/* Files from the team (files.tsx): links to project files, shared files as cards, the viewer page */
+.file-link { color: var(--accent-text); text-decoration: underline; text-decoration-color: rgba(170, 168, 255, 0.35); text-underline-offset: 2px; }
+.file-link:hover { text-decoration-color: var(--accent-text); }
+.file-link code { color: inherit; }
+.shared-file { border: 1px solid var(--border-strong); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; max-width: 560px; }
+.shared-file.missing { display: flex; align-items: center; gap: 8px; padding: 10px 12px; color: var(--text-3); }
+.shared-file-image { display: block; max-width: 100%; max-height: 420px; object-fit: contain; background: var(--bg-sunken); cursor: zoom-in; margin: 0 auto; }
+.shared-file-video { display: block; width: 100%; max-height: 420px; background: #000; }
+.shared-file-audio { display: block; width: calc(100% - 24px); margin: 12px 12px 0; }
+.shared-file-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+.shared-file-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.shared-file-name { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-view { max-width: 920px; margin: 0 auto; padding: 18px 20px 60px; }
+.file-view-head { display: flex; align-items: center; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--border); margin-bottom: 16px; position: sticky; top: 0; background: var(--bg); z-index: 1; }
+.file-view-head strong { font-family: var(--mono); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-view-code { margin: 0; font-family: var(--mono); font-size: 12.5px; line-height: 1.55; background: var(--panel); border: 1px solid var(--border); border-radius: var(--r); padding: 8px 0; overflow-x: auto; }
+.code-line { display: flex; padding: 0 12px; }
+.code-num { flex: none; width: 3.5em; color: var(--text-3); user-select: none; text-align: right; padding-right: 14px; }
+.code-text { white-space: pre; }
+.file-view-target { background: var(--amber-soft); outline: 1px solid rgba(212, 160, 58, 0.45); border-radius: var(--r-sm); }
+.files-section { font-size: 13px; font-weight: 600; color: var(--text-2); margin: 18px 0 10px; }
+.shared-files { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.shared-files .shared-file { max-width: none; }
+/* Table rows don't draw outlines or backgrounds well: highlight their cells instead. */
+tr.file-view-target { outline: none; background: none; }
+tr.file-view-target > td, tr.file-view-target > th { background: var(--amber-soft); }
+.shared-files { align-items: start; }
+/* The line a link pointed at: clearly marked (the soft amber alone is too faint on the dark page). */
+.file-view-target { background: rgba(212, 160, 58, 0.3); box-shadow: 0 0 0 4px rgba(212, 160, 58, 0.3); }
+tr.file-view-target { box-shadow: none; }
+tr.file-view-target > td, tr.file-view-target > th { background: rgba(212, 160, 58, 0.34); }

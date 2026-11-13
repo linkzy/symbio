@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Download, ExternalLink, File as FileIcon, FileSpreadsheet, FileText, Paperclip, Send, Trash2, Upload, X } from "lucide-react";
-import { api, attachmentBlob, openAttachment, subscribe, uploadAttachments, type Attachment, type Project } from "./api";
+import { api, attachmentBlob, openAttachment, subscribe, uploadAttachments, type Attachment, type Project, type SharedFile } from "./api";
+import { FileCard } from "./files";
 import { EmptyState, timeAgo } from "./ui";
 
 const IMAGE = /\.(png|jpe?g|gif|webp|bmp)$/i;
@@ -183,6 +184,7 @@ export function MessageAttachments({ projectId, files }: { projectId: string; fi
 /** Everything sent in this project's chats, to find, open, resend or delete. */
 export function FilesView({ project }: { project: Project }) {
   const [list] = useAttachments(project.id);
+  const shared = useSharedFiles(project.id);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState<number | null>(null);
@@ -233,15 +235,32 @@ export function FilesView({ project }: { project: Project }) {
         <div>
           <h2>Files</h2>
           <p className="muted small">
-            Everything sent in this project's chats, kept in <code>.symbio/attachments</code> (not committed). Drop files here to add them,
-            then send them to an agent.
+            Files the team shared with you, and the ones you sent in this project's chats (kept in <code>.symbio/attachments</code>, not
+            committed). Drop files here to add them, then send them to an agent.
           </p>
         </div>
         <span className="spacer" />
         <AttachButtonLabeled onFiles={upload} busy={uploading !== null} progress={uploading} />
       </div>
       {error && <div className="error">{error}</div>}
-      {list && list.length === 0 ? (
+      {shared.length > 0 && (
+        <>
+          <h3 className="files-section">From the team</h3>
+          <div className="shared-files">
+            {shared.map((s) => (
+              <FileCard
+                key={s.id}
+                projectId={project.id}
+                agentId={s.agentId}
+                path={s.rel}
+                caption={[nameOf(s.agentId), timeAgo(s.at), s.caption].filter(Boolean).join(" · ")}
+              />
+            ))}
+          </div>
+          {list && list.length > 0 && <h3 className="files-section">Sent by you</h3>}
+        </>
+      )}
+      {list && list.length === 0 && shared.length === 0 ? (
         <EmptyState icon={<Paperclip size={20} />} title="No files yet">
           Attach files in a chat (the paperclip, drag and drop, or paste a screenshot), or drop them here.
         </EmptyState>
@@ -323,6 +342,19 @@ function AttachButtonLabeled({ onFiles, busy, progress }: { onFiles: (files: Fil
       </button>
     </>
   );
+}
+
+/** Files agents shared with the human (share_file), newest first, kept current. */
+function useSharedFiles(projectId: string): SharedFile[] {
+  const [list, setList] = useState<SharedFile[]>([]);
+  useEffect(() => {
+    const load = () => api.sharedFiles(projectId).then(setList).catch(() => {});
+    load();
+    return subscribe((e) => {
+      if (e.type === "attachments.updated" && e.projectId === projectId) load();
+    });
+  }, [projectId]);
+  return list;
 }
 
 export function DropOverlay({ label }: { label: ReactNode }) {

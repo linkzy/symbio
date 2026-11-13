@@ -118,6 +118,8 @@ function toolLabel(tool: string, i: Record<string, unknown>): StepLabel {
       return { label: `Read ${fileName(i.path ?? i.file)}`, weight: 1 };
     case "view_image":
       return { label: `Looked at ${fileName(i.path ?? i.file)}`, weight: 1 };
+    case "share_file":
+      return { label: `Shared ${fileName(i.path)} with you`, detail: firstLine(i.caption), weight: 3 };
     case "save_rule":
     case "save_rule_area":
     case "save_rule_source":

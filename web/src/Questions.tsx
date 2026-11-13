@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { History, MessageCircleQuestion, Send } from "lucide-react";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { api, subscribe, type Project, type Question } from "./api";
+import { Md } from "./files";
 import { Avatar, timeAgo } from "./ui";
 
 // The team's open questions for the human (Needs you): kept in Symbio instead of the chat, where
@@ -101,7 +100,7 @@ export function OpenQuestions({ project, questions }: { project: Project; questi
           <div className="question-text">{q.question}</div>
           {q.context && (
             <div className="question-context md">
-              <Markdown remarkPlugins={[remarkGfm]}>{q.context}</Markdown>
+              <Md text={q.context} projectId={project.id} agentId={q.askedBy} className="" />
             </div>
           )}
           {q.options && (

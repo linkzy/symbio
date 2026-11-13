@@ -151,6 +151,7 @@ export type MessageKind =
   | "blocking"
   | "needs-human" // (before 0.12) a question for the human, sent as a message
   | "question" // an agent added a question to the human's open questions (team/questions.ts)
+  | "file" // an agent shared a file with the human (share_file, files.ts)
   | "urgent"
   | "system"
   | "asset-request"

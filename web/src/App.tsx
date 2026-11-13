@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, ChevronDown, ChevronRight, KeyRound, LayoutList, PauseCircle, Plus, Settings as SettingsIcon } from "lucide-react";
 import { api, LOCKED_EVENT, subscribe, type Project, type RuntimeInfo } from "./api";
+import { FileViewer } from "./files";
 import { Home } from "./Home";
 import { ProjectView } from "./ProjectView";
 import { leaveSettings, Settings } from "./Settings";
@@ -21,6 +22,12 @@ function useHashRoute() {
     addEventListener("hashchange", onChange);
     return () => removeEventListener("hashchange", onChange);
   }, []);
+  // "#/view/<project>?path=…&agent=…&line=…": a file on its own page (links in the team's messages).
+  const view = hash.match(/^#\/view\/([\w-]+)\?(.*)$/);
+  if (view) {
+    const q = new URLSearchParams(view[2]);
+    return { page: "view" as const, id: view[1], path: q.get("path") ?? "", agent: q.get("agent"), line: Number(q.get("line")) || undefined };
+  }
   const match = hash.match(/^#\/p\/([\w-]+)/);
   if (match) return { page: "project" as const, id: match[1] };
   if (hash.startsWith("#/settings")) return { page: "settings" as const };
@@ -140,7 +147,15 @@ export function App() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.12 }}
         >
-          {route.page === "project" ? <ProjectView projectId={route.id} /> : route.page === "settings" ? <Settings /> : <Home runtime={runtime} create={route.page === "home" && route.create} />}
+          {route.page === "project" ? (
+            <ProjectView projectId={route.id} />
+          ) : route.page === "view" ? (
+            <FileViewer projectId={route.id} rel={route.path} agentId={route.agent} line={route.line} />
+          ) : route.page === "settings" ? (
+            <Settings />
+          ) : (
+            <Home runtime={runtime} create={route.page === "home" && route.create} />
+          )}
         </motion.main>
       </AnimatePresence>
     </div>

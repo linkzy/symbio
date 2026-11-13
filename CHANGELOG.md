@@ -11,6 +11,12 @@ versions follow [Semantic Versioning](https://semver.org/).
   mattered ("Message to setor · Checked git status and 1 more · 3 steps"); the raw command and its
   output stay a click away. Helpers' reports show as cards, with the task and its title on top and a
   long summary folded; the instructions Symbio adds for core are left out.
+- **Files from the team, in the chat**: agents share files with you (`share_file`), and they show in
+  the chat (images, video and audio play in place, PDFs and documents open in a new tab, anything else
+  has a Download button) and in the Files tab, under *From the team*. Paths of project files in the
+  chat, *Needs you*, the Plan and Messages tabs become links: Markdown and code open on their own page,
+  formatted and at the line mentioned ("docs/regras/checagem-ia.md, linha 6"); a file still on a
+  helper's branch opens from the helper's copy. Downloads work over remote access too.
 
 ## [0.12.0]
 

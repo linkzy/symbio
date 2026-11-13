@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { CheckCircle2, Circle, CircleDashed, ClipboardList, Eye, Link2, Lock, MessageSquare, OctagonAlert } from "lucide-react";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { api, type Agent, type Plan, type Project, type Task, type TaskStatus } from "./api";
+import { Md } from "./files";
 import { Avatar, Drawer, EmptyState, clock } from "./ui";
 import { ReviewActions, ReviewGuide, TaskChanges, waitingForReview } from "./Review";
 
@@ -208,19 +207,19 @@ function TaskDetail({ project, task: t, agent, onClose }: { project: Project; ta
       {waitingForReview(t) && (
         <div className="review-box">
           <div className="review-box-head">Waiting for your review</div>
-          <ReviewGuide guide={t.guide} />
+          <ReviewGuide guide={t.guide} projectId={projectId} agentId={t.assignee} />
           <ReviewActions projectId={projectId} task={t} onDone={onClose} />
         </div>
       )}
       {marking && <ReviewMark projectId={projectId} task={t} />}
       <div className="md">
-        <Markdown remarkPlugins={[remarkGfm]}>{t.description || "_No description._"}</Markdown>
+        <Md text={t.description || "_No description._"} projectId={projectId} agentId={t.assignee} className="" />
       </div>
       {(t.status === "review" || t.status === "done" || t.guide) && <TaskChanges projectId={projectId} taskId={t.id} />}
       {!waitingForReview(t) && t.guide && (
         <>
           <h3>How to check it</h3>
-          <ReviewGuide guide={t.guide} />
+          <ReviewGuide guide={t.guide} projectId={projectId} agentId={t.assignee} />
         </>
       )}
       {t.notes.length > 0 && (

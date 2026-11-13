@@ -9,6 +9,9 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 - **A chat you can follow.** Done for the next release: steps in plain words, runs of steps folded
   into one line, helpers' reports as cards. Left: visual extras (tables are already rendered; charts
   and live counters), to see whether they're still wanted.
+- **Files from agents, in the chat.** Done for the next release: `share_file` and file cards (in
+  place for images, video, audio), paths as links everywhere (Markdown formatted at the line, the
+  helper's copy for a file on its branch), the Files tab's *From the team*.
 
 ## Next
 

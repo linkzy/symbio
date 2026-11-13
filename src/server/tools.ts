@@ -93,6 +93,16 @@ const closeQuestion: Tool = {
   run: ({ question_id, answer }, { team, project, agent }) => team.questions.closeByAgent(project, agent, String(question_id), answer ? String(answer) : undefined),
 };
 
+const shareFile: Tool = {
+  name: "share_file",
+  description:
+    "Show the human a file you produced or found (an image, a video, a report, a spreadsheet, a page): it appears in the chat " +
+    "(images, video, audio and PDFs in place, other files with a download button) and in the project's Files tab. " +
+    "Use it instead of only giving a path when they should look at the file. Files in the project folder or your working folder.",
+  inputSchema: obj({ path: str("The file, relative to your working folder or absolute"), caption: str("A line saying what it is") }, ["path"]),
+  run: ({ path, caption }, { team, project, agent }) => team.shareFile(project, agent, String(path), caption ? String(caption) : undefined),
+};
+
 const listTeam: Tool = {
   name: "list_team",
   description: "List the agents on this project: name, role, purpose, status and model.",
@@ -695,6 +705,7 @@ const COMMON = [
   askHuman,
   listQuestions,
   closeQuestion,
+  shareFile,
   listTeam,
   listAssets,
   requestAsset,

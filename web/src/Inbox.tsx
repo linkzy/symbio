@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { CircleAlert, ClipboardList, KeyRound, MessageCircleQuestion, Plug, ShieldQuestion, ListChecks } from "lucide-react";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { api, subscribe, type Approval, type LoggedMessage, type PermissionRequest, type Plan, type Project, type Question, type Task } from "./api";
+import { Md } from "./files";
 import { OpenQuestions, useQuestions } from "./Questions";
 import { openQuestions } from "./Messages";
 import { AgentForms } from "./FormCard";
@@ -120,7 +119,7 @@ export function InboxDrawer({
             <div className="small">
               <strong>{t.id}</strong> {t.title}
             </div>
-            <ReviewGuide guide={t.guide} />
+            <ReviewGuide guide={t.guide} projectId={project.id} agentId={t.assignee} />
             <TaskChanges projectId={project.id} taskId={t.id} />
             <ReviewActions projectId={project.id} task={t} />
           </Item>
@@ -261,7 +260,7 @@ function QuestionItem({ project, question: q, agentName }: { project: Project; q
   return (
     <Item icon={<MessageCircleQuestion size={14} />} kind="Question" agent={agentName} time={q.time}>
       <div className="md small">
-        <Markdown remarkPlugins={[remarkGfm]}>{q.text}</Markdown>
+        <Md text={q.text} projectId={project.id} agentId={q.from} className="" />
       </div>
       <textarea
         rows={2}

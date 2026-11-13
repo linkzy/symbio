@@ -15,6 +15,7 @@ import { beginOauth, cancelOauth, completeOauth, connectWithKey, listProviders, 
 import { docsRoot, listDocs, rawDoc, readDoc, searchDocs, writeDoc } from "./docs.js";
 import { readRegister } from "./rules.js";
 import { addAttachment, attachmentNote, getAttachments, listAttachments, markSent, removeAttachment } from "./attachments.js";
+import { fileResponse, listShared, resolveFile, type ResolvedFile } from "./files.js";
 import type { Team } from "./team.js";
 import type { Connections } from "./connections.js";
 import { PriceBook, projectUsage, resolvePrices, type Price } from "./costs.js";
@@ -806,6 +807,65 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     } catch (err) {
       return c.json({ error: (err as Error).message }, 404);
     }
+  });
+
+  // ---- project files: paths agents mention become links, files they share show in the chat (files.ts)
+  const fileView = (f: ResolvedFile) => ({ rel: f.rel, where: f.where, agentId: f.agentId, kind: f.kind, size: f.size });
+  const agentOf = (project: ReturnType<typeof withProject>, id?: string | null) => (id ? project.agents.find((a) => a.id === id) ?? null : null);
+
+  // Which of these paths exist (looked up as the agent that mentioned them meant them).
+  api.post("/projects/:id/files/resolve", async (c) => {
+    const project = withProject(c.req.param("id"));
+    const body = await c.req.json<{ paths?: unknown[]; agentId?: string }>();
+    const agent = agentOf(project, body.agentId);
+    const paths = (body.paths ?? []).filter((p): p is string => typeof p === "string").slice(0, 100);
+    const out = await Promise.all(
+      paths.map(async (p) => {
+        try {
+          const f = await resolveFile(project, p, agent);
+          return f ? { path: p, found: true, ...fileView(f) } : { path: p, found: false };
+        } catch (err) {
+          return { path: p, found: false, refused: (err as Error).message };
+        }
+      }),
+    );
+    return c.json(out);
+  });
+
+  const fileFor = async (c: { req: { param: (k: string) => string; query: (k: string) => string | undefined } }) => {
+    const project = withProject(c.req.param("id"));
+    let f: ResolvedFile | null;
+    try {
+      f = await resolveFile(project, c.req.query("path") ?? "", agentOf(project, c.req.query("agent")));
+    } catch (err) {
+      throw new HttpError(403, (err as Error).message);
+    }
+    if (!f) throw new HttpError(404, "file not found");
+    return f;
+  };
+
+  // The file itself: shown in the browser when it can be (images, video, audio, PDF, text), else downloaded.
+  api.get("/projects/:id/files/raw", async (c) => fileResponse(await fileFor(c), { download: c.req.query("download") === "1", range: c.req.header("range") }));
+
+  // A text file's content, for the viewer page (Markdown formatted, code with line numbers).
+  api.get("/projects/:id/files/text", async (c) => {
+    const f = await fileFor(c);
+    if (f.kind !== "markdown" && f.kind !== "text") throw new HttpError(400, "not a text file");
+    if (f.size > 3 * 1024 * 1024) throw new HttpError(413, "too large to show; download it instead");
+    return c.json({ ...fileView(f), content: await fs.readFile(f.abs, "utf8") });
+  });
+
+  // Files agents shared with the human (share_file), newest first, with whether they're still there.
+  api.get("/projects/:id/shared-files", async (c) => {
+    const project = withProject(c.req.param("id"));
+    const list = await listShared(project);
+    const out = await Promise.all(
+      list.map(async (s) => {
+        const f = await resolveFile(project, s.rel, agentOf(project, s.agentId)).catch(() => null);
+        return { ...s, path: undefined, available: !!f };
+      }),
+    );
+    return c.json(out.reverse());
   });
 
   api.post("/projects/:id/agents/:agentId/interrupt", async (c) => {

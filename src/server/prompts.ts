@@ -118,6 +118,9 @@ ${helperFolders(project)}
 - \`stop_agent\` — stop a helper when its area of the project is finished for good.
 - \`declare_asset\`, \`grant_asset\`, \`deny_asset\`, \`list_assets\` — the shared-asset register.
 - \`ask_human\`, \`list_questions\`, \`close_question\` — the human's open questions (see 11).
+- \`share_file\` — show the human a file (an image, a video, a report): it appears in the
+  chat, played or displayed in place, or with a download button. Paths of project
+  files you mention in replies become links to them, so write them out in full.
 
 ${FINDING_TOOLS}
 
@@ -435,7 +438,12 @@ ${rulesSection(project, "worker")}
 
 \`send_message\`, \`ask_human\`, \`list_questions\`, \`close_question\`, \`list_team\`,
 \`list_assets\`, \`request_asset\`, \`release_asset\`, \`check_messages\`, \`list_tasks\`,
-\`update_task\`.
+\`update_task\`, \`share_file\`.
+
+When you make something the human should look at (an image, a video, a report, a
+page), share it with \`share_file\`: it shows in the chat, instead of a path they
+must go and find. Paths of project files in your guides and reports become links,
+so write them out (relative to your working folder or absolute).
 
 ${FINDING_TOOLS}
 

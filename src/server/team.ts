@@ -24,6 +24,7 @@ import { coordinatorTools, workerTools, type ToolContext } from "./tools.js";
 import { SharedAssets } from "./team/asset-protocol.js";
 import { Reviews } from "./team/review.js";
 import { Questions } from "./team/questions.js";
+import { addShared } from "./files.js";
 import type { QuestionInput } from "./questions.js";
 import { active, type TeamCore } from "./team/core.js";
 import { ModelFallback } from "./team/fallback.js";
@@ -944,6 +945,17 @@ export class Team implements TeamCore {
   async askHuman(project: Project, from: Agent, input: QuestionInput): Promise<string> {
     if (from.role === "worker") this.quiet.reported(from); // it's waiting on the human, not quiet
     return this.questions.ask(project, from, input);
+  }
+
+  /** A file an agent wants the human to see: shown in its chat and in the Files tab (files.ts). */
+  async shareFile(project: Project, from: Agent, given: string, caption?: string): Promise<string> {
+    const shared = await addShared(project, from, given, caption);
+    await this.log(project, { from: from.id, to: "human", kind: "file", text: `${shared.rel}${shared.caption ? `: ${shared.caption}` : ""}` });
+    bus.publish({ type: "attachments.updated", projectId: project.id });
+    return (
+      `Shared ${shared.rel} with the human: it shows in your chat (${shared.kind === "other" ? "with a download button" : "displayed in place"}) ` +
+      "and in the project's Files tab. No need to repeat its path in your reply."
+    );
   }
 
   /**

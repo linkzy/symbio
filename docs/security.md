@@ -17,6 +17,13 @@ working around the human's control, and web pages in your browser reaching the l
   (`src/server/origin.ts`).
 - The agents' tool endpoint (`/mcp/<token>`) has its own unguessable per-folder token, and every call
   is matched to a live agent session; core-only tools check the caller's role.
+- **Project files in the browser** (links to paths agents mention, files they share,
+  `src/server/files.ts`): only files inside the project folder or a helper's copy are served, checked
+  on real paths so a symlink can't lead outside. Never git's internals (`.git/`), Symbio's own data
+  in `.symbio/` (except attachments and docs), or files that look like secrets (`.env*`, private keys,
+  `.pem`/`.pfx`/`.p12`, `.npmrc`, `.netrc`). Files are fetched with the UI key and shown from memory;
+  the key never goes in a file URL. Only images, video, audio, PDFs and plain text are shown in the
+  browser; anything else downloads.
 - Debug routes that pass OpenCode responses through (`/api/debug/opencode/*`, raw model data) are
   off unless Symbio is started with `SYMBIO_DEBUG=1`, because those responses can contain provider
   keys.

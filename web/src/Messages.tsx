@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MessagesSquare } from "lucide-react";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { api, subscribe, type LoggedMessage, type Project } from "./api";
+import { Md } from "./files";
 import { Avatar, EmptyState, clock } from "./ui";
 
 const KIND: Record<string, { label: string; tone?: string }> = {
@@ -99,7 +98,7 @@ export function Messages({ project, log, onOpenAgent }: { project: Project; log:
                     <span className="when">{clock(m.time)}</span>
                   </div>
                   <div className="event-body md">
-                    <Markdown remarkPlugins={[remarkGfm]}>{m.text}</Markdown>
+                    <Md text={m.text} projectId={project.id} agentId={m.from} className="" />
                   </div>
                   {open.has(m.id) && m.kind === "needs-human" && <Reply project={project} agentId={m.from} />}
                   {open.has(m.id) && m.kind === "form" && onOpenAgent && (

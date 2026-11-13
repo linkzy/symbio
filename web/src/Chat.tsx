@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowUp, Brain, Check, CircleAlert, CircleStop, Folder, FolderInput, GitBranch, Info, Loader2, Pencil, RefreshCw, Repeat, RotateCcw, Wrench, X } from "lucide-react";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { api, subscribe, type Agent, type Project, type CoreMode } from "./api";
 import { PendingForms } from "./FormCard";
 import { AttachButton, DropOverlay, MessageAttachments, PendingFiles, splitAttachmentNote, usePendingFiles } from "./Attachments";
 import { Avatar, statusText } from "./ui";
-import { stepLabels, summarize, type StepLabel, type ToolCall } from "./steps";
+import { callsFromCode, stepLabels, summarize, type StepLabel, type ToolCall } from "./steps";
+import { FileCard, Md } from "./files";
 
 type Block =
   | { kind: "text" | "reasoning"; key: string; text: string }
@@ -487,15 +486,15 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
             {historyUnits(history ?? []).map((u) =>
               u.kind === "assistant" ? (
                 <motion.div key={u.key} className="msg-assistant" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.15 }}>
-                  <Blocks blocks={u.blocks} />
+                  <Blocks blocks={u.blocks} projectId={project.id} agentId={agent.id} />
                 </motion.div>
               ) : (
-                <HistoryItem key={u.message.id} message={u.message} projectId={project.id} />
+                <HistoryItem key={u.message.id} message={u.message} project={project} />
               ),
             )}
             {live.length > 0 && (
               <motion.div key="live" className="msg-assistant" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                <Blocks blocks={live} />
+                <Blocks blocks={live} projectId={project.id} agentId={agent.id} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -650,7 +649,8 @@ function Folded({ children }: { children: React.ReactNode }) {
   );
 }
 
-function HistoryItem({ message: m, projectId }: { message: any; projectId: string }) {
+function HistoryItem({ message: m, project }: { message: any; project: Project }) {
+  const projectId = project.id;
   const anim = { initial: { opacity: 0, y: 4 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.15 } };
 
   if (m.type === "user" || m.type === "synthetic") {
@@ -674,9 +674,12 @@ function HistoryItem({ message: m, projectId }: { message: any; projectId: strin
             )}
           </div>
           <Folded>
-            <div className="msg-agent-body md">
-              <Markdown remarkPlugins={[remarkGfm]}>{report ? report.summary || "_No summary._" : body}</Markdown>
-            </div>
+            <Md
+              className="msg-agent-body md"
+              text={report ? report.summary || "_No summary._" : body}
+              projectId={projectId}
+              agentId={project.agents.find((a) => a.name === fromAgent[1])?.id}
+            />
           </Folded>
         </motion.div>
       );
@@ -770,12 +773,30 @@ function historyUnits(history: any[]): HistoryUnit[] {
   return units;
 }
 
-/** Text as it is; runs of steps (and the thinking between them) folded into one line each. */
-function Blocks({ blocks }: { blocks: Block[] }) {
-  const groups: (Block | { kind: "steps"; key: string; items: Block[] })[] = [];
+/** Files a step shared with the human (share_file), alone or among a code-mode script's calls. */
+function sharedIn(b: ToolBlock): { path: string; caption?: string }[] {
+  const input = (b.input ?? {}) as Record<string, unknown>;
+  if (/(^|[._])share_file$/.test(b.name) && typeof input.path === "string") return [{ path: input.path, caption: input.caption as string | undefined }];
+  const calls = b.calls?.length ? b.calls : typeof input.code === "string" ? callsFromCode(input.code) : [];
+  return calls
+    .filter((c) => /(^|\.)share_file$/.test(c.tool) && typeof c.input?.path === "string" && c.status !== "error")
+    .map((c) => ({ path: c.input!.path as string, caption: c.input!.caption as string | undefined }));
+}
+
+/**
+ * Text as it is (paths in it linked to the files), runs of steps (and the thinking between them)
+ * folded into one line each, and files the agent shared shown as cards, outside the fold.
+ */
+function Blocks({ blocks, projectId, agentId }: { blocks: Block[]; projectId: string; agentId: string }) {
+  type Group = Block | { kind: "steps"; key: string; items: Block[] } | { kind: "file"; key: string; path: string; caption?: string };
+  const groups: Group[] = [];
   for (const b of blocks) {
     const last = groups[groups.length - 1];
     const inRun = last?.kind === "steps";
+    if (b.kind === "tool" && b.status === "done" && sharedIn(b).length) {
+      sharedIn(b).forEach((s, i) => groups.push({ kind: "file", key: `${b.key}:file:${i}`, ...s }));
+      continue;
+    }
     if (b.kind === "tool" || (b.kind === "reasoning" && inRun)) {
       if (inRun) (last as { items: Block[] }).items.push(b);
       else groups.push({ kind: "steps", key: b.key, items: [b] });
@@ -785,13 +806,8 @@ function Blocks({ blocks }: { blocks: Block[] }) {
     <>
       {groups.map((g) => {
         if (g.kind === "steps") return <StepGroup key={g.key} items={g.items} />;
-        if (g.kind === "text") {
-          return (
-            <div key={g.key} className="md">
-              <Markdown remarkPlugins={[remarkGfm]}>{g.text}</Markdown>
-            </div>
-          );
-        }
+        if (g.kind === "file") return <FileCard key={g.key} projectId={projectId} agentId={agentId} path={g.path} caption={g.caption} />;
+        if (g.kind === "text") return <Md key={g.key} text={g.text} projectId={projectId} agentId={agentId} />;
         if (g.kind === "reasoning") return <Reasoning key={g.key} text={g.text} />;
         if (g.kind === "error") {
           return (

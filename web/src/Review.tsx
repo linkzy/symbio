@@ -1,14 +1,16 @@
 import { useState } from "react";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { Check, ChevronDown, ChevronRight, CornerUpLeft, FileDiff, ListChecks } from "lucide-react";
 import { api, type Task, type TaskChange } from "./api";
+import { Md } from "./files";
 
 // The human's review of a finished task (Settings → Team → Who reviews the work): the helper's
 // guide for checking it, and approve / send back. Used in Needs you and in the Plan tab.
 
-/** How to check the work, as its helper wrote it (links open in a new tab). */
-export function ReviewGuide({ guide }: { guide?: string }) {
+/**
+ * How to check the work, as its helper wrote it: links open in a new tab, and paths to files open
+ * them (looked up in the helper's own copy first, where the work is before it's merged).
+ */
+export function ReviewGuide({ guide, projectId, agentId }: { guide?: string; projectId: string; agentId?: string | null }) {
   if (!guide?.trim()) return <div className="small subtle">No guide was given for this task.</div>;
   return (
     <div className="review-guide md">
@@ -16,18 +18,7 @@ export function ReviewGuide({ guide }: { guide?: string }) {
         <ListChecks size={13} />
         How to check it
       </div>
-      <Markdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          a: ({ href, children }) => (
-            <a href={href} target="_blank" rel="noopener noreferrer">
-              {children}
-            </a>
-          ),
-        }}
-      >
-        {guide}
-      </Markdown>
+      <Md text={guide} projectId={projectId} agentId={agentId} className="" />
     </div>
   );
 }

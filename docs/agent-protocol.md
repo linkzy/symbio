@@ -134,6 +134,7 @@ All agents:
 | `ask_human` | Add a question to the human's open questions (Needs you): one per call, with context, options, the task and whether work is blocked; the answer arrives later as a message |
 | `list_questions` | The open questions, and the ones closed recently with their answers |
 | `close_question` | Close an open question: with the answer the human gave in the chat, or without one when it's no longer needed |
+| `share_file` | Show the human a file (image, video, report…): a card in the chat, shown in place or with a download button, and in the Files tab |
 | `list_team` | Agents on the project: name, role, purpose, status, model |
 | `list_assets` | Declared shared assets, holders and queues |
 | `request_asset` | Ask core for a shared asset; don't touch it until granted |

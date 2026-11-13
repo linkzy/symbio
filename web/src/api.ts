@@ -333,6 +333,55 @@ const token = (() => {
  * Opens a file from the project docs (a PDF a rule cites, an image) in a new tab, at a page for
  * PDFs; types a browser can't show are downloaded. Fetched with the key, so it never sits in a URL.
  */
+/** A file in the project folder or a helper's copy, as the server found it (files.ts). */
+export interface ProjectFile {
+  path: string;
+  found: boolean;
+  rel?: string;
+  /** "project", or the helper whose copy it's in. */
+  where?: string;
+  agentId?: string | null;
+  kind?: "markdown" | "text" | "image" | "video" | "audio" | "pdf" | "other";
+  size?: number;
+  refused?: string;
+}
+
+export interface SharedFile {
+  id: string;
+  rel: string;
+  where: string;
+  agentId: string;
+  caption?: string;
+  kind: NonNullable<ProjectFile["kind"]>;
+  size: number;
+  at: number;
+  available: boolean;
+}
+
+const fileQuery = (rel: string, agentId?: string | null) => `path=${encodeURIComponent(rel)}${agentId ? `&agent=${encodeURIComponent(agentId)}` : ""}`;
+export const projectFileUrl = (projectId: string, rel: string, agentId?: string | null) => `/api/projects/${projectId}/files/raw?${fileQuery(rel, agentId)}`;
+
+/** Opens a project file: shown in a new tab when the browser can, else downloaded (fetched with the key). */
+export function openProjectFile(projectId: string, f: { rel: string; agentId?: string | null }, download = false) {
+  openFile(projectFileUrl(projectId, f.rel, f.agentId) + (download ? "&download=1" : ""), f.rel.split("/").pop() ?? "file", { download });
+}
+
+// Previews (images, video, audio): fetched once with the key, then shown from memory.
+const fileBlobs = new Map<string, Promise<string>>();
+export function projectFileBlob(projectId: string, rel: string, agentId?: string | null): Promise<string> {
+  const url = projectFileUrl(projectId, rel, agentId);
+  let p = fileBlobs.get(url);
+  if (!p) {
+    p = fetch(url, { headers: { "x-symbio-token": token } }).then(async (res) => {
+      if (!res.ok) throw new Error(res.statusText);
+      return URL.createObjectURL(await res.blob());
+    });
+    p.catch(() => fileBlobs.delete(url));
+    fileBlobs.set(url, p);
+  }
+  return p;
+}
+
 export function openDocFile(projectId: string, path: string, page?: number) {
   openFile(`/api/projects/${projectId}/docs/raw?path=${encodeURIComponent(path)}`, path.split("/").pop() ?? "file", { page });
 }
@@ -602,6 +651,11 @@ export const api = {
   pauseAll: () => call<{ paused: string[] }>("POST", "/pause-all"),
   plan: (projectId: string) => call<Plan>("GET", `/projects/${projectId}/plan`),
   taskChanges: (projectId: string, taskId: string) => call<{ files: TaskChange[]; note?: string }>("GET", `/projects/${projectId}/plan/tasks/${taskId}/changes`),
+  resolveFiles: (projectId: string, paths: string[], agentId?: string | null) =>
+    call<ProjectFile[]>("POST", `/projects/${projectId}/files/resolve`, { paths, agentId: agentId ?? undefined }),
+  fileText: (projectId: string, rel: string, agentId?: string | null) =>
+    call<{ rel: string; where: string; agentId: string | null; kind: string; size: number; content: string }>("GET", `/projects/${projectId}/files/text?${fileQuery(rel, agentId)}`),
+  sharedFiles: (projectId: string) => call<SharedFile[]>("GET", `/projects/${projectId}/shared-files`),
   questions: (projectId: string) => call<Question[]>("GET", `/projects/${projectId}/questions`),
   answerQuestions: (projectId: string, answers: { id: string; answer: string }[]) =>
     call<Question[]>("POST", `/projects/${projectId}/questions/answers`, { answers }),

@@ -204,6 +204,15 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "their own message is fine). If questions of yours are still waiting for an answer in the chat, add each with ask_human now. " +
       "And replies to helpers' reports stay short: act on them, then one line on what changed at most; the human may be away.",
   },
+  {
+    id: "2026-11-13-files-in-chat",
+    text:
+      "Files in the chat: share_file(path, caption) shows the human a file you or a helper made (an image, a video, a report, a " +
+      "page) right in the chat, played or displayed in place or with a download button, and in the Files tab. Use it instead of " +
+      "giving a path they must go and find. Paths of project files written in replies, guides, questions and reports now " +
+      "become links that open the file (Markdown formatted, at the line mentioned), so write them out in full. Tell your " +
+      "helpers when you next write to them.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */
