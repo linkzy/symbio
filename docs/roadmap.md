@@ -10,11 +10,7 @@ Nothing in progress; the top of Next is what comes up.
 
 ## Next
 
-1. **Notifications.** When something needs the human (an open question, an approval, a plan to review, a
-   stuck agent) or a task finishes, send it where they are: browser/phone notifications, and
-   optionally a messaging app (e.g. Telegram) or e-mail, with per-project choices. Essential for
-   steering Symbio away from the computer.
-2. **A chat you can follow.** Today the chat shows the team's work as the model typed it: lines like
+1. **A chat you can follow.** Today the chat shows the team's work as the model typed it: lines like
    `shell git merge symbio/setor --no-edit 2>&1 | Select -Last 1; git diff …` or `execute
    symbio.send_message`, and helpers' reports as one dense paragraph. Instead:
    - **Steps in plain words.** Symbio's own tools read as what they did, from their arguments and
@@ -30,7 +26,7 @@ Nothing in progress; the top of Next is what comes up.
    - **Visual when it fits.** Tables, a chart for numbers, a counter while tests run.
 
    Like the step lists of ChatGPT, Claude and the coding assistants: copy what works there.
-3. **Files from agents, in the chat.** When an agent produces a file the human needs (an image, a
+2. **Files from agents, in the chat.** When an agent produces a file the human needs (an image, a
    video, a report, a spreadsheet), it shows up in the chat instead of as a path to go and find:
    - Images, video, audio and PDFs play or display in place; other files get a card with their
      name, size and a **Download** button, served by Symbio, so it works over remote access too.
@@ -40,6 +36,10 @@ Nothing in progress; the top of Next is what comes up.
    - They're kept in the project's Files tab, next to the files the human sent.
 
    Like the file cards in ChatGPT or Claude.
+3. **Notifications.** When something needs the human (an open question, an approval, a plan to review, a
+   stuck agent) or a task finishes, send it where they are: browser/phone notifications, and
+   optionally a messaging app (e.g. Telegram) or e-mail, with per-project choices. Essential for
+   steering Symbio away from the computer.
 4. **Talk to Symbio.** A spoken conversation with core, hands-free: e.g. from a phone connected to
    the car over Bluetooth, with Symbio working on the computer at home (remote access). Not just
    dictation into the chat box:
