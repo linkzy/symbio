@@ -69,9 +69,16 @@ Collected, not sorted or promised yet.
   script, or any CLI), with the output scrubbed and *Ask me* by default. Weaker than the other
   types: the command could print or save the value, so only the approval protects it. Today the
   project's own scripts are run directly, and FTP has its own type.
-- **A beta channel for updates** *(when there are more users)*. Publish to a beta first (npm
-  `next`) for those who opt in, and to everyone after a few quiet days. With two users it would only
-  add work; until then, releases are gated on the tests and `sym update --to` goes back.
+- **Beta updates and feedback, opt-in** *(when people beyond the current users show up)*. In
+  Settings → Updates, next to *Check now*, a choice to get beta versions: those who opt in get each
+  release first (npm `next`, or the installer's beta channel), everyone else a few days later if
+  nothing broke, like Claude Code's *latest* and *stable* channels. For beta users, a **Report a
+  problem / Send feedback** button: a form with what they write plus Symbio's version and the
+  operating system, nothing about their projects, shown to them before it's sent; it becomes a
+  GitHub issue, or goes to a small form service for people without a GitHub account. No telemetry:
+  the only sign that someone uses Symbio is what they choose to send. Maybe also one anonymous
+  "hello" (the version, nothing else) when someone opts in, as the one count of real users: npm
+  download numbers are mostly mirrors and bots.
 - **A first-run experience.** A sample project and templates, so a new user sees the team at work in
   five minutes instead of starting from an empty folder.
 - **Stronger isolation.** Optionally run agents in a container or sandbox (today they run with the
@@ -90,9 +97,22 @@ Collected, not sorted or promised yet.
 - **Eyes for agents.** Screenshots of what they build, routed to vision-capable models (agents can
   already look at images with `view_image`).
 - **Per-task model routing.** Cheap models for simple tasks, strong ones for hard ones.
-- **Installing without Node.js.** An installer or a single download for people who don't have
-  Node.js and npm (today Symbio needs Node 22+ and `npm install -g symbio`), on Windows, macOS and
-  Linux.
+- **Installing without Node.js** *(important before inviting people who aren't developers)*. Today
+  Symbio needs Node 22+ and `npm install -g symbio`, so it only reaches people who have both, on top
+  of OpenCode. Do what OpenCode and Claude Code do (checked November 2026): one native executable
+  per platform, installed with a one-line command (`irm …/install.ps1 | iex` on Windows,
+  `curl … | bash` elsewhere) or a downloaded installer, and npm kept as another way to get the same
+  executable. Claude Code's native install updates itself in the background, so automatic updates
+  and *Check now* carry over: the new version is downloaded next to the old one and used from the
+  next start, and the previous one stays to go back to. To work out:
+  - Building one executable from the server and the UI (Bun's `--compile`, as OpenCode does, or
+    Node's single executable applications), with the native parts (the OS keyring module, SSH).
+  - OpenCode: today it comes as an npm dependency; the executable would download OpenCode's own
+    binary on first run, or ship with it.
+  - Trust on Windows: an unsigned `.exe` gets SmartScreen warnings and antivirus false positives,
+    which scare off exactly these users; a code-signing certificate costs money every year.
+  - The first run still needs a model provider: lead new users to Settings → Model providers.
+  - Moving npm installs over without losing anything (`~/.symbio` stays where it is).
 - **Jira and Trello connections** *(low priority)*. Connect a board, like GitHub or Azure DevOps
   today, so core can read the work from it (issues, cards, their details) and turn it into the
   local plan for helpers, then mark items done on the board as their tasks finish.
