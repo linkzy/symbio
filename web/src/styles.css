@@ -890,3 +890,21 @@ tr.file-view-target > td, tr.file-view-target > th { background: var(--amber-sof
 .file-view-target { background: rgba(212, 160, 58, 0.3); box-shadow: 0 0 0 4px rgba(212, 160, 58, 0.3); }
 tr.file-view-target { box-shadow: none; }
 tr.file-view-target > td, tr.file-view-target > th { background: rgba(212, 160, 58, 0.34); }
+
+/* Model picker: the lock keeps a model for core only (next to the crown, core may use it). */
+.lock-btn { background: none; border: none; color: var(--text-3); cursor: pointer; padding: 2px; display: inline-flex; border-radius: var(--r-sm); opacity: 0.55; }
+.lock-btn:hover { color: var(--text); background: var(--surface-hover); opacity: 1; }
+.lock-btn.on { color: var(--accent-text); opacity: 1; }
+.model-picker-head .btn.xs { flex: none; }
+.folder-browser-new { display: flex; gap: 6px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+.folder-browser-new input { flex: 1; min-width: 0; }
+
+/* Settings → Model prices → Simulate */
+.simulator { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 16px; }
+.simulator-title { font-size: 12.5px; font-weight: 600; color: var(--text-2); margin-bottom: 8px; }
+.simulator-fields { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.simulator-fields select { min-width: 220px; }
+.simulator-note { margin-top: 8px; }
+.simulator-result { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; padding: 12px; border: 1px solid var(--border-strong); border-radius: var(--r-lg); background: var(--surface); }
+.simulator-result > div { display: flex; flex-direction: column; gap: 2px; }
+.simulator-result strong { font-size: 20px; font-variant-numeric: tabular-nums; }

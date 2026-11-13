@@ -3,7 +3,7 @@ import { AnimatePresence } from "motion/react";
 import { Trash2, X } from "lucide-react";
 import { api, type Project, type ProjectConnection } from "./api";
 import { ConnectionsPicker } from "./ConnectionsPicker";
-import { ModelPicker } from "./ModelPicker";
+import { ModelPicker, choiceBody, choiceOf } from "./ModelPicker";
 import { RemoveDialog } from "./ProjectMenu";
 import { UsageSection } from "./Usage";
 import { HousekeepingSection } from "./Housekeeping";
@@ -303,14 +303,14 @@ function Connections({ project, onChanged }: { project: Project; onChanged: (p: 
 }
 
 function Models({ project, onChanged }: { project: Project; onChanged: (p: Project) => void }) {
-  const [allowed, setAllowed] = useState(project.allowedModels);
-  const [lead, setLead] = useState(project.coordinatorModel);
+  const [choice, setChoice] = useState(() => choiceOf(project));
   const [saving, setSaving] = useState(false);
-  const dirty = lead !== project.coordinatorModel || JSON.stringify(allowed) !== JSON.stringify(project.allowedModels);
+  const dirty = JSON.stringify(choice) !== JSON.stringify(choiceOf(project));
+  const helpersLeft = choice.allowed.some((m) => !choice.coreOnly.includes(m));
   async function save() {
     setSaving(true);
     try {
-      onChanged(await api.updateProject(project.id, { allowedModels: allowed, coordinatorModel: lead }));
+      onChanged(await api.updateProject(project.id, choiceBody(choice)));
     } catch (e) {
       alert((e as Error).message);
     } finally {
@@ -322,27 +322,21 @@ function Models({ project, onChanged }: { project: Project; onChanged: (p: Proje
       <div className="section-head">
         <div>
           <h2>Models</h2>
-          <p>Agents may use any selected model and switch to the next one when a model fails. Adding a model also resumes agents that got stuck.</p>
+          <p>
+            Agents switch to the next model they may use when one fails. The crown marks the models core may use (core runs on the
+            first unless you change it in its chat), the lock keeps a model for core only. Adding a model also resumes agents that got
+            stuck.
+          </p>
         </div>
       </div>
       <div style={{ padding: 12 }}>
-        <ModelPicker
-          allowed={allowed}
-          coordinator={lead}
-          onChange={(a, c) => {
-            setAllowed(a);
-            setLead(c);
-          }}
-        />
+        <ModelPicker value={choice} onChange={setChoice} />
       </div>
       <SaveBar
-        dirty={dirty && allowed.length > 0 && !!lead}
+        dirty={dirty && choice.allowed.length > 0 && !!choice.coordinator && helpersLeft}
         saving={saving}
         onSave={save}
-        onReset={() => {
-          setAllowed(project.allowedModels);
-          setLead(project.coordinatorModel);
-        }}
+        onReset={() => setChoice(choiceOf(project))}
       />
     </section>
   );

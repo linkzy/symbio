@@ -6,7 +6,9 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 
 ## Now
 
-Nothing in progress; the top of Next is what comes up.
+- **Quality-of-life batch.** Done for the next release: models for core and for helpers (crowns and locks), select
+  all / none, working agents first in the team list, new folders over remote access, files with answers and
+  send-backs, the price simulator.
 
 ## Next
 

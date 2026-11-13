@@ -142,7 +142,8 @@ costs, `Housekeeping.tsx` the daily check, `Remote.tsx` remote access, and
 - **Watchdog.** An agent that is busy with no events for `SYMBIO_STUCK_MINUTES` is interrupted and
   told what it was stuck on.
 - **Model fallback.** When a model fails for provider reasons (quota, outage, repeated retries), the
-  agent moves to the next allowed model and is told why. Retries count: four failed retries, or two
+  agent moves to the next model its role may use (`modelsFor` in `store.ts`: core the crowned models, helpers
+  every allowed model except the core-only ones) and is told why. Retries count: four failed retries, or two
   when they timed out (each timeout already costs minutes of waiting). If every allowed model failed recently,
   the agent stops with a visible problem; adding a model resumes it.
 - **Memory recycling.** OpenCode's memory is measured (the whole process tree). Above

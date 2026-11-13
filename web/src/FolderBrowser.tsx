@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowUp, Folder, HardDrive, Home as HomeIcon } from "lucide-react";
+import { ArrowUp, Folder, FolderPlus, HardDrive, Home as HomeIcon } from "lucide-react";
 import { api } from "./api";
 
 type Listing = Awaited<ReturnType<typeof api.listDirs>>;
@@ -12,6 +12,8 @@ export function FolderBrowser({ start, onPick, onCancel }: { start?: string; onP
   const [listing, setListing] = useState<Listing | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // The name of a new folder being typed (null: not adding one).
+  const [newName, setNewName] = useState<string | null>(null);
 
   const open = async (path?: string) => {
     setLoading(true);
@@ -28,6 +30,19 @@ export function FolderBrowser({ start, onPick, onCancel }: { start?: string; onP
     void open(start || undefined).then(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  async function create() {
+    if (!listing || !newName?.trim()) return;
+    setLoading(true);
+    try {
+      const { path } = await api.makeDir(listing.path, newName.trim());
+      setNewName(null);
+      await open(path);
+    } catch (e) {
+      setError((e as Error).message);
+      setLoading(false);
+    }
+  }
+
   const join = (dir: string, name: string) => (dir.endsWith(listing!.sep) ? dir + name : dir + listing!.sep + name);
 
   return (
@@ -39,7 +54,31 @@ export function FolderBrowser({ start, onPick, onCancel }: { start?: string; onP
         <code className="folder-browser-path ellipsis" title={listing?.path}>
           {listing?.path ?? "…"}
         </code>
+        <button className="btn ghost sm" title="Create a folder here" disabled={!listing || loading} onClick={() => setNewName(newName === null ? "" : null)}>
+          <FolderPlus size={14} />
+          New folder
+        </button>
       </div>
+      {newName !== null && (
+        <div className="folder-browser-new">
+          <input
+            autoFocus
+            placeholder="Folder name"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void create();
+              if (e.key === "Escape") setNewName(null);
+            }}
+          />
+          <button className="btn primary sm" disabled={!newName.trim() || loading} onClick={() => void create()}>
+            Create
+          </button>
+          <button className="btn ghost sm" onClick={() => setNewName(null)}>
+            Cancel
+          </button>
+        </div>
+      )}
       <div className="folder-browser-places">
         {listing && (
           <button className="btn ghost sm" onClick={() => open(listing.home)}>
@@ -65,7 +104,7 @@ export function FolderBrowser({ start, onPick, onCancel }: { start?: string; onP
         ))}
       </div>
       <div className="folder-browser-foot">
-        <span className="small subtle">Open a folder, then choose it. To start somewhere new, choose its parent and add the new folder's name to the path.</span>
+        <span className="small subtle">Open a folder, then choose it. To start somewhere new, create a folder with New folder.</span>
         <span className="spacer" />
         <button className="btn ghost sm" onClick={onCancel}>
           Cancel

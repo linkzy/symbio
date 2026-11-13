@@ -130,6 +130,7 @@ const FIELDS: { key: keyof Price; label: string }[] = [
 /** Global settings: the price of each model in use, USD per million tokens. */
 export function PricesSection() {
   const [prices, setPrices] = useState<Record<string, PriceInfo> | null>(null);
+  const [tab, setTab] = useState<"prices" | "simulate">("prices");
   const load = () => api.prices().then(setPrices).catch(() => {});
   useEffect(() => {
     void load();
@@ -140,12 +141,23 @@ export function PricesSection() {
         <div>
           <h2>Model prices</h2>
           <p>
-            USD per million tokens, used to estimate what projects cost. Models whose provider doesn't publish prices (like a company
-            Azure deployment) get a suggestion from the same model in OpenCode's catalog: check it against your contract and save.
+            {tab === "prices"
+              ? "USD per million tokens, used to estimate what projects cost. Models whose provider doesn't publish prices (like a company Azure deployment) get a suggestion from the same model in OpenCode's catalog: check it against your contract and save."
+              : "What a model would cost at your usage: type its prices (USD per million tokens, as providers list them) and see the cost per day, week and month."}
           </p>
         </div>
+        <div className="seg">
+          <button className={tab === "prices" ? "on" : ""} onClick={() => setTab("prices")}>
+            Prices
+          </button>
+          <button className={tab === "simulate" ? "on" : ""} onClick={() => setTab("simulate")}>
+            Simulate
+          </button>
+        </div>
       </div>
-      {!prices ? (
+      {tab === "simulate" ? (
+        <Simulator prices={prices} />
+      ) : !prices ? (
         <div className="section-empty">Loading…</div>
       ) : (
         <div className="section-body">
@@ -213,6 +225,140 @@ function PriceRow({ model, info, onSaved }: { model: string; info: PriceInfo; on
           Reset
         </button>
       )}
+    </div>
+  );
+}
+
+type Daily = { input: string; cacheRead: string; cacheWrite: string; output: string };
+const M = 1_000_000;
+const millions = (n: number) => (n / M >= 100 ? (n / M).toFixed(0) : (n / M).toFixed(1));
+const dollars = (n: number) => (n >= 100 ? `$${n.toFixed(0)}` : n >= 1 ? `$${n.toFixed(2)}` : `$${n.toFixed(3)}`);
+
+/**
+ * The price simulator: a model's prices against your average daily tokens (across projects, since
+ * each started), or any amounts you type, to compare providers before choosing one.
+ */
+function Simulator({ prices }: { prices: Record<string, PriceInfo> | null }) {
+  const [price, setPrice] = useState<Record<keyof Price, string>>({ input: "", output: "", cacheRead: "", cacheWrite: "" });
+  const [daily, setDaily] = useState<Daily | null>(null);
+  const [average, setAverage] = useState<Awaited<ReturnType<typeof api.usageAverage>> | null>(null);
+  useEffect(() => {
+    api
+      .usageAverage()
+      .then((a) => {
+        setAverage(a);
+        const d = a.perDay;
+        setDaily({ input: millions(d.input), cacheRead: millions(d.cacheRead), cacheWrite: millions(d.cacheWrite), output: millions(d.output + d.reasoning) });
+      })
+      .catch(() => setDaily({ input: "0", cacheRead: "0", cacheWrite: "0", output: "0" }));
+  }, []);
+
+  const n = (v: string) => (v.trim() === "" ? NaN : Number(v));
+  // A blank cache write price is the input price (most providers charge writes as input).
+  const p = { input: n(price.input), output: n(price.output), cacheRead: n(price.cacheRead), cacheWrite: price.cacheWrite.trim() ? n(price.cacheWrite) : n(price.input) };
+  const t = daily && { input: n(daily.input), cacheRead: n(daily.cacheRead), cacheWrite: n(daily.cacheWrite), output: n(daily.output) };
+  // Without a cache read price, cached tokens cost as input (no cache discount).
+  const cacheReadPrice = Number.isFinite(p.cacheRead) ? p.cacheRead : p.input;
+  const perDay =
+    t && [p.input, p.output].every(Number.isFinite) && Object.values(t).every((v) => Number.isFinite(v) && v >= 0)
+      ? t.input * p.input + t.cacheRead * cacheReadPrice + t.cacheWrite * p.cacheWrite + t.output * p.output
+      : null;
+  const totalTokens = t ? Object.values(t).reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0) : 0;
+  const share = (v: number) => (totalTokens > 0 && Number.isFinite(v) ? `${((v / totalTokens) * 100).toFixed(v / totalTokens < 0.01 ? 1 : 0)}%` : "");
+
+  const fromModel = (model: string) => {
+    const known = prices?.[model]?.price;
+    if (known) setPrice({ input: String(known.input), output: String(known.output), cacheRead: String(known.cacheRead), cacheWrite: String(known.cacheWrite) });
+  };
+
+  return (
+    <div className="simulator">
+      <div className="simulator-block">
+        <div className="simulator-title">The model's prices (USD per million tokens)</div>
+        <div className="simulator-fields">
+          {FIELDS.map((f) => (
+            <label key={f.key} className="price-field">
+              <span>
+                {f.label}
+                {f.key === "cacheWrite" && <span className="subtle"> (blank: as input)</span>}
+                {f.key === "cacheRead" && <span className="subtle"> (blank: no discount)</span>}
+              </span>
+              <input type="number" min={0} step="any" value={price[f.key]} onChange={(e) => setPrice({ ...price, [f.key]: e.target.value })} />
+            </label>
+          ))}
+          {prices && (
+            <label className="price-field">
+              <span>Or copy from</span>
+              <select value="" onChange={(e) => fromModel(e.target.value)}>
+                <option value="">a model you have…</option>
+                {Object.entries(prices)
+                  .filter(([, i]) => i.price)
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([m]) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          )}
+        </div>
+      </div>
+      <div className="simulator-block">
+        <div className="simulator-title">Your tokens per day (millions)</div>
+        {daily ? (
+          <div className="simulator-fields">
+            {(
+              [
+                ["input", "Fresh input"],
+                ["cacheRead", "Cache read"],
+                ["cacheWrite", "Cache write"],
+                ["output", "Output"],
+              ] as const
+            ).map(([key, label]) => (
+              <label key={key} className="price-field">
+                <span>
+                  {label} <span className="subtle">{share(n(daily[key]))}</span>
+                </span>
+                <input type="number" min={0} step="any" value={daily[key]} onChange={(e) => setDaily({ ...daily, [key]: e.target.value })} />
+              </label>
+            ))}
+          </div>
+        ) : (
+          <div className="subtle small">Loading your usage…</div>
+        )}
+        {average && (
+          <div className="small subtle simulator-note">
+            {average.projects.length
+              ? `Your average since each project started: ${average.projects.map((p) => `${p.name} ${millions(p.tokensPerDay)}M/day over ${p.days} day${p.days === 1 ? "" : "s"}`).join(", ")}. Idle days count, so a busy week runs higher. Change the numbers to try other amounts.`
+              : "No usage recorded yet: type the amounts you expect."}
+          </div>
+        )}
+      </div>
+      <div className="simulator-result">
+        {perDay === null ? (
+          <span className="subtle">Type at least the input and output prices.</span>
+        ) : (
+          <>
+            <div>
+              <span className="subtle small">Per day</span>
+              <strong>{dollars(perDay)}</strong>
+            </div>
+            <div>
+              <span className="subtle small">Per week</span>
+              <strong>{dollars(perDay * 7)}</strong>
+            </div>
+            <div>
+              <span className="subtle small">Per month (30 days)</span>
+              <strong>{dollars(perDay * 30)}</strong>
+            </div>
+            <div>
+              <span className="subtle small">Per million tokens, blended</span>
+              <strong>{totalTokens > 0 ? dollars(perDay / totalTokens) : "—"}</strong>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

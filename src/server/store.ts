@@ -61,6 +61,13 @@ export interface Project {
   directory: string;
   allowedModels: string[]; // provider/model
   coordinatorModel: string;
+  /**
+   * Which allowed models core may use (the crowns in the model picker); unset: all of them.
+   * coordinatorModel is the one it runs on now.
+   */
+  coreModels?: string[];
+  /** Allowed models only core may use (the locks): helpers never get them. */
+  coreOnlyModels?: string[];
   docsLocation: DocsLocation;
   /** Whether the folder was empty ("new") or had content ("existing") when the project was created. */
   origin: "new" | "existing";
@@ -351,4 +358,26 @@ export class Store {
 function samePath(a: string, b: string) {
   const norm = (p: string) => path.resolve(p).replace(/[\\/]+$/, "");
   return process.platform === "win32" ? norm(a).toLowerCase() === norm(b).toLowerCase() : norm(a) === norm(b);
+}
+
+/**
+ * The models an agent may use, in the project's order: core the crowned ones (all allowed when
+ * none are set, as before), helpers every allowed model except the core-only ones. Never empty.
+ */
+export function modelsFor(project: Pick<Project, "allowedModels" | "coreModels" | "coreOnlyModels">, role: Agent["role"]): string[] {
+  const allowed = project.allowedModels;
+  const coreOnly = new Set((project.coreOnlyModels ?? []).filter((m) => allowed.includes(m)));
+  if (role === "coordinator") {
+    if (!project.coreModels?.length) return allowed;
+    const core = allowed.filter((m) => project.coreModels!.includes(m) || coreOnly.has(m));
+    return core.length ? core : allowed;
+  }
+  const helpers = allowed.filter((m) => !coreOnly.has(m));
+  return helpers.length ? helpers : allowed;
+}
+
+/** The model an agent of this role starts on: core's current one when it may use it, else its first. */
+export function defaultModel(project: Pick<Project, "allowedModels" | "coreModels" | "coreOnlyModels" | "coordinatorModel">, role: Agent["role"]): string {
+  const list = modelsFor(project, role);
+  return list.includes(project.coordinatorModel) ? project.coordinatorModel : list[0];
 }

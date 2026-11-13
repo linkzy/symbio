@@ -171,6 +171,9 @@ export interface Project {
   directory: string;
   allowedModels: string[];
   coordinatorModel: string;
+  /** Models core may use (unset: all allowed) and models only core may use (store.ts modelsFor). */
+  coreModels?: string[];
+  coreOnlyModels?: string[];
   docsLocation: DocsLocation;
   origin: "new" | "existing";
   connections: ProjectConnection[];
@@ -551,6 +554,7 @@ export const api = {
   project: (id: string) => call<Project>("GET", `/projects/${id}`),
   inspect: (dir: string) => call<Inspection>("GET", `/inspect?dir=${encodeURIComponent(dir)}`),
   pickFolder: (initial?: string) => call<{ path: string | null }>("POST", "/pick-folder", { initial }),
+  makeDir: (parent: string, name: string) => call<{ path: string }>("POST", "/fs/mkdir", { parent, name }),
   listDirs: (path?: string) =>
     call<{ path: string; parent: string | null; dirs: string[]; roots: string[]; home: string; sep: string }>(
       "GET",
@@ -608,6 +612,11 @@ export const api = {
   history: (projectId: string, agentId: string) => call<any[]>("GET", `/projects/${projectId}/agents/${agentId}/history`),
   projectUsage: (projectId: string) => call<ProjectUsage>("GET", `/projects/${projectId}/usage`),
   prices: () => call<Record<string, PriceInfo>>("GET", "/prices"),
+  usageAverage: () =>
+    call<{
+      perDay: { input: number; output: number; reasoning: number; cacheRead: number; cacheWrite: number };
+      projects: { name: string; days: number; tokensPerDay: number }[];
+    }>("GET", "/usage/average"),
   update: () => call<UpdateState>("GET", "/update"),
   checkUpdate: () => call<UpdateState>("POST", "/update/check"),
   setUpdateMode: (mode: UpdateMode) => call<UpdateState>("PUT", "/update/settings", { mode }),
@@ -657,12 +666,12 @@ export const api = {
     call<{ rel: string; where: string; agentId: string | null; kind: string; size: number; content: string }>("GET", `/projects/${projectId}/files/text?${fileQuery(rel, agentId)}`),
   sharedFiles: (projectId: string) => call<SharedFile[]>("GET", `/projects/${projectId}/shared-files`),
   questions: (projectId: string) => call<Question[]>("GET", `/projects/${projectId}/questions`),
-  answerQuestions: (projectId: string, answers: { id: string; answer: string }[]) =>
+  answerQuestions: (projectId: string, answers: { id: string; answer: string; attachments?: string[] }[]) =>
     call<Question[]>("POST", `/projects/${projectId}/questions/answers`, { answers }),
   setAsideQuestion: (projectId: string, id: string, note?: string) => call<Question[]>("POST", `/projects/${projectId}/questions/${id}/set-aside`, { note }),
   markTask: (projectId: string, taskId: string, review: boolean) => call<Plan>("POST", `/projects/${projectId}/plan/tasks/${taskId}/mark`, { review }),
-  reviewTask: (projectId: string, taskId: string, decision: "approve" | "send-back", note?: string) =>
-    call<Plan>("POST", `/projects/${projectId}/plan/tasks/${taskId}/review`, { decision, note }),
+  reviewTask: (projectId: string, taskId: string, decision: "approve" | "send-back", note?: string, attachments?: string[]) =>
+    call<Plan>("POST", `/projects/${projectId}/plan/tasks/${taskId}/review`, { decision, note, attachments }),
   decidePlan: (projectId: string, approved: boolean, feedback?: string) =>
     call<Plan>("POST", `/projects/${projectId}/plan/decision`, { approved, feedback }),
 };

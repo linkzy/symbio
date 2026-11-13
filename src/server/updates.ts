@@ -213,6 +213,14 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "become links that open the file (Markdown formatted, at the line mentioned), so write them out in full. Tell your " +
       "helpers when you next write to them.",
   },
+  {
+    id: "2026-11-13-core-models",
+    text:
+      "Models for core and for helpers: a project can now keep some models for core only, and let core use only some (the human " +
+      "sets this in Settings → Models). spawn_agent refuses a core-only model for a helper and, without a model, starts helpers on " +
+      "one they may use; your instructions list the models helpers may use. Also, the human's answers to questions and their " +
+      "notes when sending a task back can come with files: they arrive as attachments, like files sent in the chat.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */

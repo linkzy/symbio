@@ -189,7 +189,7 @@ itself. Whoever gets in controls your agents, so keep the link and code to yours
 | **Helper** | An agent core creates for a piece of work. It works in its own git worktree (branch `symbio/<name>`) or, if the project is set to, in the project folder itself. |
 | **Shared asset** | Something more than one agent could change. Access goes through core: request, grant, release. |
 | **Connection** | A GitHub account, Azure DevOps organization, server (SSH, SFTP) or FTP account agents can use through Symbio, without ever seeing its credentials. |
-| **Allowed models** | The models a project's agents may run on. If one fails, agents fall back to the next. |
+| **Allowed models** | The models a project's agents may run on. If one fails, agents fall back to the next. Some can be kept for core only, and core can be limited to some. |
 
 ## Where your data lives
 

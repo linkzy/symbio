@@ -6,7 +6,7 @@ import path from "node:path";
 import { docsPaths } from "./docs.js";
 import { PROCESS_RULES } from "./guard.js";
 import { listRepositories, projectRepositoriesSync } from "./repos.js";
-import type { Agent, CoreMode, Project } from "./store.js";
+import { modelsFor, type Agent, type CoreMode, type Project } from "./store.js";
 
 // Seen live: a coordinator read eight 2–4 MB images, its conversation reached 25 MB and the
 // provider gave up receiving it ("Timed out reading request body"), whatever the model.
@@ -106,7 +106,7 @@ ${rulesSection(project, "coordinator")}
   that arrives to you as their report — or **blocked**. Merging a helper's work
   marks its tasks in review as done.
 - \`spawn_agent\` — create a helper agent with a name, a purpose, its first task
-  (\`task_id\` from the plan, or a description) and optionally a model. ${project.allowedModels.length > 1 ? "Pick cheaper models for simpler work. " : ""}Allowed models: ${project.allowedModels.join(", ")}.
+  (\`task_id\` from the plan, or a description) and optionally a model. ${modelsFor(project, "worker").length > 1 ? "Pick cheaper models for simpler work. " : ""}Models helpers may use: ${modelsFor(project, "worker").join(", ")}.
 ${helperFolders(project)}
 - \`send_message\` — message an agent. Delivering a message wakes the recipient.
 - \`list_team\` — who exists, what they do, whether they are working.

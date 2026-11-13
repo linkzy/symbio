@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { History, MessageCircleQuestion, Send } from "lucide-react";
 import { api, subscribe, type Project, type Question } from "./api";
+import { AttachButton, PendingFiles, usePendingFiles } from "./Attachments";
 import { Md } from "./files";
 import { Avatar, timeAgo } from "./ui";
 
@@ -32,6 +33,31 @@ function loadDrafts(projectId: string): Record<string, string> {
   }
 }
 
+const answerFilesKey = (projectId: string, questionId: string) => `symbio:answer-files:${projectId}:${questionId}`;
+
+/** The files going with one answer: the paperclip, the chips, and what's ready reported up. */
+function AnswerFiles(props: {
+  projectId: string;
+  questionId: string;
+  onChange: (id: string, ids: string[], uploading: boolean) => void;
+  children: React.ReactNode;
+}) {
+  const { projectId, questionId, onChange, children } = props;
+  const pending = usePendingFiles(projectId, answerFilesKey(projectId, questionId));
+  const ids = pending.ready.join(",");
+  useEffect(() => onChange(questionId, ids ? ids.split(",") : [], pending.uploading), [questionId, ids, pending.uploading, onChange]);
+  return (
+    <>
+      <PendingFiles projectId={projectId} files={pending.files} onRemove={pending.remove} />
+      <div className="question-actions">
+        <AttachButton onFiles={pending.add} />
+        <span className="grow" />
+        {children}
+      </div>
+    </>
+  );
+}
+
 export function OpenQuestions({ project, questions }: { project: Project; questions: Question[] }) {
   const open = questions.filter((q) => q.state === "open");
   const closed = questions.filter((q) => q.state !== "open").slice(-15).reverse();
@@ -44,7 +70,11 @@ export function OpenQuestions({ project, questions }: { project: Project; questi
     sessionStorage.setItem(draftKey(project.id), JSON.stringify(drafts));
   }, [project.id, drafts]);
 
-  const ready = open.filter((q) => drafts[q.id]?.trim());
+  // Files attached to each answer (uploaded as they're added, like in the chat).
+  const [files, setFiles] = useState<Record<string, { ids: string[]; uploading: boolean }>>({});
+  const onFiles = useCallback((id: string, ids: string[], uploading: boolean) => setFiles((f) => ({ ...f, [id]: { ids, uploading } })), []);
+  const ready = open.filter((q) => drafts[q.id]?.trim() || files[q.id]?.ids.length);
+  const uploading = open.some((q) => files[q.id]?.uploading);
   const setDraft = (id: string, text: string) => setDrafts((d) => ({ ...d, [id]: text }));
 
   async function send() {
@@ -52,9 +82,10 @@ export function OpenQuestions({ project, questions }: { project: Project; questi
     try {
       await api.answerQuestions(
         project.id,
-        ready.map((q) => ({ id: q.id, answer: drafts[q.id].trim() })),
+        ready.map((q) => ({ id: q.id, answer: (drafts[q.id] ?? "").trim(), attachments: files[q.id]?.ids ?? [] })),
       );
       setDrafts((d) => Object.fromEntries(Object.entries(d).filter(([id]) => !ready.some((q) => q.id === id))));
+      for (const q of ready) localStorage.removeItem(answerFilesKey(project.id, q.id));
     } catch (e) {
       alert((e as Error).message);
     } finally {
@@ -77,7 +108,7 @@ export function OpenQuestions({ project, questions }: { project: Project; questi
           <span className="inbox-kind">Open questions</span>
           <span className="column-count">{open.length}</span>
           <span className="grow" />
-          <button className="btn primary sm" onClick={send} disabled={sending || ready.length === 0}>
+          <button className="btn primary sm" onClick={send} disabled={sending || uploading || ready.length === 0} title={uploading ? "Waiting for files to upload" : undefined}>
             <Send size={13} />
             {ready.length > 1 ? `Send ${ready.length} answers` : "Send answer"}
           </button>
@@ -113,11 +144,11 @@ export function OpenQuestions({ project, questions }: { project: Project; questi
             </div>
           )}
           <textarea rows={2} placeholder={q.options ? "Pick an option, or write your answer" : "Your answer"} value={drafts[q.id] ?? ""} onChange={(e) => setDraft(q.id, e.target.value)} />
-          <div className="question-actions">
+          <AnswerFiles projectId={project.id} questionId={q.id} onChange={onFiles}>
             <button className="btn ghost sm" onClick={() => setAside(q)}>
               Set aside
             </button>
-          </div>
+          </AnswerFiles>
         </div>
       ))}
       {closed.length > 0 && (

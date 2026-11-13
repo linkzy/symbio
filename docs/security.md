@@ -17,6 +17,8 @@ working around the human's control, and web pages in your browser reaching the l
   (`src/server/origin.ts`).
 - The agents' tool endpoint (`/mcp/<token>`) has its own unguessable per-folder token, and every call
   is matched to a live agent session; core-only tools check the caller's role.
+- **New folders from the browser** (`POST /api/fs/mkdir`, the in-page folder browser used over remote access): one
+  plain name inside an existing folder, no separators or characters Windows refuses, never recursive.
 - **Project files in the browser** (links to paths agents mention, files they share,
   `src/server/files.ts`): only files inside the project folder or a helper's copy are served, checked
   on real paths so a symlink can't lead outside. Never git's internals (`.git/`), Symbio's own data

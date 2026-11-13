@@ -3,7 +3,7 @@
 // nothing is left, the human is told, and resumeStuck wakes the agents once models are back.
 
 import { bus } from "../bus.js";
-import type { Agent, Project } from "../store.js";
+import { modelsFor, type Agent, type Project } from "../store.js";
 import { active, type TeamCore } from "./core.js";
 
 // A failed model is skipped for this long; switch after this many provider retries.
@@ -61,7 +61,7 @@ export class ModelFallback {
       this.failedModels.set(agent.id, failed);
       failed.set(agent.model, Date.now());
       const now = Date.now();
-      const next = project.allowedModels.find((m) => m !== agent.model && !(failed.has(m) && now - failed.get(m)! < FAILED_MODEL_COOLDOWN_MS));
+      const next = modelsFor(project, agent.role).find((m) => m !== agent.model && !(failed.has(m) && now - failed.get(m)! < FAILED_MODEL_COOLDOWN_MS));
       if (!next) {
         if (agent.problem) return; // already reported
         const problem = `Every allowed model failed recently. Last error (${agent.model}): ${message}`;
@@ -140,7 +140,8 @@ export class ModelFallback {
       const failed = this.failedModels.get(agent.id) ?? new Map<string, number>();
       if (forgetFailures) failed.clear();
       const usable = (m: string) => !(failed.has(m) && now - failed.get(m)! < FAILED_MODEL_COOLDOWN_MS);
-      const model = usable(agent.model) && project.allowedModels.includes(agent.model) ? agent.model : project.allowedModels.find(usable);
+      const mine = modelsFor(project, agent.role);
+      const model = usable(agent.model) && mine.includes(agent.model) ? agent.model : mine.find(usable);
       if (!model) continue;
       agent.problem = null;
       if (model !== agent.model) await this.team.setModel(project, agent, model);

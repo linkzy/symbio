@@ -195,3 +195,20 @@ export function projectUsage(project: Project, prices: ReturnType<typeof resolve
   });
   return { agents, total, tokens: tokensOf(total), cost: totalCost, unpriced: [...unpriced] };
 }
+
+/**
+ * Average tokens per day across projects (each project's totals over the days since it was
+ * created, added up), for the price simulator in Settings. Symbio keeps totals, not a daily
+ * history, so idle days count too: it's an average, not a recent rate.
+ */
+export function averageDailyUsage(projects: Project[], now = Date.now()) {
+  const perDay = emptyUsage();
+  const list = projects.map((p) => {
+    let total = emptyUsage();
+    for (const agent of p.agents) for (const u of Object.values(agentUsageByModel(agent))) total = addUsage(total, u);
+    const days = Math.max(1, (now - p.createdAt) / 86_400_000);
+    for (const k of KEYS) perDay[k] += total[k] / days;
+    return { name: p.name, days: Math.round(days), tokensPerDay: Math.round((total.input + total.output + total.reasoning + total.cacheRead + total.cacheWrite) / days) };
+  });
+  return { perDay, projects: list.filter((p) => p.tokensPerDay > 0) };
+}

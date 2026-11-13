@@ -16,7 +16,7 @@ import { PlanStore, type TaskInput, type TaskStatus } from "./plan.js";
 import type { RemoteOps } from "./remote.js";
 import { coordinatorBrief, kickoffMessage, modeNote, workerBrief } from "./prompts.js";
 import { git } from "./git.js";
-import { DEFAULT_MESSAGE_LIMIT, globalDir, newId, type Agent, type CoreMode, type HelperWorkspace, type ReviewBy, type LoggedMessage, type MessageKind, type Project, type Store } from "./store.js";
+import { DEFAULT_MESSAGE_LIMIT, defaultModel, globalDir, modelsFor, newId, type Agent, type CoreMode, type HelperWorkspace, type ReviewBy, type LoggedMessage, type MessageKind, type Project, type Store } from "./store.js";
 import { accountChildUsage, accountUsage, emptyUsage, sessionUsage } from "./costs.js";
 import { AGENT_UPDATES, unseenUpdates, updatesNote } from "./updates.js";
 import { cleanBuildOutputs, dailyBackup, gb, helperFolders, lastBackup, unpushedWork, type FolderUsage, type UnpushedBranch } from "./housekeeping.js";
@@ -553,9 +553,14 @@ export class Team implements TeamCore {
     if (this.nameTaken(project, name)) {
       throw new Error(`The name "${name}" is taken. Choose another.`);
     }
-    const model = opts.model?.trim() || coordinator.model;
-    if (!project.allowedModels.includes(model)) {
-      throw new Error(`Model "${model}" is not allowed for this project. Allowed: ${project.allowedModels.join(", ")}`);
+    const helperModels = modelsFor(project, "worker");
+    const model = opts.model?.trim() || defaultModel(project, "worker");
+    if (!helperModels.includes(model)) {
+      throw new Error(
+        project.allowedModels.includes(model)
+          ? `Model "${model}" is for core only in this project. Helpers may use: ${helperModels.join(", ")}`
+          : `Model "${model}" is not allowed for this project. Helpers may use: ${helperModels.join(", ")}`,
+      );
     }
 
     // A folder of several repositories: an own copy comes from one of them, so it must be named.
@@ -649,7 +654,7 @@ export class Team implements TeamCore {
       agent.workSince = Date.now();
     }
     await this.registerTools(project, agent.directory);
-    if (!project.allowedModels.includes(agent.model)) await this.setModel(project, agent, project.coordinatorModel);
+    if (!modelsFor(project, agent.role).includes(agent.model)) await this.setModel(project, agent, defaultModel(project, agent.role));
     agent.status = "idle";
     agent.problem = null;
     agent.lastActivity = Date.now();

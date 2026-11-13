@@ -5,7 +5,7 @@ import { api, subscribe, type DocsLocation, type Inspection, type Project, type 
 import { ConnectionsPicker } from "./ConnectionsPicker";
 import { FolderSummary } from "./FolderSummary";
 import { FolderBrowser } from "./FolderBrowser";
-import { ModelPicker } from "./ModelPicker";
+import { ModelPicker, choiceBody, type ModelChoice } from "./ModelPicker";
 import { ProjectMenu } from "./ProjectMenu";
 import { Avatar, Dialog, EmptyState, timeAgo } from "./ui";
 
@@ -151,8 +151,8 @@ function NewProjectDialog({ onClose }: { onClose: () => void }) {
   const [docsLocation, setDocsLocation] = useState<DocsLocation>("project");
   const [rulesRegister, setRulesRegister] = useState(true);
   const [projectConnections, setProjectConnections] = useState<ProjectConnection[]>([]);
-  const [allowed, setAllowed] = useState<string[]>([]);
-  const [coordinator, setCoordinator] = useState("");
+  const [models, setModels] = useState<ModelChoice>({ allowed: [], coordinator: "", core: [], coreOnly: [] });
+  const coordinator = models.coordinator;
   const [busy, setBusy] = useState(false);
   const [picking, setPicking] = useState(false);
   const [browsing, setBrowsing] = useState(false);
@@ -211,8 +211,7 @@ function NewProjectDialog({ onClose }: { onClose: () => void }) {
       const project = await api.createProject({
         name: name.trim(),
         directory: directory.trim(),
-        allowedModels: allowed,
-        coordinatorModel: coordinator,
+        ...choiceBody(models),
         docsLocation,
         rulesRegister,
         initGit: !!offerGit && initGit,
@@ -390,14 +389,7 @@ function NewProjectDialog({ onClose }: { onClose: () => void }) {
       )}
 
       {step === 2 && (
-        <ModelPicker
-          allowed={allowed}
-          coordinator={coordinator}
-          onChange={(nextAllowed, nextCoordinator) => {
-            setAllowed(nextAllowed);
-            setCoordinator(nextCoordinator);
-          }}
-        />
+        <ModelPicker value={models} onChange={setModels} />
       )}
 
       {step === 0 && !inspection && !inspectError && directory.trim() === "" && (

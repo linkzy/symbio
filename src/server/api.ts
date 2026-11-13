@@ -18,8 +18,8 @@ import { addAttachment, attachmentNote, getAttachments, listAttachments, markSen
 import { fileResponse, listShared, resolveFile, type ResolvedFile } from "./files.js";
 import type { Team } from "./team.js";
 import type { Connections } from "./connections.js";
-import { PriceBook, projectUsage, resolvePrices, type Price } from "./costs.js";
-import { globalDir } from "./store.js";
+import { averageDailyUsage, PriceBook, projectUsage, resolvePrices, type Price } from "./costs.js";
+import { defaultModel, globalDir, modelsFor } from "./store.js";
 
 // Debug routes pass OpenCode responses through, which can contain provider keys.
 const DEBUG = process.env.SYMBIO_DEBUG === "1";
@@ -60,6 +60,9 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     bus.publish({ type: "prices.updated" });
     return c.json({ ok: true });
   });
+
+  // Average tokens per day across projects, by kind (the price simulator in Settings).
+  api.get("/usage/average", (c) => c.json(averageDailyUsage(store.list())));
 
   api.get("/projects/:id/usage", async (c) => {
     const project = withProject(c.req.param("id"));
@@ -256,6 +259,27 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     }
   });
 
+  // A new folder inside one the browser shows (the in-page folder browser, used over remote access).
+  api.post("/fs/mkdir", async (c) => {
+    const body = await c.req.json<{ parent?: string; name?: string }>().catch(() => ({}) as { parent?: string; name?: string });
+    const parent = body.parent?.trim();
+    const name = body.name?.trim() ?? "";
+    if (!parent || !path.isAbsolute(parent)) return c.json({ error: "Open a folder first." }, 400);
+    // One plain name: no separators, nothing Windows refuses, not "." or "..".
+    if (!name || name.length > 120 || /[<>:"/\\|?*\x00-\x1f]/.test(name) || /^\.+$/.test(name) || /[. ]$/.test(name)) {
+      return c.json({ error: "Use a plain folder name (no / \\ : * ? \" < > |, not ending in a dot or space)." }, 400);
+    }
+    const dir = path.join(path.resolve(parent), name);
+    try {
+      if (!(await fs.stat(parent)).isDirectory()) return c.json({ error: `${parent} isn't a folder.` }, 400);
+      await fs.mkdir(dir); // not recursive: the parent must exist
+      return c.json({ path: dir });
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      return c.json({ error: code === "EEXIST" ? `${name} already exists here.` : `Can't create ${dir}: ${code ?? (err as Error).message}` }, 400);
+    }
+  });
+
   // Opens the native folder dialog on this machine; path is null when cancelled.
   api.post("/pick-folder", async (c) => {
     const body = await c.req.json<{ initial?: string }>().catch(() => ({}) as { initial?: string });
@@ -277,12 +301,20 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       initGit?: boolean;
       connections?: ProjectConnection[];
       rulesRegister?: boolean;
+      coreModels?: string[];
+      coreOnlyModels?: string[];
     }>();
     if (!body.name?.trim() || !body.directory?.trim()) return c.json({ error: "name and directory are required" }, 400);
     if (!path.isAbsolute(body.directory.trim())) return c.json({ error: "directory must be a full path" }, 400);
     if (!body.coordinatorModel) return c.json({ error: "coordinatorModel is required" }, 400);
     const allowed = body.allowedModels?.length ? body.allowedModels : [body.coordinatorModel];
     if (!allowed.includes(body.coordinatorModel)) allowed.unshift(body.coordinatorModel);
+    let roles: ReturnType<typeof modelRoles>;
+    try {
+      roles = modelRoles({ allowedModels: allowed, coordinatorModel: body.coordinatorModel }, body.coreModels, body.coreOnlyModels);
+    } catch (err) {
+      return c.json({ error: (err as Error).message }, 400);
+    }
 
     const directory = body.directory.trim();
     await fs.mkdir(directory, { recursive: true });
@@ -304,8 +336,30 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       inspectionSummary: describeInspection(inspection),
       connections: cleanLinks(body.connections),
     });
+    if (roles.coreModels || roles.coreOnlyModels) {
+      Object.assign(project, roles);
+      if (!modelsFor(project, "coordinator").includes(project.coordinatorModel)) project.coordinatorModel = defaultModel(project, "coordinator");
+      await store.update(project);
+    }
     return c.json(project, 201);
   });
+
+  /**
+   * Which allowed models core may use and which are core-only, cleaned up: only allowed models,
+   * core-only ones count as core's, core keeps at least one, helpers too (a model can't be locked
+   * when it's the last one helpers have). Unset lists stay unset (everything for everyone).
+   */
+  function modelRoles(p: { allowedModels: string[]; coordinatorModel: string }, core?: string[] | null, coreOnly?: string[] | null) {
+    const keep = (list?: string[] | null) => (list ? [...new Set(list.filter((m) => p.allowedModels.includes(m)))] : undefined);
+    const only = keep(coreOnly);
+    let crowned = keep(core);
+    if (crowned && only) crowned = [...new Set([...crowned, ...only])];
+    if (crowned && crowned.length === 0) throw new Error("Choose at least one model core may use (the crown).");
+    if (only && only.length >= p.allowedModels.length) throw new Error("Leave at least one model for helpers (not locked to core).");
+    // Everything crowned and nothing locked is the same as no roles at all.
+    const allCrowned = crowned && crowned.length === p.allowedModels.length;
+    return { coreModels: crowned && !allCrowned ? crowned : undefined, coreOnlyModels: only?.length ? only : undefined };
+  }
 
   const withProject = (id: string): Project => {
     const project = store.get(id);
@@ -335,6 +389,8 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       subRepositories?: boolean;
       coreMode?: CoreMode;
       reviewBy?: ReviewBy;
+      coreModels?: string[];
+      coreOnlyModels?: string[];
     }>();
     if (body.reviewBy === "core" || body.reviewBy === "every" || body.reviewBy === "marked") await team.setReviewBy(project, body.reviewBy);
     if (body.coreMode === "auto" || body.coreMode === "plan" || body.coreMode === "act") await team.setCoreMode(project, body.coreMode);
@@ -362,7 +418,25 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     }
     if (body.connections) project.connections = cleanLinks(body.connections);
     const modelsAdded = !!body.allowedModels?.some((m) => !project.allowedModels.includes(m));
-    if (body.allowedModels?.length) project.allowedModels = body.allowedModels;
+    const rolesChanged = body.coreModels !== undefined || body.coreOnlyModels !== undefined;
+    if (body.allowedModels?.length || rolesChanged) {
+      const allowedModels = body.allowedModels?.length ? body.allowedModels : project.allowedModels;
+      let roles: ReturnType<typeof modelRoles>;
+      try {
+        roles = modelRoles(
+          { allowedModels, coordinatorModel: body.coordinatorModel ?? project.coordinatorModel },
+          body.coreModels !== undefined ? body.coreModels : project.coreModels,
+          body.coreOnlyModels !== undefined ? body.coreOnlyModels : project.coreOnlyModels,
+        );
+      } catch (err) {
+        return c.json({ error: (err as Error).message }, 400);
+      }
+      project.allowedModels = allowedModels;
+      project.coreModels = roles.coreModels;
+      project.coreOnlyModels = roles.coreOnlyModels;
+      if (!project.coreModels) delete project.coreModels;
+      if (!project.coreOnlyModels) delete project.coreOnlyModels;
+    }
     if (body.coordinatorModel) {
       // Switch the live session first so a rejected model doesn't leave the project half-updated.
       const coordinator = project.agents.find((a) => a.role === "coordinator");
@@ -372,14 +446,15 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       project.coordinatorModel = body.coordinatorModel;
       if (!project.allowedModels.includes(body.coordinatorModel)) project.allowedModels.unshift(body.coordinatorModel);
     }
-    // Agents on a model that is no longer allowed move to core's model.
+    if (!modelsFor(project, "coordinator").includes(project.coordinatorModel)) project.coordinatorModel = defaultModel(project, "coordinator");
+    // Agents on a model their role may no longer use move to their role's default.
     for (const agent of project.agents) {
-      if (agent.status === "stopped" || project.allowedModels.includes(agent.model)) continue;
-      await team.setModel(project, agent, project.coordinatorModel).catch((err) => console.error(`[models] ${agent.name}:`, err.message));
+      if (agent.status === "stopped" || modelsFor(project, agent.role).includes(agent.model)) continue;
+      await team.setModel(project, agent, defaultModel(project, agent.role)).catch((err) => console.error(`[models] ${agent.name}:`, err.message));
     }
     await store.update(project);
     bus.publish({ type: "project.updated", projectId: project.id });
-    if (body.allowedModels?.length || body.name?.trim() || body.connections) {
+    if (body.allowedModels?.length || rolesChanged || body.name?.trim() || body.connections) {
       // Briefs mention the project name and allowed models.
       for (const agent of project.agents.filter((a) => a.status !== "stopped")) {
         await team.refreshInstructions(project, agent).catch(() => {});
@@ -508,10 +583,11 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
   // The human's review of a finished task (team/review.ts): approve it, or send it back with a note.
   api.post("/projects/:id/plan/tasks/:taskId/review", async (c) => {
     const project = withProject(c.req.param("id"));
-    const body = await c.req.json<{ decision?: "approve" | "send-back"; note?: string }>();
+    const body = await c.req.json<{ decision?: "approve" | "send-back"; note?: string; attachments?: unknown[] }>();
+    const attachments = (body.attachments ?? []).filter((x): x is string => typeof x === "string").slice(0, 20);
     try {
       if (body.decision === "approve") await team.reviews.approve(project, c.req.param("taskId"), body.note);
-      else if (body.decision === "send-back") await team.reviews.sendBack(project, c.req.param("taskId"), body.note ?? "");
+      else if (body.decision === "send-back") await team.reviews.sendBack(project, c.req.param("taskId"), body.note ?? "", attachments);
       else return c.json({ error: 'decision must be "approve" or "send-back"' }, 400);
     } catch (err) {
       throw new HttpError(409, (err as Error).message);
@@ -528,8 +604,14 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
   // Answers to several questions at once; each agent that asked gets its answers in one message.
   api.post("/projects/:id/questions/answers", async (c) => {
     const project = withProject(c.req.param("id"));
-    const body = await c.req.json<{ answers?: { id?: string; answer?: string }[] }>();
-    const answers = (body.answers ?? []).filter((a) => typeof a.id === "string" && typeof a.answer === "string") as { id: string; answer: string }[];
+    const body = await c.req.json<{ answers?: { id?: string; answer?: string; attachments?: unknown[] }[] }>();
+    const answers = (body.answers ?? [])
+      .filter((a) => typeof a.id === "string")
+      .map((a) => ({
+        id: a.id as string,
+        answer: typeof a.answer === "string" ? a.answer : "",
+        attachments: (a.attachments ?? []).filter((x): x is string => typeof x === "string").slice(0, 20),
+      }));
     try {
       await team.questions.answer(project, answers);
     } catch (err) {
@@ -695,7 +777,9 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     const project = withProject(c.req.param("id"));
     const agent = withAgent(project, c.req.param("agentId"));
     const { model } = await c.req.json<{ model?: string }>();
-    if (!model || !project.allowedModels.includes(model)) return c.json({ error: "Pick one of the project's models." }, 400);
+    if (!model || !modelsFor(project, agent.role).includes(model)) {
+      return c.json({ error: agent.role === "coordinator" ? "Pick one of the models core may use." : "Pick one of the models helpers may use." }, 400);
+    }
     if (agent.status === "stopped") return c.json({ error: `${agent.name} is stopped.` }, 400);
     if (model !== agent.model) await team.setModel(project, agent, model);
     return c.json(project);

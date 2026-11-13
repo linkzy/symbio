@@ -5,6 +5,18 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Models for core and for helpers**: in a project's models, the crown now marks every model core may use (click it on
+  several), and a new lock keeps a model for core only. E.g. Kimi and GLM for core, GLM and DeepSeek for helpers; or
+  everything for everyone, as before (the default). Fallback, new helpers and the model menu in each chat follow it.
+- **Select all** and **None** in the model picker.
+- **Working agents first**: in the team list, agents that need attention, are working or waiting move up under core, so
+  a long team shows at a glance who's still busy.
+- **New folder** in the in-page folder browser (New project over remote access).
+- **Files with answers and send-backs**: attach files (screenshots, a document) when answering an open question or
+  sending a task back; they reach the agent like files sent in the chat.
+- **Simulate** in Settings → Model prices: type a model's prices and see what it would cost per day, week and month at
+  your average usage (or amounts you type).
+
 ## [0.13.0]
 
 - **A chat you can follow**: the team's work reads in plain words instead of the commands and

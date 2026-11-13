@@ -4,6 +4,7 @@
 // its helper wrote, until they approve it or send it back. The gate holds the task's done, not its
 // merge: the work is already in the project, and tasks that depend on it wait meanwhile.
 
+import { attachmentNote, getAttachments, markSent } from "../attachments.js";
 import { bus } from "../bus.js";
 import type { Task } from "../plan.js";
 import { projectRepositoriesSync } from "../repos.js";
@@ -139,8 +140,9 @@ export class Reviews {
   }
 
   /** The human sent the task back: it reopens, and their note goes to the helper that did it (core is told). */
-  async sendBack(project: Project, taskId: string, note: string): Promise<void> {
+  async sendBack(project: Project, taskId: string, note: string, attachmentIds: string[] = []): Promise<void> {
     if (!note.trim()) throw new Error("Say what needs to change.");
+    const files = attachmentIds.length ? await getAttachments(project, attachmentIds) : [];
     const plan = await this.team.plan(project);
     const task = plan.task(taskId);
     if (task.humanReview?.state !== "waiting") throw new Error(`${task.id} isn't waiting for your review.`);
@@ -157,11 +159,14 @@ export class Reviews {
       await this.team.sendFromHuman(
         project,
         helper,
-        `${back}\n\nFix it${helper.branch ? ", commit" : ""}, then report it again with update_task("${task.id}", "review", <summary>) and a guide.`,
+        `${back}\n\nFix it${helper.branch ? ", commit" : ""}, then report it again with update_task("${task.id}", "review", <summary>) and a guide.` +
+          attachmentNote(files),
       );
+      if (files.length) await markSent(project, attachmentIds, helper.id);
       if (core && active(core)) await this.team.system(project, core, `Symbio: ${back}\nIt went back to ${helper.name}, who fixes it and reports again.`, false);
     } else if (core && active(core)) {
-      await this.team.system(project, core, `Symbio: ${back}\nIts helper is no longer active: give it to someone (assign_task).`);
+      await this.team.system(project, core, `Symbio: ${back}\nIts helper is no longer active: give it to someone (assign_task).` + attachmentNote(files));
+      if (files.length) await markSent(project, attachmentIds, core.id);
     }
     bus.publish({ type: "project.updated", projectId: project.id });
   }

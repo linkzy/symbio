@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Check, ChevronDown, ChevronRight, CornerUpLeft, FileDiff, ListChecks } from "lucide-react";
 import { api, type Task, type TaskChange } from "./api";
 import { Md } from "./files";
+import { AttachButton, PendingFiles, usePendingFiles } from "./Attachments";
 
 // The human's review of a finished task (Settings → Team → Who reviews the work): the helper's
 // guide for checking it, and approve / send back. Used in Needs you and in the Plan tab.
@@ -28,10 +29,13 @@ export function ReviewActions({ projectId, task, onDone }: { projectId: string; 
   const [sendingBack, setSendingBack] = useState(false);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  // Screenshots or files showing what's wrong go to the helper with the note.
+  const pending = usePendingFiles(projectId);
   async function decide(decision: "approve" | "send-back") {
     setBusy(true);
     try {
-      await api.reviewTask(projectId, task.id, decision, decision === "send-back" ? note.trim() : undefined);
+      await api.reviewTask(projectId, task.id, decision, decision === "send-back" ? note.trim() : undefined, decision === "send-back" ? pending.ready : undefined);
+      pending.clear();
       onDone?.();
     } catch (e) {
       alert((e as Error).message);
@@ -42,9 +46,24 @@ export function ReviewActions({ projectId, task, onDone }: { projectId: string; 
   if (sendingBack) {
     return (
       <div className="review-actions column">
-        <textarea autoFocus rows={3} placeholder="What needs to change? It goes to the helper that did the work." value={note} onChange={(e) => setNote(e.target.value)} />
+        <textarea
+          autoFocus
+          rows={3}
+          placeholder="What needs to change? It goes to the helper that did the work. Attach screenshots or files if they help."
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          onPaste={(e) => {
+            const pasted = [...e.clipboardData.files];
+            if (pasted.length) {
+              e.preventDefault();
+              pending.add(pasted);
+            }
+          }}
+        />
+        <PendingFiles projectId={projectId} files={pending.files} onRemove={pending.remove} />
         <div className="row">
-          <button className="btn primary sm" onClick={() => decide("send-back")} disabled={busy || !note.trim()}>
+          <AttachButton onFiles={pending.add} />
+          <button className="btn primary sm" onClick={() => decide("send-back")} disabled={busy || !note.trim() || pending.uploading}>
             <CornerUpLeft size={13} />
             Send back
           </button>

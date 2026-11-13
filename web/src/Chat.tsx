@@ -7,6 +7,7 @@ import { AttachButton, DropOverlay, MessageAttachments, PendingFiles, splitAttac
 import { Avatar, statusText } from "./ui";
 import { callsFromCode, stepLabels, summarize, type StepLabel, type ToolCall } from "./steps";
 import { FileCard, Md } from "./files";
+import { modelsForRole } from "./ModelPicker";
 
 type Block =
   | { kind: "text" | "reasoning"; key: string; text: string }
@@ -341,8 +342,8 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
                 title={`Model ${agent.name} runs on — applies from its next turn`}
                 onChange={(e) => api.setAgentModel(project.id, agent.id, e.target.value).catch((err) => alert(err.message))}
               >
-                {[...new Set([agent.model, ...project.allowedModels])].map((m) => (
-                  <option key={m} value={m} disabled={!project.allowedModels.includes(m)}>
+                {[...new Set([agent.model, ...modelsForRole(project, agent.role)])].map((m) => (
+                  <option key={m} value={m} disabled={!modelsForRole(project, agent.role).includes(m)}>
                     {m}
                   </option>
                 ))}

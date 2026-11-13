@@ -4,6 +4,7 @@
 // same question doesn't come back again and again.
 
 import { bus } from "../bus.js";
+import { attachmentNote, getAttachments, markSent, type Attachment } from "../attachments.js";
 import { QuestionStore, type Question, type QuestionInput } from "../questions.js";
 import type { Agent, Project } from "../store.js";
 import { active, type TeamCore } from "./core.js";
@@ -46,14 +47,21 @@ export class Questions {
     );
   }
 
-  /** The human's answers, several at once: one message per agent that asked. */
-  async answer(project: Project, answers: { id: string; answer: string }[]): Promise<Question[]> {
+  /** The human's answers, several at once (each may bring files): one message per agent that asked. */
+  async answer(project: Project, answers: { id: string; answer: string; attachments?: string[] }[]): Promise<Question[]> {
     const store = await this.store(project);
-    const given = answers.filter((a) => a.answer?.trim());
+    const given = answers.filter((a) => a.answer?.trim() || a.attachments?.length);
     if (given.length === 0) throw new Error("Write at least one answer.");
     for (const a of given) if (store.get(a.id).state !== "open") throw new Error(`${store.get(a.id).id} is no longer open.`);
+    // Check every file before closing anything, so a missing one doesn't leave answers half sent.
+    const filesOf = new Map<string, Attachment[]>();
+    for (const a of given) filesOf.set(a.id, a.attachments?.length ? await getAttachments(project, a.attachments) : []);
     const closed: Question[] = [];
-    for (const a of given) closed.push(await store.close(a.id, { answer: a.answer, answeredIn: "human" }));
+    for (const a of given) {
+      const files = filesOf.get(a.id)!;
+      const answer = a.answer?.trim() || (files.length === 1 ? "(see the attached file)" : "(see the attached files)");
+      closed.push(await store.close(a.id, { answer, answeredIn: "human", files: files.map((f) => f.name) }));
+    }
     this.changed(project);
 
     const byAsker = new Map<string, Question[]>();
@@ -61,9 +69,11 @@ export class Questions {
     const core = this.team.coordinator(project);
     for (const [askerId, qs] of byAsker) {
       const asker = project.agents.find((x) => x.id === askerId);
-      const list = qs.map((q) => `${q.id}: ${q.question}\n→ ${q.answer}`).join("\n\n");
+      const list = qs.map((q) => `${q.id}: ${q.question}\n→ ${q.answer}${q.files?.length ? ` (attached: ${q.files.join(", ")})` : ""}`).join("\n\n");
+      const files = qs.flatMap((q) => filesOf.get(q.id) ?? []);
       if (asker && active(asker)) {
-        await this.team.sendFromHuman(project, asker, `My answer${qs.length > 1 ? "s" : ""} to your question${qs.length > 1 ? "s" : ""}:\n\n${list}`);
+        await this.team.sendFromHuman(project, asker, `My answer${qs.length > 1 ? "s" : ""} to your question${qs.length > 1 ? "s" : ""}:\n\n${list}` + attachmentNote(files));
+        if (files.length) await markSent(project, files.map((f) => f.id), asker.id);
         if (asker.role === "worker" && core && active(core)) {
           await this.team.system(project, core, `Symbio: the human answered ${asker.name}'s question${qs.length > 1 ? "s" : ""} (it has the answer):\n\n${list}`, false);
         }

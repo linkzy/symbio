@@ -98,7 +98,10 @@ export function ProjectView({ projectId }: { projectId: string }) {
   if (!project) return null;
 
   const agent = project.agents.find((a) => a.id === selected) ?? project.agents.find((a) => a.role === "coordinator");
-  const activeAgents = project.agents.filter((a) => a.status !== "stopped");
+  // Core first, then whoever is working, so a long team shows at a glance who's still busy: agents
+  // that need attention, working, waiting, then idle (each group in its usual order).
+  const rank = (a: Agent) => (a.role === "coordinator" ? 0 : a.problem ? 1 : a.status === "busy" ? 2 : a.status === "waiting" ? 3 : 4);
+  const activeAgents = project.agents.filter((a) => a.status !== "stopped").sort((x, y) => rank(x) - rank(y));
   const stopped = project.agents.filter((a) => a.status === "stopped");
   const stuck = activeAgents.filter((a) => a.problem);
   const nameOf = (id: string | null) => (id === null ? "core" : (project.agents.find((a) => a.id === id)?.name ?? "?"));

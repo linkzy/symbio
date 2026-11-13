@@ -22,6 +22,8 @@ export interface Question {
   answer?: string;
   /** "human" when answered in Symbio; "chat" when the asker recorded an answer given in the chat. */
   answeredIn?: "human" | "chat";
+  /** Names of files the human attached to the answer. */
+  files?: string[];
   closedAt?: number;
 }
 
@@ -94,7 +96,7 @@ export class QuestionStore {
     return q;
   }
 
-  async close(id: string, how: { answer: string; answeredIn: "human" | "chat" } | { setAside: true }): Promise<Question> {
+  async close(id: string, how: { answer: string; answeredIn: "human" | "chat"; files?: string[] } | { setAside: true }): Promise<Question> {
     const q = this.get(id);
     if (q.state !== "open") throw new Error(`${q.id} was already ${q.state === "answered" ? "answered" : "set aside"}.`);
     if ("setAside" in how) q.state = "set-aside";
@@ -103,6 +105,7 @@ export class QuestionStore {
       q.state = "answered";
       q.answer = how.answer.trim().slice(0, MAX_TEXT);
       q.answeredIn = how.answeredIn;
+      if (how.files?.length) q.files = how.files;
     }
     q.closedAt = Date.now();
     await this.save();
