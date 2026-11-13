@@ -6,7 +6,9 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 
 ## Now
 
-Nothing in progress; the top of Next is what comes up.
+- **A chat you can follow.** Done for the next release: steps in plain words, runs of steps folded
+  into one line, helpers' reports as cards. Left: visual extras (tables are already rendered; charts
+  and live counters), to see whether they're still wanted.
 
 ## Next
 

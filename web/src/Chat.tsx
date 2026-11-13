@@ -7,10 +7,22 @@ import { api, subscribe, type Agent, type Project, type CoreMode } from "./api";
 import { PendingForms } from "./FormCard";
 import { AttachButton, DropOverlay, MessageAttachments, PendingFiles, splitAttachmentNote, usePendingFiles } from "./Attachments";
 import { Avatar, statusText } from "./ui";
+import { stepLabels, summarize, type StepLabel, type ToolCall } from "./steps";
 
 type Block =
   | { kind: "text" | "reasoning"; key: string; text: string }
-  | { kind: "tool"; key: string; name: string; input?: unknown; status: "running" | "done" | "failed"; output?: string };
+  | { kind: "error"; key: string; text: string }
+  | {
+      kind: "tool";
+      key: string;
+      name: string;
+      input?: unknown;
+      status: "running" | "done" | "failed";
+      output?: string;
+      /** Tools a code-mode script called (OpenCode's metadata.toolCalls). */
+      calls?: ToolCall[];
+    };
+type ToolBlock = Extract<Block, { kind: "tool" }>;
 
 /** Turns OpenCode's live session events into renderable blocks for the in-progress turn. */
 function applyStreamEvent(blocks: Block[], type: string, data: any): Block[] {
@@ -41,7 +53,7 @@ function applyStreamEvent(blocks: Block[], type: string, data: any): Block[] {
     case "session.tool.called":
       return update(data.id, (b) => ({ ...b, input: data.input }));
     case "session.tool.success":
-      return update(data.id, (b) => ({ ...b, status: "done", output: contentText(data.content) }));
+      return update(data.id, (b) => ({ ...b, status: "done", output: contentText(data.content), calls: data.metadata?.toolCalls ?? b.calls }));
     case "session.tool.failed":
     case "session.tool.error":
       return update(data.id, (b) => ({ ...b, status: "failed", output: data.error?.message ?? contentText(data.content) }));
@@ -472,12 +484,18 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
             </div>
           )}
           <AnimatePresence initial={false}>
-            {history?.map((m) => <HistoryItem key={m.id} message={m} projectId={project.id} />)}
+            {historyUnits(history ?? []).map((u) =>
+              u.kind === "assistant" ? (
+                <motion.div key={u.key} className="msg-assistant" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.15 }}>
+                  <Blocks blocks={u.blocks} />
+                </motion.div>
+              ) : (
+                <HistoryItem key={u.message.id} message={u.message} projectId={project.id} />
+              ),
+            )}
             {live.length > 0 && (
               <motion.div key="live" className="msg-assistant" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                {live.map((b) => (
-                  <BlockView key={b.key} block={b} />
-                ))}
+                <Blocks blocks={live} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -597,6 +615,41 @@ function ModeSelector({ project }: { project: Project }) {
   );
 }
 
+/**
+ * A helper's report as Symbio delivers it to core: `T201 "Title" → review: summary`, then lines
+ * meant for core ("Merge with merge_work(…) when it looks right."), which the human doesn't need.
+ */
+function parseReport(body: string): { task: string; title: string; summary: string } | null {
+  const m = /^(T\d+) "(.*?)" → (?:review|blocked)(?::\s*)?([\s\S]*)$/.exec(body.trim());
+  if (!m) return null;
+  const forCore = /\n(Merge with merge_work\(|Its work is already in the project folder|Then it waits for the human's review)/;
+  const cut = m[3].search(forCore);
+  return { task: m[1], title: m[2], summary: (cut >= 0 ? m[3].slice(0, cut) : m[3]).trim() };
+}
+
+/** Long content folded to a few lines, with "Show all". */
+function Folded({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [long, setLong] = useState(false);
+  const [open, setOpen] = useState(false);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (el) setLong(el.scrollHeight > el.clientHeight + 8);
+  }, [children]);
+  return (
+    <div className={`folded${open ? " open" : ""}${long && !open ? " clipped" : ""}`}>
+      <div ref={ref} className="folded-body">
+        {children}
+      </div>
+      {(long || open) && (
+        <button className="btn ghost sm folded-toggle" onClick={() => setOpen((o) => !o)}>
+          {open ? "Show less" : "Show all"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function HistoryItem({ message: m, projectId }: { message: any; projectId: string }) {
   const anim = { initial: { opacity: 0, y: 4 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.15 } };
 
@@ -605,16 +658,26 @@ function HistoryItem({ message: m, projectId }: { message: any; projectId: strin
     const fromAgent = text.match(AGENT_HEADER);
     if (fromAgent && fromAgent[1] !== "human") {
       const kind = fromAgent[2];
+      const body = text.slice(fromAgent[0].length);
+      const report = kind === "task-review" || kind === "task-blocked" ? parseReport(body) : null;
       return (
-        <motion.div className="msg-agent" {...anim}>
+        <motion.div className={`msg-agent${report ? " report" : ""}`} {...anim}>
           <div className="msg-agent-head">
             <Avatar name={fromAgent[1]} size="sm" />
             <strong>{fromAgent[1]}</strong>
             <span className={`tag ${KIND_TONE[kind] ?? ""}`}>{KIND_LABEL[kind] ?? kind}</span>
+            {report && (
+              <span className="report-task">
+                <span className="task-id">{report.task}</span>
+                <span className="report-title">{report.title}</span>
+              </span>
+            )}
           </div>
-          <div className="msg-agent-body md">
-            <Markdown remarkPlugins={[remarkGfm]}>{text.slice(fromAgent[0].length)}</Markdown>
-          </div>
+          <Folded>
+            <div className="msg-agent-body md">
+              <Markdown remarkPlugins={[remarkGfm]}>{report ? report.summary || "_No summary._" : body}</Markdown>
+            </div>
+          </Folded>
         </motion.div>
       );
     }
@@ -652,24 +715,6 @@ function HistoryItem({ message: m, projectId }: { message: any; projectId: strin
     );
   }
 
-  if (m.type === "assistant") {
-    const parts: any[] = m.content ?? [];
-    if (parts.length === 0 && !m.error) return null;
-    return (
-      <motion.div className="msg-assistant" {...anim}>
-        {parts.map((p, i) => (
-          <BlockView key={i} block={partToBlock(p, i)} />
-        ))}
-        {m.error && (
-          <div className="msg-failure">
-            <CircleAlert size={14} />
-            {m.error.message ?? String(m.error)}
-          </div>
-        )}
-      </motion.div>
-    );
-  }
-
   if (m.type === "model-switched") {
     return (
       <motion.div className="msg-note" {...anim}>
@@ -684,74 +729,159 @@ function HistoryItem({ message: m, projectId }: { message: any; projectId: strin
   return null;
 }
 
-function partToBlock(p: any, i: number): Block {
-  if (p.type === "text") return { kind: "text", key: String(i), text: p.text ?? "" };
-  if (p.type === "reasoning") return { kind: "reasoning", key: String(i), text: p.text ?? "" };
-  // Tool parts look like { type: "tool", name, state: { status, input, content: [{type:"text",text}] } }.
+function partToBlock(p: any, key: string): Block {
+  if (p.type === "text") return { kind: "text", key, text: p.text ?? "" };
+  if (p.type === "reasoning") return { kind: "reasoning", key, text: p.text ?? "" };
+  // Tool parts look like { type: "tool", name, state: { status, input, content: [{type:"text",text}], metadata } }.
   const state = p.state ?? {};
   const status = state.status ?? p.status;
   return {
     kind: "tool",
-    key: String(i),
+    key,
     name: p.name ?? p.type,
     input: state.input ?? p.input,
     status: status === "error" || status === "failed" ? "failed" : status === "running" || status === "pending" ? "running" : "done",
     output: contentText(state.content) || state.error?.message || undefined,
+    calls: Array.isArray(state.metadata?.toolCalls) ? state.metadata.toolCalls : undefined,
   };
 }
 
-function BlockView({ block }: { block: Block }) {
-  if (block.kind === "text") {
-    return (
-      <div className="md">
-        <Markdown remarkPlugins={[remarkGfm]}>{block.text}</Markdown>
-      </div>
-    );
+type HistoryUnit = { kind: "assistant"; key: string; blocks: Block[] } | { kind: "other"; message: any };
+
+/**
+ * The conversation as the chat shows it. OpenCode stores each model step as its own assistant
+ * message, so a run of 7 tool steps is 7 messages: consecutive ones are joined, and their steps
+ * then fold into one line (see Blocks).
+ */
+function historyUnits(history: any[]): HistoryUnit[] {
+  const units: HistoryUnit[] = [];
+  for (const m of history) {
+    if (m.type !== "assistant") {
+      units.push({ kind: "other", message: m });
+      continue;
+    }
+    const blocks: Block[] = (m.content ?? []).map((p: any, i: number) => partToBlock(p, `${m.id}:${i}`));
+    if (m.error) blocks.push({ kind: "error", key: `${m.id}:error`, text: m.error.message ?? String(m.error) });
+    if (blocks.length === 0) continue;
+    const last = units[units.length - 1];
+    if (last?.kind === "assistant") last.blocks.push(...blocks);
+    else units.push({ kind: "assistant", key: m.id, blocks });
   }
-  if (block.kind === "reasoning") {
-    if (!block.text.trim()) return null;
-    return (
-      <details className="reasoning">
-        <summary>
-          <Brain size={13} />
-          Thinking
-        </summary>
-        <div className="reasoning-body">{block.text}</div>
-      </details>
-    );
-  }
-  return <ToolView block={block as Extract<Block, { kind: "tool" }>} />;
+  return units;
 }
 
-function ToolView({ block }: { block: Extract<Block, { kind: "tool" }> }) {
-  const summary = toolSummary(block.input);
+/** Text as it is; runs of steps (and the thinking between them) folded into one line each. */
+function Blocks({ blocks }: { blocks: Block[] }) {
+  const groups: (Block | { kind: "steps"; key: string; items: Block[] })[] = [];
+  for (const b of blocks) {
+    const last = groups[groups.length - 1];
+    const inRun = last?.kind === "steps";
+    if (b.kind === "tool" || (b.kind === "reasoning" && inRun)) {
+      if (inRun) (last as { items: Block[] }).items.push(b);
+      else groups.push({ kind: "steps", key: b.key, items: [b] });
+    } else groups.push(b);
+  }
+  return (
+    <>
+      {groups.map((g) => {
+        if (g.kind === "steps") return <StepGroup key={g.key} items={g.items} />;
+        if (g.kind === "text") {
+          return (
+            <div key={g.key} className="md">
+              <Markdown remarkPlugins={[remarkGfm]}>{g.text}</Markdown>
+            </div>
+          );
+        }
+        if (g.kind === "reasoning") return <Reasoning key={g.key} text={g.text} />;
+        if (g.kind === "error") {
+          return (
+            <div key={g.key} className="msg-failure">
+              <CircleAlert size={14} />
+              {g.text}
+            </div>
+          );
+        }
+        return null;
+      })}
+    </>
+  );
+}
+
+function Reasoning({ text }: { text: string }) {
+  if (!text.trim()) return null;
+  return (
+    <details className="reasoning">
+      <summary>
+        <Brain size={13} />
+        Thinking
+      </summary>
+      <div className="reasoning-body">{text}</div>
+    </details>
+  );
+}
+
+const labelsOf = (b: ToolBlock): StepLabel[] => stepLabels(b.name, b.input, b.calls);
+
+/** A run of steps: one line saying what they did (or what's running now), the steps inside. */
+function StepGroup({ items }: { items: Block[] }) {
+  const tools = items.filter((b): b is ToolBlock => b.kind === "tool");
+  if (items.length === 1 && tools.length === 1 && labelsOf(tools[0]).length === 1) return <StepRow block={tools[0]} />;
+  const running = tools.find((t) => t.status === "running");
+  const failed = tools.filter((t) => t.status === "failed").length;
+  const all = tools.flatMap(labelsOf);
+  const title = running ? `${labelsOf(running).map((l) => l.label).join(" · ")}…` : summarize(all);
+  const state = running ? "running" : failed ? "failed" : "done";
+  return (
+    <details className="step-run">
+      <summary>
+        <span className={`tool-state ${state}`}>{running ? <Loader2 size={13} className="spin" /> : failed ? <X size={13} /> : <Check size={13} />}</span>
+        <span className="step-run-title">{title}</span>
+        <span className="step-run-count">
+          {all.length} steps{failed ? ` · ${failed} failed` : ""}
+        </span>
+      </summary>
+      <div className="step-run-body">
+        {items.map((b) => (b.kind === "tool" ? <StepRow key={b.key} block={b} /> : b.kind === "reasoning" ? <Reasoning key={b.key} text={b.text} /> : null))}
+      </div>
+    </details>
+  );
+}
+
+/** One step in plain words; the raw input and output a click away. */
+function StepRow({ block }: { block: ToolBlock }) {
+  const labels = labelsOf(block);
   return (
     <details className="tool">
       <summary>
         <span className={`tool-state ${block.status}`}>
           {block.status === "running" ? <Loader2 size={13} className="spin" /> : block.status === "failed" ? <X size={13} /> : <Check size={13} />}
         </span>
-        <Wrench size={12} className="subtle" />
-        <span className="tool-name">{block.name}</span>
-        {summary && <span className="tool-arg">{summary}</span>}
+        <span className="step-labels">
+          {labels.map((l, i) => (
+            <span key={i} className="step-label">
+              <span className="step-text">{l.label}</span>
+              {l.detail && <span className="tool-arg">{l.detail}</span>}
+            </span>
+          ))}
+        </span>
       </summary>
-      {block.input !== undefined && <pre className="tool-io">{JSON.stringify(block.input, null, 2)}</pre>}
-      {block.output && <pre className="tool-io out">{block.output.slice(0, 4000)}</pre>}
+      <div className="step-raw">
+        <span className="small subtle">
+          <Wrench size={11} /> {block.name}
+        </span>
+        {block.input !== undefined && <pre className="tool-io">{rawInput(block.input)}</pre>}
+        {block.output && <pre className="tool-io out">{block.output.slice(0, 4000)}</pre>}
+      </div>
     </details>
   );
 }
 
-function toolSummary(input: unknown): string | null {
-  if (!input || typeof input !== "object") return null;
+/** What the model actually sent: a command or a script as text, anything else as JSON. */
+function rawInput(input: unknown): string {
   const i = input as Record<string, unknown>;
-  // OpenCode "code mode": the model calls tools from a script; show which ones.
-  if (typeof i.code === "string") {
-    const called = [...new Set([...i.code.matchAll(/tools\.([\w$]+)\.([\w$]+)/g)].map((m) => `${m[1]}.${m[2]}`))];
-    if (called.length) return called.join(", ");
-    return i.code.split("\n").find((l) => l.trim() && !l.trim().startsWith("//"))?.trim().slice(0, 120) ?? null;
-  }
-  const v = i.command ?? i.filePath ?? i.path ?? i.pattern ?? i.url ?? i.query;
-  return typeof v === "string" ? v.slice(0, 120) : null;
+  if (i && typeof i.command === "string") return i.command;
+  if (i && typeof i.code === "string") return i.code;
+  return JSON.stringify(input, null, 2);
 }
 
 /** The failed turn's error is already rendered from history; don't repeat it in the live banner. */

@@ -5,6 +5,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **A chat you can follow**: the team's work reads in plain words instead of the commands and
+  scripts the model typed ("Message to setor", "Merged modulo-professor's work", "Waited for the app
+  on port 7343", "Ran the tests"), and a run of steps folds into one line that leads with what
+  mattered ("Message to setor · Checked git status and 1 more · 3 steps"); the raw command and its
+  output stay a click away. Helpers' reports show as cards, with the task and its title on top and a
+  long summary folded; the instructions Symbio adds for core are left out.
+
 ## [0.12.0]
 
 - **Open questions**: the team's questions for you now wait in a list in *Needs you* instead of

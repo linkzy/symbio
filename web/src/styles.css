@@ -828,3 +828,33 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); margi
 .questions-closed { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .question-closed { font-size: 12.5px; color: var(--text-2); }
 .question-answer { color: var(--text); margin: 2px 0 0 4px; }
+
+/* The team's steps in plain words (steps.ts), a run of them folded into one line */
+.step-run { border: 1px solid var(--border); border-radius: var(--r); background: var(--panel); font-size: 12.5px; }
+.step-run > summary { display: flex; align-items: center; gap: 8px; padding: 7px 10px; cursor: pointer; list-style: none; color: var(--text); }
+.step-run > summary::-webkit-details-marker { display: none; }
+.step-run > summary:hover { background: var(--surface); }
+.step-run-title { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.step-run-count { flex: none; color: var(--text-3); font-size: 11.5px; }
+.step-run-body { display: flex; flex-direction: column; gap: 4px; padding: 6px; border-top: 1px solid var(--border); }
+.step-run-body .tool { background: var(--surface); }
+.step-labels { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.step-label { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.step-text { color: var(--text); flex: none; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.step-raw { border-top: 1px solid var(--border); }
+.step-raw > .small { display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px 0; }
+.step-raw .tool-io { border-top: 0; }
+/* Long unbroken lines in a raw command or script must wrap, not widen the chat column. */
+.step-run, .step-run-body > *, .msg-assistant > .tool { min-width: 0; max-width: 100%; }
+.tool-io { overflow-wrap: anywhere; }
+
+/* Long messages from helpers folded to a few lines; reports with their task in the header */
+.folded-body { max-height: 9.5em; overflow: hidden; }
+.folded.open .folded-body { max-height: none; }
+.folded.clipped .folded-body { -webkit-mask-image: linear-gradient(to bottom, #000 65%, transparent); mask-image: linear-gradient(to bottom, #000 65%, transparent); }
+.folded-toggle { margin-top: 2px; }
+.report-task { display: inline-flex; align-items: baseline; gap: 6px; min-width: 0; overflow: hidden; }
+.report-task .task-id { flex: none; }
+.report-title { font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-agent .folded-toggle { margin: 0 8px 8px; }
+.msg-agent-head strong { white-space: nowrap; }

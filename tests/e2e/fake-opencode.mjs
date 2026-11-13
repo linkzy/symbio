@@ -186,7 +186,11 @@ async function runStep(session, step, ctl) {
       const name = m[1];
       const args = m[2] ? JSON.parse(m[2]) : {};
       // Like OpenCode's code mode: Symbio's tools are called from an "execute" step.
-      return toolStep(session, "execute", { code: `return await tools.symbio.${name}(${JSON.stringify(args)});` }, () => callSymbio(session, name, args));
+      // Its metadata lists the tools the script called, as OpenCode's does (verified on 2.1.4).
+      return toolStep(session, "execute", { code: `return await tools.symbio.${name}(${JSON.stringify(args)});` }, async () => {
+        const result = await callSymbio(session, name, args);
+        return { ...result, metadata: { toolCalls: [{ tool: `symbio.${name}`, status: result.error ? "error" : "completed", input: args }], truncated: false } };
+      });
     }
     case "shell":
       return toolStep(session, "shell", { command: step.rest }, async () => {

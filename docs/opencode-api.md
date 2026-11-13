@@ -62,6 +62,15 @@ and idle), `session.text.*`, `session.reasoning.*`, `session.tool.*` (live outpu
 
 ## Behaviors worth knowing
 
+- **Code mode: Symbio's tools are called from a script.** Agents often call MCP tools through
+  OpenCode's `execute` tool: `input.code` is a JavaScript snippet (`await tools.symbio.send_message({…})`,
+  sometimes several calls in one step), and the stored part's `state.metadata.toolCalls` lists what it
+  called: `[{tool: "symbio.send_message", status: "completed", input: {…}}]`. The output is the calls'
+  text results joined. Shell steps store only `input.command` (plus `timeout`, `workdir`): no
+  description of what the command is for. Each model step is its own assistant message, so a run
+  of tool steps is a run of messages. Verified on the user's real sessions (2.1.4, 2026-11-13); the
+  chat labels steps from these (`web/src/steps.ts`) and falls back to reading the script's code
+  while a step runs.
 - **A session's changes, turn by turn** (`GET /api/session/{id}/diff`): the files its turns changed,
   with unified patches, whether or not anything was committed (so also for agents sharing a folder,
   each with its own changes). `from` and `to` are user message ids; the id `POST …/prompt` returns is

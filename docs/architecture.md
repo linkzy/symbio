@@ -99,7 +99,7 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 
 The UI (`web/src/`) is React + Vite with Motion for animation and lucide icons. `api.ts` is its
 client; `ProjectView.tsx` holds the project screen (team sidebar and tabs), `Chat.tsx` renders a
-live session, `Kanban.tsx` the plan, `Messages.tsx` the message log, `Attachments.tsx` attachments in the chat and the Files tab, `Docs.tsx` the Docs tab and
+live session (with `steps.ts` labelling the team's steps in plain words), `Kanban.tsx` the plan, `Messages.tsx` the message log, `Attachments.tsx` attachments in the chat and the Files tab, `Docs.tsx` the Docs tab and
 `Rules.tsx` the rules register in it, `Inbox.tsx` the *Needs you* drawer, `Usage.tsx` tokens and
 costs, `Housekeeping.tsx` the daily check, `Remote.tsx` remote access, and
 `Settings.tsx`/`Providers.tsx` the global settings.
