@@ -8,6 +8,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **Your own helpers**: the **+** next to the team's count creates a helper you talk to directly, in its own chat (a
   name, what it's for, a model and where it works), like opening a new chat. It's a full team member; core is told
   and leaves it to you. *Stop agent* in its chat moves it to the stopped ones.
+- **Simulate core and helpers separately** in Settings → Model prices: a model for core and one for helpers (*Same as
+  core* copies it), each with its own share of your tokens, and what each costs and the total per day, week and month.
 
 ## [0.14.0]
 

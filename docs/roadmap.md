@@ -7,6 +7,7 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 ## Now
 
 - **Your own helpers.** Done for the next release: create a helper from the team list and talk to it directly.
+- **Simulating core and helpers apart.** Done for the next release: separate models and tokens, each one's cost and the total.
 
 ## Next
 

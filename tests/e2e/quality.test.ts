@@ -120,10 +120,34 @@ test("the price simulator gives the cost per day, week and month", async () => {
   await field("Cache read").fill("10");
   await field("Cache write").fill("0");
   await field("Output").fill("0.5");
-  const result = section.locator(".simulator-result");
-  await result.locator("div", { hasText: "Per day" }).locator("strong", { hasText: "$3.00" }).waitFor();
-  assert.ok((await result.innerText()).includes("$21.00"), "a week");
-  assert.ok((await result.innerText()).includes("$90"), "a month");
+  const row = (role: string) => section.locator(`.simulator-row[data-role="${role}"]`);
+  await row("all").locator("strong", { hasText: "$3.00" }).waitFor();
+  assert.deepEqual(await row("all").locator("strong").allInnerTexts(), ["$3.00", "$21.00", "$90.00", "$0.261"], "day, week, month, per million");
+
+  // Core and helpers apart: a dear model for core, a cheap one for helpers, and the total.
+  await section.locator(".simulator-mode button", { hasText: "Core and helpers separately" }).click();
+  const side = (role: string) => section.locator(".simulator-side", { has: page.locator(".simulator-role", { hasText: role }) });
+  const input = (role: string, block: number, label: string) =>
+    side(role)
+      .locator(".simulator-block")
+      .nth(block)
+      .locator("label.price-field", { has: page.locator("span", { hasText: new RegExp(`^${label}`) }) })
+      .locator("input");
+  await input("core", 0, "Input").fill("2");
+  await input("core", 0, "Output").fill("10");
+  await input("core", 0, "Cache read").fill("0.2");
+  for (const [label, v] of [["Fresh input", "1"], ["Cache read", "10"], ["Cache write", "0"], ["Output", "0.1"]]) await input("core", 1, label).fill(v);
+  // Same as core, then cheaper.
+  await side("helpers").locator("button", { hasText: "Same as core" }).click();
+  assert.equal(await input("helpers", 0, "Output").inputValue(), "10");
+  await input("helpers", 0, "Input").fill("0.07");
+  await input("helpers", 0, "Output").fill("0.14");
+  await input("helpers", 0, "Cache read").fill("0.014");
+  for (const [label, v] of [["Fresh input", "1"], ["Cache read", "20"], ["Cache write", "0"], ["Output", "0.2"]]) await input("helpers", 1, label).fill(v);
+  // core: 1×2 + 10×0.2 + 0.1×10 = $5; helpers: 1×0.07 + 20×0.014 + 0.2×0.14 = $0.378; total $5.378.
+  await row("core").locator("strong", { hasText: "$5.00" }).waitFor();
+  assert.equal(await row("helpers").locator("strong").first().innerText(), "$0.378");
+  assert.deepEqual((await row("total").locator("strong").allInnerTexts()).slice(0, 3), ["$5.38", "$37.65", "$161"]);
 });
 
 test("files go with an answer and with sending a task back", async () => {

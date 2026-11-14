@@ -615,6 +615,7 @@ export const api = {
   usageAverage: () =>
     call<{
       perDay: { input: number; output: number; reasoning: number; cacheRead: number; cacheWrite: number };
+      byRole?: Record<"core" | "helpers", { input: number; output: number; reasoning: number; cacheRead: number; cacheWrite: number }>;
       projects: { name: string; days: number; tokensPerDay: number }[];
     }>("GET", "/usage/average"),
   update: () => call<UpdateState>("GET", "/update"),

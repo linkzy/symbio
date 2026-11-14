@@ -203,12 +203,20 @@ export function projectUsage(project: Project, prices: ReturnType<typeof resolve
  */
 export function averageDailyUsage(projects: Project[], now = Date.now()) {
   const perDay = emptyUsage();
+  // The same, split between core and helpers (core usually runs on a dearer model).
+  const byRole = { core: emptyUsage(), helpers: emptyUsage() };
   const list = projects.map((p) => {
     let total = emptyUsage();
-    for (const agent of p.agents) for (const u of Object.values(agentUsageByModel(agent))) total = addUsage(total, u);
     const days = Math.max(1, (now - p.createdAt) / 86_400_000);
+    for (const agent of p.agents) {
+      const role = agent.role === "coordinator" ? byRole.core : byRole.helpers;
+      for (const u of Object.values(agentUsageByModel(agent))) {
+        total = addUsage(total, u);
+        for (const k of KEYS) role[k] += u[k] / days;
+      }
+    }
     for (const k of KEYS) perDay[k] += total[k] / days;
     return { name: p.name, days: Math.round(days), tokensPerDay: Math.round((total.input + total.output + total.reasoning + total.cacheRead + total.cacheWrite) / days) };
   });
-  return { perDay, projects: list.filter((p) => p.tokensPerDay > 0) };
+  return { perDay, byRole, projects: list.filter((p) => p.tokensPerDay > 0) };
 }
