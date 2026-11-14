@@ -212,7 +212,8 @@ test("the human creates a helper from the team list and talks to it directly; co
   assert.equal(ideas.purpose, "Brainstorms with me");
   await page.locator(".composer textarea").fill("@ideas say Here are three ideas for the first level.");
   await page.keyboard.press("Enter");
-  await page.locator(".msg-assistant", { hasText: "three ideas for the first level" }).waitFor();
+  // First match: for a moment the reply can show twice (still streaming, and already in the history).
+  await page.locator(".msg-assistant", { hasText: "three ideas for the first level" }).first().waitFor();
   // core hears about it at its next turn, without a turn just for that.
   await symbio.call("POST", `/projects/${project.id}/agents/${core.id}/messages`, { text: "@core say ok" });
   await idle(symbio, project.id);
