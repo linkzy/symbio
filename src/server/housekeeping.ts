@@ -108,7 +108,7 @@ async function unpushedIn(dir: string, label: string): Promise<{ remote: string 
 // Folders that are rebuilt or reinstalled on demand. Only removed when git ignores them.
 const BUILD_DIRS = new Set(["bin", "obj", "node_modules", ".vs", "dist", "build", "target", "out", ".next", "__pycache__", ".pytest_cache"]);
 
-async function sizeOf(dir: string): Promise<number> {
+export async function sizeOf(dir: string): Promise<number> {
   let total = 0;
   const walk = async (d: string) => {
     const entries = await fs.readdir(d, { withFileTypes: true }).catch(() => []);
@@ -116,7 +116,12 @@ async function sizeOf(dir: string): Promise<number> {
       entries.map(async (e) => {
         const p = path.join(d, e.name);
         if (e.isDirectory()) await walk(p);
-        else if (e.isFile()) total += (await fs.stat(p).catch(() => ({ size: 0 }))).size;
+        else if (e.isFile()) {
+          // Await first, then add: `total += await …` reads total before the await, so with many
+          // files measured at once each write-back dropped the others (80 GB counted as 4).
+          const { size } = await fs.stat(p).catch(() => ({ size: 0 }));
+          total += size;
+        }
       }),
     );
   };
