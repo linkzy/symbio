@@ -5,7 +5,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [0.14.1]
+## [0.14.2]
+
+(0.14.1 was never published: its release stopped on a test. Same content.)
 
 - **Your own helpers**: the **+** next to the team's count creates a helper you talk to directly, in its own chat (a
   name, what it's for, a model and where it works), like opening a new chat. It's a full team member; core is told
