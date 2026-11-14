@@ -171,3 +171,31 @@ test("files go with an answer and with sending a task back", async () => {
     return /The logo is cut off/.test(h) && /header-wrong\.txt/.test(h);
   });
 });
+
+test("the human creates a helper from the team list and talks to it directly; core is told", async () => {
+  const { project, core } = await projectWithCore(symbio, "Own helpers");
+  const { page } = await openPage(symbio);
+  await page.goto(`${symbio.base}/#/p/${project.id}`);
+  await page.locator(".side-add").click();
+  const dialog = page.locator(".dialog", { hasText: "New helper" });
+  await dialog.locator("label.field", { hasText: "Name" }).locator("input").fill("Ideas");
+  await dialog.locator("label.field", { hasText: "What it's for" }).locator("input").fill("Brainstorms with me");
+  await dialog.locator("button", { hasText: "Create and open its chat" }).click();
+  // Its chat opens, ready to talk to.
+  await page.locator(".chat-head", { hasText: "ideas" }).waitFor();
+  const ideas = (await symbio.call("GET", `/projects/${project.id}`)).agents.find((a: any) => a.name === "ideas");
+  assert.equal(ideas.startedBy, "human");
+  assert.equal(ideas.purpose, "Brainstorms with me");
+  await page.locator(".composer textarea").fill("@ideas say Here are three ideas for the first level.");
+  await page.keyboard.press("Enter");
+  await page.locator(".msg-assistant", { hasText: "three ideas for the first level" }).waitFor();
+  // core hears about it at its next turn, without a turn just for that.
+  await symbio.call("POST", `/projects/${project.id}/agents/${core.id}/messages`, { text: "@core say ok" });
+  await idle(symbio, project.id);
+  assert.match(await history(symbio, project.id, core.id), /the human created a helper, ideas \(\\"Brainstorms with me\\"\)/);
+  // Stopping it moves it to the stopped list.
+  page.once("dialog", (d) => void d.accept());
+  await page.locator(".agent-row", { hasText: "ideas" }).click();
+  await page.locator("button", { hasText: "Stop agent" }).click();
+  await until("ideas to stop", async () => (await symbio.call("GET", `/projects/${project.id}`)).agents.find((a: any) => a.name === "ideas").status === "stopped");
+});

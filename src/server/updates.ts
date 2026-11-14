@@ -221,6 +221,13 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "one they may use; your instructions list the models helpers may use. Also, the human's answers to questions and their " +
       "notes when sending a task back can come with files: they arrive as attachments, like files sent in the chat.",
   },
+  {
+    id: "2026-11-14-human-helpers",
+    text:
+      "The human can now create helpers themselves (the + in the team list), to talk to directly in their own chat. You're told " +
+      "when they do. Those helpers are part of the team (they follow the shared-asset rules, and you can see them in list_team), " +
+      "but don't give them work unless the human asks you to.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */

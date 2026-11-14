@@ -15,6 +15,7 @@ import {
   Play,
   Settings2,
   Users,
+  Plus,
 } from "lucide-react";
 import { UsageLine } from "./Usage";
 import { api, formatTokens, subscribe, usageTokens, type Agent, type Asset, type Plan, type Project } from "./api";
@@ -23,6 +24,7 @@ import { Docs } from "./Docs";
 import { FilesView } from "./Attachments";
 import { InboxDrawer, useInbox } from "./Inbox";
 import { Kanban } from "./Kanban";
+import { NewHelperDialog } from "./NewHelper";
 import { Messages, useProjectLog } from "./Messages";
 import { ProjectMenu } from "./ProjectMenu";
 import { ProjectSettings } from "./ProjectSettings";
@@ -49,6 +51,7 @@ export function ProjectView({ projectId }: { projectId: string }) {
   const [error, setError] = useState<string | null>(null);
   // Remembered for the browser session, so coming back (e.g. from Settings) opens the same place.
   const [selected, setSelected] = useRemembered<string | null>(`symbio:agent:${projectId}`, null);
+  const [newHelper, setNewHelper] = useState(false);
   const [starting, setStarting] = useState(false);
   const [tab, setTab] = useRemembered<Tab>(`symbio:tab:${projectId}`, "chat");
   const [inboxOpen, setInboxOpen] = useState(false);
@@ -163,6 +166,11 @@ export function ProjectView({ projectId }: { projectId: string }) {
             <div className="side-group-title">
               Team
               <span className="tnum">{activeAgents.length}</span>
+              {project.agents.some((a) => a.role === "coordinator" && a.status !== "stopped") && (
+                <button className="btn ghost icon xs side-add" title="New helper: one you talk to directly, in its own chat" aria-label="New helper" onClick={() => setNewHelper(true)}>
+                  <Plus size={13} />
+                </button>
+              )}
             </div>
             <AnimatePresence initial={false}>
               {activeAgents.map((a) => (
@@ -330,6 +338,17 @@ export function ProjectView({ projectId }: { projectId: string }) {
           />
         )}
       </AnimatePresence>
+      {newHelper && (
+        <NewHelperDialog
+          project={project}
+          onClose={() => setNewHelper(false)}
+          onCreated={(a) => {
+            setNewHelper(false);
+            setSelected(a.id);
+            setTab("chat");
+          }}
+        />
+      )}
     </div>
   );
 }

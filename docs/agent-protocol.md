@@ -81,6 +81,9 @@ being merged (unless core forces the merge).
   approves or requests changes in the Plan tab. No work is assigned before approval.
 - `spawn_agent` with a `task_id`, or `assign_task`, gives a task to a helper and moves it to
   *in progress*. Tasks with unfinished dependencies can't be assigned.
+- **Helpers the human creates** (the **+** in the team list, `POST /projects/:id/agents`, `Agent.startedBy: "human"`):
+  the same as `spawn_agent` without a first task. Their brief says the human works with them directly; core gets a
+  note at its next turn (it isn't woken) to leave them to the human unless asked.
 - Helpers report with `update_task`: `in-progress`, `blocked` (with the reason) or `review`
   (finished, with a summary, which is their report to core).
 - **Review guides and the human's review** (`Project.reviewBy`, `team/review.ts`). A helper reporting a

@@ -647,6 +647,8 @@ export const api = {
   restartAgent: (projectId: string, agentId: string) => call<Project>("POST", `/projects/${projectId}/agents/${agentId}/restart`),
   moveToProjectFolder: (projectId: string, agentId: string) =>
     call<Project>("POST", `/projects/${projectId}/agents/${agentId}/move-to-project-folder`),
+  createHelper: (projectId: string, body: { name: string; purpose?: string; model?: string; workspace?: "shared" | "own" }) =>
+    call<Agent>("POST", `/projects/${projectId}/agents`, body),
   stopAgent: (projectId: string, agentId: string) =>
     call<{ result: string }>("POST", `/projects/${projectId}/agents/${agentId}/stop`),
   forms: (projectId: string, agentId: string) => call<unknown[]>("GET", `/projects/${projectId}/agents/${agentId}/forms`),

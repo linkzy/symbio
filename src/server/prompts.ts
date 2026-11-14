@@ -377,6 +377,12 @@ wrote without asking the human. If the folder is a git repository, commit
 documentation changes — other agents' workspaces only see committed files.`;
 }
 
+// A helper the human created from the team list (Agent.startedBy): it works with them directly.
+const STARTED_BY_HUMAN = `The human created you themselves, to work with them directly: their messages
+arrive in your chat (marked [from: human · chat]); answer and work on them as they
+ask, the way a capable assistant would. You're still part of the team: the
+coordinator may write to you, and the rules below apply.`;
+
 export function workerBrief(project: Project, agent: Agent, coordinatorName: string, connections = ""): string {
   const isolated = !!agent.branch;
   return `# You are "${agent.name}", a member of a Symbio team
@@ -387,7 +393,7 @@ Your working folder: ${agent.directory}
 
 Symbio runs a team of AI agents. ${coordinatorName === "coordinator" ? "The coordinator" : `"${coordinatorName}" (the coordinator)`}
 organizes the work, talks with the human, and decides who may change shared
-assets. Your tasks come from the coordinator.
+assets. ${agent.startedBy === "human" ? STARTED_BY_HUMAN : "Your tasks come from the coordinator."}
 
 ## How you work
 

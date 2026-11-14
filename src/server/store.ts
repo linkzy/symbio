@@ -16,6 +16,8 @@ export interface Agent {
   role: AgentRole;
   /** What this agent is for, in the coordinator's words. */
   purpose?: string;
+  /** "human": created by the human from the team list, to work with them directly (no first task). */
+  startedBy?: "human";
   sessionId: string;
   /** Working folder: the project root (coordinator, shared helpers), or the helper's own git worktree. */
   directory: string;

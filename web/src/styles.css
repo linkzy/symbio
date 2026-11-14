@@ -908,3 +908,6 @@ tr.file-view-target > td, tr.file-view-target > th { background: rgba(212, 160, 
 .simulator-result { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; padding: 12px; border: 1px solid var(--border-strong); border-radius: var(--r-lg); background: var(--surface); }
 .simulator-result > div { display: flex; flex-direction: column; gap: 2px; }
 .simulator-result strong { font-size: 20px; font-variant-numeric: tabular-nums; }
+.side-group-title:has(.side-add) { justify-content: flex-start; }
+.side-group-title:has(.side-add) .tnum { margin-left: auto; }
+.side-add { margin-left: 4px; }

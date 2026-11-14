@@ -533,9 +533,9 @@ export class Team implements TeamCore {
   async spawnWorker(
     project: Project,
     coordinator: Agent,
-    opts: { name: string; purpose: string; task?: string; taskId?: string; model?: string; workspace?: HelperWorkspace; repo?: string },
+    opts: { name: string; purpose: string; task?: string; taskId?: string; model?: string; workspace?: HelperWorkspace; repo?: string; byHuman?: boolean },
   ): Promise<string> {
-    if (!opts.task && !opts.taskId) throw new Error("Give the helper a task: a plan task_id, or a task description.");
+    if (!opts.byHuman && !opts.task && !opts.taskId) throw new Error("Give the helper a task: a plan task_id, or a task description.");
     if (opts.taskId) {
       // Validate before creating anything.
       const store = await this.plan(project);
@@ -597,12 +597,24 @@ export class Team implements TeamCore {
       status: "idle",
       lastActivity: Date.now(),
       createdAt: Date.now(),
+      ...(opts.byHuman ? { startedBy: "human" as const } : {}),
     };
     project.agents.push(agent);
     await this.store.update(project);
     await this.refreshInstructions(project, agent);
     bus.publish({ type: "project.updated", projectId: project.id });
 
+    if (opts.byHuman) {
+      // Core learns about it at its next turn (no turn just for this), and leaves it to the human.
+      await this.system(
+        project,
+        coordinator,
+        `Symbio: the human created a helper, ${name}${opts.purpose ? ` ("${opts.purpose}")` : ""}, to work with them directly in its own chat. ` +
+          "It's part of the team, but don't give it work unless the human asks you to.",
+        false,
+      );
+      return `Created ${name} on ${model}.`;
+    }
     if (opts.taskId) await this.assignTask(project, coordinator, opts.taskId, agent, opts.task);
     else await this.deliver(project, coordinator, agent, "request", opts.task!, { protocol: true });
     const where = workspace.branch

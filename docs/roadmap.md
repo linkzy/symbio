@@ -6,7 +6,7 @@ welcome (open an issue). Items marked *(good first contribution)* are small and 
 
 ## Now
 
-Nothing in progress; the top of Next is what comes up.
+- **Your own helpers.** Done for the next release: create a helper from the team list and talk to it directly.
 
 ## Next
 

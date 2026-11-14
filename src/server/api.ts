@@ -785,6 +785,27 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     return c.json(project);
   });
 
+  // A helper the human creates from the team list, to talk to directly (like a new chat).
+  api.post("/projects/:id/agents", async (c) => {
+    const project = withProject(c.req.param("id"));
+    const body = await c.req.json<{ name?: string; purpose?: string; model?: string; workspace?: string }>();
+    const coordinator = project.agents.find((a) => a.role === "coordinator");
+    if (!coordinator || coordinator.status === "stopped") return c.json({ error: "Start core first." }, 400);
+    try {
+      await team.spawnWorker(project, coordinator, {
+        name: body.name ?? "",
+        purpose: body.purpose?.trim() || "Works with you directly",
+        model: body.model,
+        workspace: body.workspace === "own" ? "own" : body.workspace === "shared" ? "shared" : undefined,
+        byHuman: true,
+      });
+    } catch (err) {
+      return c.json({ error: (err as Error).message }, 400);
+    }
+    const name = (body.name ?? "").trim().toLowerCase().replace(/\s+/g, "-");
+    return c.json(project.agents.find((a) => a.name === name), 201);
+  });
+
   api.post("/projects/:id/agents/:agentId/stop", async (c) => {
     const project = withProject(c.req.param("id"));
     const agent = withAgent(project, c.req.param("agentId"));

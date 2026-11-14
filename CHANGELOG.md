@@ -5,6 +5,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Your own helpers**: the **+** next to the team's count creates a helper you talk to directly, in its own chat (a
+  name, what it's for, a model and where it works), like opening a new chat. It's a full team member; core is told
+  and leaves it to you. *Stop agent* in its chat moves it to the stopped ones.
+
 ## [0.14.0]
 
 - **Models for core and for helpers**: in a project's models, the crown now marks every model core may use (click it on
