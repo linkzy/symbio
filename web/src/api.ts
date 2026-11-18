@@ -527,6 +527,8 @@ export interface HousekeepingReport {
 
 export interface ProjectUsage {
   agents: { id: string; name: string; status: string; sessions: number; tokens: number; cost: number; byModel: { model: string; usage: Usage; tokens: number; cost: number | null }[] }[];
+  byModel: { model: string; provider: string; usage: Usage; tokens: number; cost: number }[];
+  byProvider: { provider: string; usage: Usage; tokens: number; cost: number }[];
   total: Usage;
   tokens: number;
   cost: number;

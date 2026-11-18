@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- A project's usage can be grouped **by agent, provider or model**, and narrowed to one provider, with the total for what is shown.
+
 ## [0.14.3]
 
 - **Costs and token counts are hidden by default**, so people passing by don't see what projects spend: the line under the

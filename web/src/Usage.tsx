@@ -2,7 +2,7 @@ import { Simulator } from "./Simulator";
 import { MASK, setCostsShown, useCostsShown } from "./privacy";
 import { useEffect, useRef, useState } from "react";
 import { Coins } from "lucide-react";
-import { api, formatTokens, subscribe, type Price, type PriceInfo, type Project, type ProjectUsage } from "./api";
+import { api, formatTokens, subscribe, type Price, type PriceInfo, type Project, type ProjectUsage, type Usage } from "./api";
 
 const usd = (n: number) => (n >= 100 ? `$${Math.round(n)}` : `$${n.toFixed(2)}`);
 
@@ -48,12 +48,59 @@ export function UsageLine({ project, onOpen }: { project: Project; onOpen: () =>
   );
 }
 
+const providerOf = (model: string) => (model.includes("/") ? model.slice(0, model.indexOf("/")) : model);
+const addUsage = (a: Usage, b: Usage): Usage => ({
+  cost: a.cost + b.cost,
+  input: a.input + b.input,
+  output: a.output + b.output,
+  reasoning: a.reasoning + b.reasoning,
+  cacheRead: a.cacheRead + b.cacheRead,
+  cacheWrite: a.cacheWrite + b.cacheWrite,
+});
+interface UsageRow {
+  key: string;
+  first: string;
+  second: string;
+  usage: Usage;
+  cost: number | null;
+  muted?: boolean;
+}
+
 /** Project settings: usage per agent and model, with the estimate. */
 export function UsageSection({ project }: { project: Project }) {
   const usage = useProjectUsage(project.id);
   const shown = useCostsShown();
   const tokens = (n: number) => (shown ? formatTokens(n) : MASK);
   const money = (n: number) => (shown ? usd(n) : MASK);
+  const [view, setView] = useState<"agent" | "provider" | "model">("agent");
+  const [provider, setProvider] = useState("");
+  // The rows of the chosen grouping, narrowed to one provider if picked, and what they add up to.
+  const rows: UsageRow[] = [];
+  if (usage) {
+    if (view === "provider") {
+      for (const p of usage.byProvider) if (!provider || p.provider === provider) rows.push({ key: p.provider, first: p.provider, second: "", usage: p.usage, cost: p.cost });
+    } else if (view === "model") {
+      for (const m of usage.byModel) if (!provider || m.provider === provider) rows.push({ key: m.model, first: m.model, second: m.provider, usage: m.usage, cost: m.cost });
+    } else {
+      for (const a of usage.agents) {
+        const mine = a.byModel.filter((m) => !provider || providerOf(m.model) === provider);
+        mine.forEach((m, i) =>
+          rows.push({
+            key: `${a.id}-${m.model}`,
+            first: i === 0 ? `${a.name}${a.status === "stopped" ? " (stopped)" : ""}${a.sessions > 1 ? ` · ${a.sessions} sessions` : ""}` : "",
+            second: m.model,
+            usage: m.usage,
+            cost: m.cost,
+            muted: a.status === "stopped",
+          }),
+        );
+      }
+    }
+  }
+  const selected = rows.reduce(
+    (s, r) => ({ usage: addUsage(s.usage, r.usage), cost: s.cost + (r.cost ?? 0) }),
+    { usage: { cost: 0, input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0 } as Usage, cost: 0 },
+  );
   return (
     <section className="section" id="usage">
       <div className="section-head">
@@ -78,11 +125,28 @@ export function UsageSection({ project }: { project: Project }) {
         <div className="section-empty">No usage yet.</div>
       ) : (
         <div style={{ padding: "4px 12px 12px", overflowX: "auto" }}>
+          <div className="row" style={{ gap: 10, padding: "6px 0 8px", flexWrap: "wrap", alignItems: "center" }}>
+            <div className="seg">
+              {(["agent", "provider", "model"] as const).map((v) => (
+                <button key={v} className={view === v ? "on" : ""} onClick={() => setView(v)}>
+                  By {v}
+                </button>
+              ))}
+            </div>
+            <select value={provider} onChange={(e) => setProvider(e.target.value)} aria-label="Provider">
+              <option value="">All providers</option>
+              {usage.byProvider.map((p) => (
+                <option key={p.provider} value={p.provider}>
+                  {p.provider}
+                </option>
+              ))}
+            </select>
+          </div>
           <table className="usage-table">
             <thead>
               <tr>
-                <th>Agent</th>
-                <th>Model</th>
+                <th>{view === "provider" ? "Provider" : view === "model" ? "Model" : "Agent"}</th>
+                <th>{view === "provider" ? "" : view === "model" ? "Provider" : "Model"}</th>
                 <th className="num">Input</th>
                 <th className="num">Output</th>
                 <th className="num">Cache read</th>
@@ -91,28 +155,26 @@ export function UsageSection({ project }: { project: Project }) {
               </tr>
             </thead>
             <tbody>
-              {usage.agents.flatMap((a) =>
-                a.byModel.map((m, i) => (
-                  <tr key={`${a.id}-${m.model}`} className={a.status === "stopped" ? "muted" : ""}>
-                    <td>{i === 0 ? `${a.name}${a.status === "stopped" ? " (stopped)" : ""}${a.sessions > 1 ? ` · ${a.sessions} sessions` : ""}` : ""}</td>
-                    <td className="mono small">{m.model}</td>
-                    <td className="num tnum">{tokens(m.usage.input)}</td>
-                    <td className="num tnum">{tokens(m.usage.output + m.usage.reasoning)}</td>
-                    <td className="num tnum">{tokens(m.usage.cacheRead)}</td>
-                    <td className="num tnum">{tokens(m.usage.cacheWrite)}</td>
-                    <td className="num tnum">{m.cost === null ? "no price" : money(m.cost)}</td>
-                  </tr>
-                )),
-              )}
+              {rows.map((r) => (
+                <tr key={r.key} className={r.muted ? "muted" : ""}>
+                  <td className={view === "agent" ? "" : "mono small"}>{r.first}</td>
+                  <td className="mono small">{r.second}</td>
+                  <td className="num tnum">{tokens(r.usage.input)}</td>
+                  <td className="num tnum">{tokens(r.usage.output + r.usage.reasoning)}</td>
+                  <td className="num tnum">{tokens(r.usage.cacheRead)}</td>
+                  <td className="num tnum">{tokens(r.usage.cacheWrite)}</td>
+                  <td className="num tnum">{r.cost === null ? "no price" : money(r.cost)}</td>
+                </tr>
+              ))}
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={2}>Total</td>
-                <td className="num tnum">{tokens(usage.total.input)}</td>
-                <td className="num tnum">{tokens(usage.total.output + usage.total.reasoning)}</td>
-                <td className="num tnum">{tokens(usage.total.cacheRead)}</td>
-                <td className="num tnum">{tokens(usage.total.cacheWrite)}</td>
-                <td className="num tnum">{money(usage.cost)}</td>
+                <td colSpan={2}>{provider ? `Total for ${provider}` : "Total"}</td>
+                <td className="num tnum">{tokens(selected.usage.input)}</td>
+                <td className="num tnum">{tokens(selected.usage.output + selected.usage.reasoning)}</td>
+                <td className="num tnum">{tokens(selected.usage.cacheRead)}</td>
+                <td className="num tnum">{tokens(selected.usage.cacheWrite)}</td>
+                <td className="num tnum">{money(selected.cost)}</td>
               </tr>
             </tfoot>
           </table>
