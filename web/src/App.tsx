@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MachineBadge } from "./Machine";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, ChevronDown, ChevronRight, KeyRound, LayoutList, PauseCircle, Plus, Settings as SettingsIcon } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Globe, KeyRound, LayoutList, PauseCircle, Plus, Settings as SettingsIcon } from "lucide-react";
 import { api, LOCKED_EVENT, subscribe, type Project, type RuntimeInfo, type RuntimeKind, type RuntimeStatus } from "./api";
 import { FileViewer } from "./files";
 import { Home } from "./Home";
@@ -11,7 +11,7 @@ import { EmptyState, Logo } from "./ui";
 import { RemoteBanner } from "./Remote";
 import { UpdateBadge, useUpdate } from "./Updates";
 import { ReportProblemLink } from "./ReportProblem";
-import { useI18n } from "./i18n";
+import { LOCALES, useI18n } from "./i18n";
 
 function useHashRoute() {
   const [hash, setHash] = useState(location.hash);
@@ -144,6 +144,7 @@ export function App() {
             <PauseCircle size={15} />
             <span className="btn-label">{t("app.pauseAll")}</span>
           </button>
+          <LanguageMenu />
           <a
             className={`btn ghost sm ${route.page === "settings" ? "active" : ""}`}
             href="#/settings"
@@ -250,6 +251,66 @@ function ProjectSwitcher({ currentId, name }: { currentId: string; name: string 
               <Plus size={14} />
               {t("app.newProject.menu")}
             </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function LanguageMenu() {
+  const { t, locale, setLocale } = useI18n();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    addEventListener("mousedown", close);
+    addEventListener("keydown", esc);
+    return () => {
+      removeEventListener("mousedown", close);
+      removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  return (
+    <div className="menu" ref={ref}>
+      <button
+        className="btn ghost sm"
+        onClick={() => setOpen((o) => !o)}
+        title={t("appearance.language")}
+        aria-label={t("appearance.language")}
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <Globe size={15} />
+        <span className="btn-label">{t("appearance.language")}</span>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="menu-list"
+            role="menu"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.1 }}
+          >
+            {LOCALES.map((l) => (
+              <button
+                key={l.id}
+                role="menuitemradio"
+                aria-checked={locale === l.id}
+                className={locale === l.id ? "on" : ""}
+                onClick={() => {
+                  setLocale(l.id);
+                  setOpen(false);
+                }}
+              >
+                <span className="grow">{l.native}</span>
+                {locale === l.id && <Check size={14} />}
+              </button>
+            ))}
           </motion.div>
         )}
       </AnimatePresence>
