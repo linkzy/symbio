@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Bot, Check, Download, ExternalLink, Loader2, LogIn, SquareTerminal, Trash2 } from "lucide-react";
-import { api, subscribe, type RuntimeKind, type RuntimeView } from "./api";
+import { api, subscribe, type RuntimeKind, type RuntimeSettings, type RuntimeView } from "./api";
 
 /**
  * The agent runtimes and whether they're installed, kept current: an install's progress and a
@@ -75,7 +75,8 @@ export function RuntimeCard({ view, onChange }: { view: RuntimeView; onChange: (
           <div className="list-sub">
             {view.installed ? (
               <span className="row" style={{ gap: 4, display: "inline-flex" }}>
-                <Check size={12} /> Installed{(view.installedVersion ?? view.version) ? ` · ${view.installedVersion ?? view.version}` : ""}
+                <Check size={12} /> {view.source === "path" ? "Using OpenCode from PATH" : "Installed"}
+                {(view.installedVersion ?? view.version) ? ` · ${view.installedVersion ?? view.version}` : ""}
               </span>
             ) : view.installing ? (
               "Installing…"
@@ -193,6 +194,50 @@ export function RuntimeCards({ runtimes, onChange }: { runtimes: RuntimeView[]; 
   );
 }
 
+/** Opt-in to an OpenCode already installed on the computer, instead of Symbio's tested copy. */
+function PathOpenCodeOption({ onChange }: { onChange: () => void }) {
+  const [settings, setSettings] = useState<RuntimeSettings | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void api.runtimeSettings().then(setSettings).catch((e: Error) => setError(e.message));
+  }, []);
+
+  async function toggle(usePathOpenCode: boolean) {
+    setBusy(true);
+    setError(null);
+    try {
+      setSettings(await api.setRuntimeSettings({ usePathOpenCode }));
+      onChange();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="runtime-path-option">
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={settings?.usePathOpenCode ?? false}
+          // If the executable disappears while it's on, the human must still be able to turn it off.
+          disabled={busy || (!settings?.usePathOpenCode && !settings?.pathAvailable)}
+          onChange={(e) => void toggle(e.target.checked)}
+        />
+        Use OpenCode from PATH
+      </label>
+      <p className="runtime-card-desc subtle">
+        Runs the <code>opencode</code> already installed on this computer instead of Symbio's tested copy.
+        {settings && !settings.pathAvailable ? " No OpenCode was found on PATH." : " It may be a different, untested version."}
+      </p>
+      {error && <div className="error">{error}</div>}
+    </div>
+  );
+}
+
 /** Settings section: the agent runtimes, installed or not. */
 export function RuntimesSection() {
   const { runtimes, error, reload } = useRuntimes();
@@ -203,12 +248,13 @@ export function RuntimesSection() {
           <h2>Agent runtimes</h2>
           <p>
             The programs agents run on. Install the ones you use: each project picks one when it's created. Symbio downloads them into its own
-            folder, at the version it was tested with; removing one deletes that copy.
+            folder, at the version it was tested with; removing one deletes that copy. You can opt in below to use an OpenCode already on PATH.
           </p>
         </div>
       </div>
       <div className="section-body">
         {runtimes && <RuntimeCards runtimes={runtimes} onChange={reload} />}
+        <PathOpenCodeOption onChange={reload} />
         {error && <div className="error">{error}</div>}
       </div>
     </section>

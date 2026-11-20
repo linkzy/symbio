@@ -5,6 +5,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Use an OpenCode already on your computer.** Settings → Agent runtimes has an opt-in to run the
+  `opencode` found on PATH instead of Symbio's tested copy. It's off by default, the PATH version can
+  differ from the tested one, and Copilot is unaffected.
+
 ## [0.22.0]
 
 - **Small computers stay usable.** The agents' runtime runs at below-normal priority, and everything agents start

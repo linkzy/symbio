@@ -1,19 +1,22 @@
 // Which agent runtimes are installed, and installing them. Symbio doesn't ship any: the human
 // installs the ones they want (Settings → Runtimes, or the first-run cards), and Symbio downloads
-// the version it was tested with into its own folder (~/.symbio/runtimes/<kind>), with npm. Nothing
-// goes on the PATH or elsewhere on the machine; removing one deletes that folder.
+// the version it was tested with into its own folder (~/.symbio/runtimes/<kind>), with npm. Removing
+// one deletes that folder. An OpenCode already on the PATH can be used instead, but only when the
+// human opts in: by default Symbio runs the version it was tested with.
 //
 // A runtime is found, in order: a path given in the environment (development, the end-to-end tests'
-// stand-ins), Symbio's own copy, or (in a development checkout) the copy in Symbio's node_modules.
+// stand-ins), an OpenCode on the PATH when opted in, Symbio's own copy, or (in a development
+// checkout) the copy in Symbio's node_modules.
 
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { promises as fs } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { EventEmitter } from "node:events";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { globalDir } from "../store.js";
+import { loadRuntimeSettings } from "./settings.js";
 import type { RuntimeKind } from "./types.js";
 
 export interface RuntimePackage {
@@ -73,8 +76,40 @@ const manifestFile = (kind: RuntimeKind) => path.join(installDir(kind), "runtime
 /** Where a runtime starts from, and how it got there. */
 export interface Located {
   entry: string;
-  source: "environment" | "symbio" | "development";
+  source: "environment" | "path" | "symbio" | "development";
   version: string | null;
+  /** Windows shims from npm are batch files: Node can only start them through cmd.exe. */
+  shell?: boolean;
+}
+
+/** Whether Symbio's own copy is there, even when another source is currently preferred. */
+export function hasInstalledCopy(kind: RuntimeKind): boolean {
+  const manifest = readJson(manifestFile(kind));
+  return typeof manifest?.entry === "string" && existsSync(manifest.entry);
+}
+
+/**
+ * An OpenCode executable on the PATH, if there is one. Only OpenCode has this opt-in: the Copilot
+ * runtime is a module loaded from a known folder, not a command that can be resolved from PATH.
+ */
+export function findOnPath(kind: RuntimeKind): Located | null {
+  if (kind !== "opencode") return null;
+  // Windows npm shims are .cmd; the extensionless file is a shell script Node can't spawn directly.
+  const names = process.platform === "win32" ? ["opencode.exe", "opencode.cmd"] : ["opencode"];
+  for (const dir of (process.env.PATH ?? "").split(path.delimiter)) {
+    if (!dir) continue;
+    for (const name of names) {
+      const entry = path.resolve(dir, name);
+      if (!existsSync(entry)) continue;
+      try {
+        if (!statSync(entry).isFile()) continue;
+      } catch {
+        continue; // a broken link on the PATH
+      }
+      return { entry, source: "path", version: null, ...(name.endsWith(".cmd") ? { shell: true } : {}) };
+    }
+  }
+  return null;
 }
 
 /** The installed runtime, or null. */
@@ -82,8 +117,15 @@ export function locate(kind: RuntimeKind): Located | null {
   const spec = RUNTIME_PACKAGES[kind];
   const fromEnv = process.env[spec.env]?.trim();
   if (fromEnv) return { entry: fromEnv, source: "environment", version: null };
-  const manifest = readJson(manifestFile(kind));
-  if (typeof manifest?.entry === "string" && existsSync(manifest.entry)) return { entry: manifest.entry, source: "symbio", version: manifest.version ?? null };
+  // Opt-in and explicit: PATH can hold any version, so never use it silently.
+  if (kind === "opencode" && loadRuntimeSettings().usePathOpenCode) {
+    const onPath = findOnPath(kind);
+    if (onPath) return onPath;
+  }
+  if (hasInstalledCopy(kind)) {
+    const manifest = readJson(manifestFile(kind))!;
+    return { entry: manifest.entry, source: "symbio", version: manifest.version ?? null };
+  }
   if (process.env.SYMBIO_NO_DEV_RUNTIMES === "1") return null;
   // A development checkout has the runtimes in its own node_modules (dev dependencies). Only there:
   // an installed Symbio could otherwise pick up a copy someone installed globally next to it.
@@ -122,7 +164,7 @@ function symbioRoot(): string | null {
 /** Loads a module runtime (the Copilot SDK, or a stand-in for it) from where it was located. */
 export async function importRuntime(kind: RuntimeKind): Promise<any> {
   const found = locate(kind);
-  if (!found) throw new NotInstalledError(kind);
+  if (!found || found.source === "path") throw new NotInstalledError(kind);
   return import(pathToFileURL(path.resolve(found.entry)).href);
 }
 

@@ -102,6 +102,8 @@ docs/                  This documentation
   credentials are never touched.
 - Git behavior (worktrees, merges, conflicts, restoring workspaces) is tested against real
   temporary repositories in `tests/workspaces.test.ts`.
+- `tests/e2e/install.test.ts` covers the first-run install flow and the opt-in to an OpenCode found
+  on PATH. The PATH test builds a temporary stand-in executable, so it never uses your own OpenCode.
 - `npm run test:contract` starts the bundled OpenCode (or `SYMBIO_OPENCODE_BIN`) with its data in a
   temporary folder and checks every endpoint Symbio relies on that doesn't need a model. CI runs it
   on each push, and daily against the newest OpenCode too (`.github/workflows/opencode-contract.yml`).

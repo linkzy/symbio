@@ -25,6 +25,11 @@ permission rules. In stdio mode OpenCode deletes `OPENCODE_SERVER_PASSWORD`/`OPE
 from its environment after reading them, prints `{"url": …}` on stdout, and exits when its stdin
 closes, so it never outlives Symbio. (Verified: an agent shell sees an empty variable.)
 
+If the human opts in to an OpenCode on PATH (Settings → Agent runtimes), the same private server is
+started from that executable. It can be a newer or older version than the one verified here, so
+re-check the endpoints below before relying on a new behavior with that setup. On Windows an npm
+`.cmd` shim is started through `cmd.exe`, with only fixed arguments and a quoted absolute path.
+
 Agents' shells inherit `CI=1`, `npm_config_yes=true`, `GIT_TERMINAL_PROMPT=0` and `PIP_NO_INPUT=1`
 so commands don't hang waiting for input. The PID is stored in `~/.symbio/opencode.pid`; on start,
 Symbio stops a server left behind by a previous run, if it's still running.

@@ -5,7 +5,8 @@ import { streamSSE } from "hono/streaming";
 import { bus, type UiEvent } from "./bus.js";
 import type { OpencodeRuntime } from "./opencode/runtime.js";
 import { runtimeOf, type AgentRuntime, type RuntimeKind } from "./runtime/types.js";
-import { isInstalled, locate, NotInstalledError, RUNTIME_PACKAGES, RuntimeInstaller } from "./runtime/install.js";
+import { findOnPath, hasInstalledCopy, isInstalled, locate, NotInstalledError, RUNTIME_PACKAGES, RuntimeInstaller } from "./runtime/install.js";
+import { loadRuntimeSettings, saveRuntimeSettings } from "./runtime/settings.js";
 import { CopilotRuntime } from "./copilot/runtime.js";
 import type { CoreMode, ReviewBy, Store, Project, DocsLocation, HelperWorkspace, ProjectConnection } from "./store.js";
 import { existsSync, promises as fs } from "node:fs";
@@ -156,6 +157,17 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
 
   api.get("/runtime", (c) => c.json(runtimeInfo()));
 
+  // Opt-in to an OpenCode on the PATH. A runtime event makes the cards reload right away.
+  const pathSettings = () => ({ ...loadRuntimeSettings(), pathAvailable: !!findOnPath("opencode") });
+  api.get("/runtime/settings", (c) => c.json(pathSettings()));
+  api.put("/runtime/settings", async (c) => {
+    const body = await c.req.json<{ usePathOpenCode?: boolean }>();
+    if (typeof body.usePathOpenCode !== "boolean") return c.json({ error: "usePathOpenCode must be true or false." }, 400);
+    const saved = await saveRuntimeSettings({ usePathOpenCode: body.usePathOpenCode });
+    bus.publish({ type: "runtime", ...runtimeInfo() });
+    return c.json({ ...saved, pathAvailable: !!findOnPath("opencode") });
+  });
+
   // Every agent runtime Symbio can use: whether it's installed (and installing it), for choosing one
   // (a project's runtime), and Copilot's sign-in.
   const runtimeView = (r: AgentRuntime) => {
@@ -171,8 +183,9 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       sizeMB: pkg.sizeMB,
       installed: !!found,
       installedVersion: found?.version ?? null,
-      // Only Symbio's own copy can be removed from here (not a development checkout's).
-      removable: found?.source === "symbio",
+      source: found?.source ?? null,
+      // Symbio's copy can be removed even while a PATH OpenCode is preferred (not a dev checkout's).
+      removable: hasInstalledCopy(r.kind),
       installing: install.installing,
       installLog: install.log,
       installError: install.error,
@@ -196,14 +209,16 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
   // runtime events tell how it goes.
   api.post("/runtimes/:kind/install", (c) => {
     const r = runtimeKind(c.req.param("kind"));
-    if (!isInstalled(r.kind) || installer.state(r.kind).error) {
+    const found = locate(r.kind);
+    // A PATH OpenCode is already usable: a stale install error must not trigger a download.
+    if (!found || (installer.state(r.kind).error && found.source !== "path")) {
       installer.install(r.kind).catch((err) => console.error(`[runtime] installing ${r.kind}:`, err.message));
     }
     return c.json(runtimeView(r), 202);
   });
   api.delete("/runtimes/:kind", async (c) => {
     const r = runtimeKind(c.req.param("kind"));
-    if (locate(r.kind)?.source !== "symbio") return c.json({ error: `${r.label} wasn't installed by Symbio here: there's nothing to remove.` }, 400);
+    if (!hasInstalledCopy(r.kind)) return c.json({ error: `${r.label} wasn't installed by Symbio here: there's nothing to remove.` }, 400);
     const busy = store.list().filter((p) => p.agents.some((a) => runtimeOf(a) === r.kind && a.status !== "stopped"));
     if (busy.length) {
       return c.json({ error: `Agents of ${busy.map((p) => p.name).join(", ")} run on ${r.label}: stop them first.` }, 409);

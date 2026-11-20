@@ -266,6 +266,13 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "the machine is overloaded, Symbio tells the human and core (with the heaviest programs) and may hold messages between " +
       "agents until it recovers. core: list_programs shows the load and the programs agents started; stop_program stops one by pid.",
   },
+  {
+    id: "2026-11-20-path-opencode",
+    text:
+      "The human can opt in, in Settings → Agent runtimes, to running an OpenCode found on this computer's PATH instead of " +
+      "Symbio's tested copy. When that happens your runtime may be a different version: if an API behavior looks unfamiliar, " +
+      "tell the human which OpenCode version is in use.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */

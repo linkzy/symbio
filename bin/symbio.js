@@ -200,7 +200,8 @@ async function doctor() {
     const { RUNTIME_PACKAGES, locate } = await import(pathToFileURL(path.join(root, "dist", "server", "runtime", "install.js")).href);
     for (const spec of Object.values(RUNTIME_PACKAGES)) {
       const found = locate(spec.kind);
-      console.log(`${found ? "✔" : "·"} ${spec.label}: ${found ? `installed${found.version ? ` (${found.version})` : ""} — ${found.entry}` : "not installed"}`);
+      const from = found?.source === "path" ? " from PATH" : found?.source === "environment" ? " (environment)" : "";
+      console.log(`${found ? "✔" : "·"} ${spec.label}: ${found ? `installed${from}${found.version ? ` (${found.version})` : ""} — ${found.entry}` : "not installed"}`);
       if (found) installed.push(spec.kind);
     }
   } catch {}

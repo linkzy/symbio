@@ -2,7 +2,8 @@
 // (here with a stand-in for npm that "installs" the stand-in runtimes), offers only installed ones
 // for new projects, and installs again one that existing projects use but that's missing.
 import assert from "node:assert/strict";
-import { existsSync, rmSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { after, test } from "node:test";
 import { closeBrowser, idle, MODEL, openPage, RUNTIME, startSymbio, until, type Symbio } from "./harness.js";
@@ -24,6 +25,23 @@ const freshEnv = (root?: string): Record<string, string> => ({
       ])
     : {}),
 });
+
+// A real launcher on PATH that starts the stand-in OpenCode: .cmd on Windows (npm's shims are
+// batch files), a shell script elsewhere. Nothing here touches the human's own OpenCode.
+function fakeOpenCodeOnPath(root: string): Record<string, string> {
+  const dir = path.join(root, "path-bin");
+  mkdirSync(dir, { recursive: true });
+  const source = path.resolve(import.meta.dirname, "fake-opencode.mjs");
+  if (process.platform === "win32") {
+    writeFileSync(path.join(dir, "opencode.cmd"), `@echo off\r\nnode "${source}" %*\r\n`);
+  } else {
+    const file = path.join(dir, "opencode");
+    writeFileSync(file, `#!/bin/sh\nexec node "${source}" "$@"\n`);
+    chmodSync(file, 0o755);
+  }
+  const value = `${dir}${path.delimiter}${process.env.PATH ?? process.env.Path ?? ""}`;
+  return { PATH: value, Path: value };
+}
 
 const running: Symbio[] = [];
 after(async () => {
@@ -110,3 +128,47 @@ test("a runtime agents run on can't be removed; one projects use is installed ag
   assert.equal((await again.call("GET", "/runtimes")).find((r: any) => r.kind === RUNTIME).installed, false);
   assert.ok(!existsSync(path.join(home, "runtimes", RUNTIME)));
 });
+
+test(
+  "an OpenCode on PATH can be opted into, and Symbio downloads nothing",
+  { skip: RUNTIME === "copilot" && "the PATH opt-in is OpenCode-only" },
+  async () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "sym-e2e-path-"));
+    const symbio = await startSymbio({ ...freshEnv(root), SYMBIO_OPENCODE_BIN: "", ...fakeOpenCodeOnPath(root) });
+    running.push(symbio);
+
+    assert.deepEqual(
+      (await symbio.call("GET", "/runtimes")).map((r: any) => [r.kind, r.installed, r.source]),
+      [
+        ["opencode", false, null],
+        ["copilot", false, null],
+      ],
+      "off by default, even with an executable on PATH",
+    );
+    assert.equal((await symbio.call("GET", "/runtime/settings")).pathAvailable, true);
+
+    await symbio.call("PUT", "/runtime/settings", { usePathOpenCode: true });
+    await until("the PATH OpenCode to be used", async () => {
+      const r = (await symbio.call("GET", "/runtimes")).find((x: any) => x.kind === "opencode");
+      return r.installed && r.source === "path";
+    }, 10_000, symbio.output);
+
+    const views = await symbio.call("GET", "/runtimes");
+    const opencode = views.find((r: any) => r.kind === "opencode");
+    assert.equal(opencode.removable, false, "there's no Symbio copy to remove");
+    await assert.rejects(symbio.call("DELETE", "/runtimes/opencode"), /wasn't installed by Symbio/);
+    assert.equal(existsSync(path.join(symbio.root, "home", "runtimes", "opencode")), false, "nothing was downloaded");
+
+    const project = await symbio.call("POST", "/projects", {
+      name: "from-path",
+      directory: symbio.folder("from-path"),
+      coordinatorModel: MODEL,
+      allowedModels: [MODEL],
+      runtime: "opencode",
+    });
+    await symbio.call("POST", `/projects/${project.id}/start`);
+    await idle(symbio, project.id);
+    assert.equal((await symbio.call("GET", "/runtime")).runtimes.find((r: any) => r.kind === "opencode").state, "running");
+    assert.equal((await symbio.call("GET", "/runtime/settings")).usePathOpenCode, true, "the choice is persisted");
+  },
+);

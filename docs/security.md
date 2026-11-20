@@ -162,8 +162,10 @@ project the connections it needs.
   restarts Symbio, so it's never possible through remote access.
 - **Agent runtimes** (OpenCode, the Copilot SDK) also come from the npm registry, by npm, at the
   exact versions Symbio is tested with, into `~/.symbio/runtimes`, when the human asks for one in
-  Settings (or at startup, for one existing projects use). Symbio never runs one from the PATH, so
-  another copy on the computer doesn't change what runs.
+  Settings (or at startup, for one existing projects use). By default Symbio never runs one from the
+  PATH, so another copy on the computer doesn't change what runs. In Settings → Agent runtimes the
+  human can explicitly opt in to using an OpenCode already on PATH; that version may be unverified,
+  and the Copilot SDK can't be swapped this way.
 
 ## Things to know
 

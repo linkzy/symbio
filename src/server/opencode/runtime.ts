@@ -366,16 +366,18 @@ export class OpencodeRuntime extends EventEmitter<RuntimeEvents> implements Agen
 }
 
 /**
- * How to launch OpenCode: the copy Symbio installed (runtime/install.ts), SYMBIO_OPENCODE_BIN, or a
- * development checkout's; null when it isn't installed. Symbio never falls back to an \`opencode\` on
- * the PATH: the version it runs is the one it was tested with.
+ * How to launch OpenCode: SYMBIO_OPENCODE_BIN, an OpenCode on the PATH when the human opted in,
+ * Symbio's own copy, or a development checkout's; null when it isn't installed. By default Symbio
+ * never uses an \`opencode\` on the PATH: the version it runs is the one it was tested with.
  */
 export function resolveOpencode(): { command: string; args: string[]; shell: boolean } | null {
   const found = locate("opencode");
   if (!found) return null;
   // A .js/.mjs file runs with this Node: the end-to-end tests' stand-in OpenCode (tests/e2e).
   if (/\.m?js$/i.test(found.entry)) return { command: process.execPath, args: [found.entry], shell: false };
-  return { command: found.entry, args: [], shell: false };
+  // npm's Windows shims are batch files, which Node can only start through cmd.exe. The path is
+  // fixed here (no agent input), and quoting keeps a user folder with spaces working.
+  return { command: found.shell ? `"${found.entry}"` : found.entry, args: [], shell: found.shell ?? false };
 }
 
 function killTree(pid: number) {
