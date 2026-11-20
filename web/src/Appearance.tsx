@@ -1,12 +1,14 @@
-import { useRef, useState } from "react";
+﻿import { useRef, useState } from "react";
 import { Check, Upload, X } from "lucide-react";
 import { addCustomTheme, allThemes, LAYOUTS, removeCustomTheme, useLayout, useTheme } from "./theme";
 import { parseVsCodeTheme } from "./vscodeTheme";
+import { LOCALES, useI18n } from "./i18n";
 
 /** Settings → Appearance: the theme, kept in this browser. */
 export function AppearanceSection() {
   const [theme, setTheme] = useTheme();
   const [layout, setLayout] = useLayout();
+  const { locale, setLocale, t } = useI18n();
   const developer = theme === "dark-modern" && layout === "workbench";
   const [, refresh] = useState(0);
   const [importError, setImportError] = useState<string | null>(null);
@@ -15,7 +17,7 @@ export function AppearanceSection() {
   async function importTheme(file: File) {
     setImportError(null);
     try {
-      if (file.size > 2 * 1024 * 1024) throw new Error("That file is too large for a color theme.");
+      if (file.size > 2 * 1024 * 1024) throw new Error(t("appearance.importTheme.tooLarge"));
       addCustomTheme(parseVsCodeTheme(await file.text(), file.name));
       refresh((n) => n + 1);
     } catch (e) {
@@ -26,44 +28,53 @@ export function AppearanceSection() {
     <section className="section" id="appearance">
       <div className="section-head">
         <div>
-          <h2>Appearance</h2>
-          <p>How Symbio looks in this browser: the colors and the layout of a project. Each computer keeps its own choice.</p>
+          <h2>{t("appearance.title")}</h2>
+          <p>{t("appearance.desc")}</p>
         </div>
       </div>
       <div className="section-body">
-        <div className="appearance-label">Colors</div>
-        <div className="theme-cards" role="radiogroup" aria-label="Theme">
-          {allThemes().map((t) => (
-            <div key={t.id} className="theme-card-wrap">
+        <div className="appearance-label">{t("appearance.language")}</div>
+        <p className="small subtle" style={{ margin: "0 0 8px" }}>{t("appearance.language.desc")}</p>
+        <div className="seg" role="radiogroup" aria-label={t("appearance.language")} style={{ marginBottom: 22 }}>
+          {LOCALES.map((l) => (
+            <button key={l.id} role="radio" aria-checked={locale === l.id} className={locale === l.id ? "on" : ""} onClick={() => setLocale(l.id)}>
+              {l.native}
+            </button>
+          ))}
+        </div>
+        <div className="appearance-label">{t("appearance.colors")}</div>
+        <div className="theme-cards" role="radiogroup" aria-label={t("appearance.colors")}>
+          {allThemes().map((tTheme) => (
+            <div key={tTheme.id} className="theme-card-wrap">
               <button
-                className={`theme-card ${theme === t.id ? "on" : ""}`}
+                className={`theme-card ${theme === tTheme.id ? "on" : ""}`}
                 role="radio"
-                aria-checked={theme === t.id}
-                data-theme-id={t.id}
-                onClick={() => setTheme(t.id)}
+                aria-checked={theme === tTheme.id}
+                data-theme-id={tTheme.id}
+                onClick={() => setTheme(tTheme.id)}
               >
-                <span className="theme-preview" style={{ background: t.swatch[0] }} aria-hidden>
-                  <span className="theme-preview-side" style={{ background: t.swatch[1] }} />
+                <span className="theme-preview" style={{ background: tTheme.swatch[0] }} aria-hidden>
+                  <span className="theme-preview-side" style={{ background: tTheme.swatch[1] }} />
                   <span className="theme-preview-lines">
-                    <span style={{ background: t.swatch[2] }} />
-                    <span style={{ background: t.swatch[2], width: "60%" }} />
-                    <span style={{ background: t.swatch[3], width: "35%" }} />
+                    <span style={{ background: tTheme.swatch[2] }} />
+                    <span style={{ background: tTheme.swatch[2], width: "60%" }} />
+                    <span style={{ background: tTheme.swatch[3], width: "35%" }} />
                   </span>
                 </span>
                 <span className="theme-card-text">
                   <span className="list-title">
-                    {t.label} {theme === t.id && <Check size={13} />}
+                    {tTheme.label} {theme === tTheme.id && <Check size={13} />}
                   </span>
-                  <span className="list-sub">{t.description}</span>
+                  <span className="list-sub">{tTheme.description}</span>
                 </span>
               </button>
-              {t.custom && (
+              {tTheme.custom && (
                 <button
                   className="theme-card-remove"
-                  title={`Remove ${t.label}`}
-                  aria-label={`Remove ${t.label}`}
+                  title={`Remove ${tTheme.label}`}
+                  aria-label={`Remove ${tTheme.label}`}
                   onClick={() => {
-                    removeCustomTheme(t.id);
+                    removeCustomTheme(tTheme.id);
                     refresh((n) => n + 1);
                   }}
                 >
@@ -76,11 +87,9 @@ export function AppearanceSection() {
         <div className="appearance-preset">
           <button className="btn sm" onClick={() => fileInput.current?.click()}>
             <Upload size={13} />
-            Import a VS Code theme…
+            {t("appearance.importTheme")}
           </button>
-          <span className="small subtle">
-            A color theme's <code>.json</code> file (in a theme extension's <code>themes</code> folder, or from VS Code's <em>Developer: Generate Color Theme From Current Settings</em>).
-          </span>
+          <span className="small subtle">{t("appearance.importTheme.hint")}</span>
           <input
             ref={fileInput}
             type="file"
@@ -95,8 +104,8 @@ export function AppearanceSection() {
           />
         </div>
         {importError && <div className="error" style={{ marginTop: 10 }}>{importError}</div>}
-        <div className="appearance-label">Layout of a project</div>
-        <div className="theme-cards" role="radiogroup" aria-label="Layout">
+        <div className="appearance-label">{t("appearance.layout")}</div>
+        <div className="theme-cards" role="radiogroup" aria-label={t("appearance.layout")}>
           {LAYOUTS.map((l) => (
             <button key={l.id} className={`theme-card ${layout === l.id ? "on" : ""}`} role="radio" aria-checked={layout === l.id} data-layout-id={l.id} onClick={() => setLayout(l.id)}>
               <span className={`layout-preview ${l.id}`} aria-hidden>
@@ -116,9 +125,9 @@ export function AppearanceSection() {
               </span>
               <span className="theme-card-text">
                 <span className="list-title">
-                  {l.label} {layout === l.id && <Check size={13} />}
+                  {t(`appearance.layout.${l.id}` as any)} {layout === l.id && <Check size={13} />}
                 </span>
-                <span className="list-sub">{l.description}</span>
+                <span className="list-sub">{t(`appearance.layout.${l.id}.desc` as any)}</span>
               </span>
             </button>
           ))}
@@ -133,9 +142,9 @@ export function AppearanceSection() {
             }}
           >
             {developer ? <Check size={13} /> : null}
-            Developer look
+            {t("appearance.developerLook")}
           </button>
-          <span className="small subtle">Dark Modern with the Workbench layout. Small windows and phones always use the classic layout.</span>
+          <span className="small subtle">{t("appearance.developerLook.desc")}</span>
         </div>
       </div>
     </section>

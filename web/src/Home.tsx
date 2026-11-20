@@ -9,12 +9,14 @@ import { FolderBrowser } from "./FolderBrowser";
 import { ModelPicker, choiceBody, type ModelChoice } from "./ModelPicker";
 import { ProjectMenu } from "./ProjectMenu";
 import { Avatar, Dialog, EmptyState, timeAgo } from "./ui";
+import { useI18n } from "./i18n";
 
 function baseName(p: string) {
   return p.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
 }
 
 export function Home({ runtime, create }: { runtime: RuntimeInfo | null; create?: boolean }) {
+  const { t } = useI18n();
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -59,23 +61,20 @@ export function Home({ runtime, create }: { runtime: RuntimeInfo | null; create?
     <div className="page-inner">
       <div className="page-head">
         <div>
-          <h1>Projects</h1>
-          <p>Each project gets core, an agent that talks the scope through with you and coordinates the work.</p>
+          <h1>{t("home.title")}</h1>
+          <p>{t("home.subtitle")}</p>
         </div>
         <button className="btn primary" onClick={() => setCreating(true)} disabled={!canCreate}>
           <Plus size={15} />
-          New project
+          {t("home.newProject")}
         </button>
       </div>
 
       {runtimes && installed.length === 0 && (
         <div className="first-run section" style={{ padding: 16 }}>
           <div>
-            <h2>Install an agent runtime to start</h2>
-            <p>
-              Agents run on an agent runtime, and Symbio doesn't come with one: install at least one. Each project picks the one its agents run
-              on; you can add or remove them later in Settings → Agent runtimes.
-            </p>
+            <h2>{t("home.installRuntime.title")}</h2>
+            <p>{t("home.installRuntime.body")}</p>
           </div>
           <RuntimeCards runtimes={runtimes} onChange={reloadRuntimes} />
         </div>
@@ -83,9 +82,9 @@ export function Home({ runtime, create }: { runtime: RuntimeInfo | null; create?
 
       {noProviders && (
         <div className="notice row" style={{ justifyContent: "space-between", gap: 12 }}>
-          <span>No model provider is connected yet, so agents have no models to run on.</span>
+          <span>{t("home.noProviders")}</span>
           <a className="btn sm" href="#/settings">
-            Connect a provider
+            {t("home.connectProvider")}
           </a>
         </div>
       )}
@@ -94,15 +93,15 @@ export function Home({ runtime, create }: { runtime: RuntimeInfo | null; create?
         <div className="section">
           <EmptyState
             icon={<FolderPlus size={20} />}
-            title="No projects yet"
+            title={t("home.noProjects.title")}
             action={
               <button className="btn primary" onClick={() => setCreating(true)} disabled={!canCreate}>
                 <Plus size={15} />
-                New project
+                {t("home.newProject")}
               </button>
             }
           >
-            Point Symbio at a folder — empty or existing — and core will take it from there.
+            {t("home.noProjects.body")}
           </EmptyState>
         </div>
       )}
@@ -130,17 +129,18 @@ export function Home({ runtime, create }: { runtime: RuntimeInfo | null; create?
 }
 
 function ProjectRow({ project: p }: { project: Project }) {
+  const { t } = useI18n();
   const active = p.agents.filter((a) => a.status !== "stopped");
   const working = active.filter((a) => a.status === "busy").length;
   const waiting = active.filter((a) => a.status === "waiting").length;
   const problems = active.filter((a) => a.problem || a.status === "error").length;
   const last = Math.max(p.createdAt, ...p.agents.map((a) => a.lastActivity ?? 0));
 
-  let status: React.ReactNode = <span className="subtle">{active.length ? "Idle" : "Not started"}</span>;
-  if (p.paused) status = <span className="tag blue">Paused</span>;
-  else if (problems) status = <span className="tag red">Needs attention</span>;
-  else if (waiting) status = <span className="tag amber">Waiting for you</span>;
-  else if (working) status = <span className="tag green">{working} working</span>;
+  let status: React.ReactNode = <span className="subtle">{active.length ? t("home.project.idle") : t("home.project.notStarted")}</span>;
+  if (p.paused) status = <span className="tag blue">{t("home.project.paused")}</span>;
+  else if (problems) status = <span className="tag red">{t("home.project.needsAttention")}</span>;
+  else if (waiting) status = <span className="tag amber">{t("home.project.waiting")}</span>;
+  else if (working) status = <span className="tag green">{t("home.project.working", { n: working })}</span>;
 
   return (
     <a className="project-row" href={`#/p/${p.id}`}>
@@ -166,18 +166,19 @@ function ProjectRow({ project: p }: { project: Project }) {
   );
 }
 
-const STEPS = ["Folder", "Setup", "Models"] as const;
+const STEPS = ["newProject.steps.folder", "newProject.steps.setup", "newProject.steps.models"] as const;
 
 /** The runtime wanted if it's installed, else the first installed one. */
 const pickRuntime = (installed: RuntimeView[], wanted: RuntimeKind): RuntimeKind =>
   installed.some((r) => r.kind === wanted) ? wanted : (installed[0]?.kind ?? wanted);
 
 const RUNTIME_CHOICE: Record<RuntimeKind, string> = {
-  opencode: "Models from the providers you connect in Settings.",
-  copilot: "Your GitHub Copilot subscription and its models (sign in from Settings).",
+  opencode: "newProject.runtime.opencode",
+  copilot: "newProject.runtime.copilot",
 };
 
 function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () => void; initialRuntime: RuntimeKind; runtimes: RuntimeView[] }) {
+  const { t } = useI18n();
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [nameTouched, setNameTouched] = useState(false);
@@ -272,7 +273,7 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
 
   return (
     <Dialog
-      title="New project"
+      title={t("newProject.title")}
       onClose={onClose}
       wide={step === 2}
       header={
@@ -282,7 +283,7 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
               {i > 0 && <span className="sep" />}
               <span className={`step ${i === step ? "on" : i < step ? "done" : ""}`}>
                 <span className="step-num">{i + 1}</span>
-                {s}
+                {t(s)}
               </span>
             </span>
           ))}
@@ -294,17 +295,17 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
           {step > 0 && (
             <button className="btn ghost" onClick={() => setStep(step - 1)} disabled={busy}>
               <ArrowLeft size={14} />
-              Back
+              {t("common.back")}
             </button>
           )}
           {step < STEPS.length - 1 ? (
             <button className="btn primary" onClick={() => setStep(step + 1)} disabled={!stepValid}>
-              Continue
+              {t("common.continue")}
               <ArrowRight size={14} />
             </button>
           ) : (
             <button className="btn primary" onClick={create} disabled={!stepValid || busy}>
-              {busy ? "Starting core…" : "Create project"}
+              {busy ? t("newProject.create.starting") : t("newProject.create")}
             </button>
           )}
         </>
@@ -313,20 +314,20 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
       {step === 0 && (
         <>
           <label className="field">
-            <span>Folder</span>
+            <span>{t("newProject.folder")}</span>
             <span className="input-row">
               <input
                 value={directory}
                 onChange={(e) => setDirectory(e.target.value)}
-                placeholder="C:\Users\you\projects\my-project"
+                placeholder={t("newProject.folder.placeholder")}
                 autoFocus
               />
               <button type="button" className="btn" onClick={browse} disabled={picking}>
                 <FolderOpen size={14} />
-                {picking ? "Choosing…" : "Browse…"}
+                {picking ? t("newProject.choosing") : t("newProject.browse")}
               </button>
             </span>
-            <span className="hint">An empty folder starts a new project; an existing one is studied first. Created if it doesn't exist.</span>
+            <span className="hint">{t("newProject.folder.hint")}</span>
           </label>
           {browsing && (
             <FolderBrowser
@@ -339,20 +340,20 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
             />
           )}
           <label className="field">
-            <span>Name</span>
+            <span>{t("newProject.name")}</span>
             <input
               value={name}
               onChange={(e) => {
                 setName(e.target.value);
                 setNameTouched(true);
               }}
-              placeholder="My project"
+              placeholder={t("newProject.name.placeholder")}
             />
           </label>
           {inspectError && <div className="error">{inspectError}</div>}
           {conflict && (
             <div className="error">
-              This folder already belongs to the project <a href={`#/p/${conflict.id}`}>“{conflict.name}”</a>.
+              {t("newProject.conflict.prefix")}<a href={`#/p/${conflict.id}`}>“{conflict.name}”</a>.
             </div>
           )}
           {inspection && !conflict && <FolderSummary inspection={inspection} />}
@@ -360,32 +361,29 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
             <label className="choice">
               <input type="checkbox" checked={initGit} onChange={(e) => setInitGit(e.target.checked)} />
               <span className="choice-body">
-                <span className="choice-title">Set up version history (git)</span>
-                <span className="choice-desc">
-                  Lets several agents work in parallel without stepping on each other, and keeps a history you can roll back. Adds a
-                  hidden <code>.git</code> folder with a first snapshot.
-                </span>
+                <span className="choice-title">{t("newProject.initGit.title")}</span>
+                <span className="choice-desc">{t("newProject.initGit.desc")}</span>
               </span>
             </label>
           )}
           {inspection && !conflict && inspection.repos.length > 0 && (
             <div className="notice">
-              This folder holds {inspection.repos.length === 1 ? "a git repository" : `${inspection.repos.length} git repositories`} (
-              {inspection.repos.join(", ")}). Symbio keeps them as they are: each helper works in one of them, and pushes go to that
-              repository's own remote.
+              {t("newProject.repos.notice", {
+                desc: inspection.repos.length === 1 ? t("newProject.repos.one") : t("newProject.repos.many", { count: inspection.repos.length }),
+                repos: inspection.repos.join(", "),
+              })}
             </div>
           )}
           {inspection && !conflict && inspection.swallowed && (
             <div className="notice">
-              This folder is a git repository that contains other repositories ({inspection.swallowed.inner.join(", ")}) without
-              tracking their files
-              {inspection.swallowed.createdBySymbio ? ", created on top of them by an earlier version of Symbio" : ""}. Agents would
-              commit to the outer one. core can switch the project to work in each inner repository instead (nothing on disk changes),
-              and Settings → Team switches it back.
+              {t("newProject.swallowed.notice2", {
+                repos: inspection.swallowed.inner.join(", "),
+                created: inspection.swallowed.createdBySymbio ? t("newProject.swallowed.created") : "",
+              })}
             </div>
           )}
           {inspection && !inspection.isGit && !inspection.repos.length && !inspection.gitAvailable && (
-            <div className="notice">Git isn't installed, so agents will share the folder directly.</div>
+            <div className="notice">{t("newProject.noGit")}</div>
           )}
         </>
       )}
@@ -393,41 +391,34 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
       {step === 1 && (
         <>
           <div className="field">
-            <span>Project documentation</span>
+            <span>{t("newProject.docs.title")}</span>
             <label className="choice">
               <input type="radio" checked={docsLocation === "project"} onChange={() => setDocsLocation("project")} />
               <span className="choice-body">
                 <span className="choice-title">
-                  In the project <span className="tag accent">Recommended</span>
+                  {t("newProject.docs.project.title")} <span className="tag accent">{t("newProject.docs.project.recommended")}</span>
                 </span>
-                <span className="choice-desc">
-                  <code>AGENTS.md</code> and a <code>docs/</code> folder — useful to any agent or person working on it.
-                </span>
+                <span className="choice-desc">{t("newProject.docs.project.desc")}</span>
               </span>
             </label>
             <label className="choice">
               <input type="radio" checked={docsLocation === "private"} onChange={() => setDocsLocation("private")} />
               <span className="choice-body">
-                <span className="choice-title">Private</span>
-                <span className="choice-desc">
-                  Kept in <code>.symbio/docs</code>, outside your files — for folders you don't want AI documentation in.
-                </span>
+                <span className="choice-title">{t("newProject.docs.private.title")}</span>
+                <span className="choice-desc">{t("newProject.docs.private.desc")}</span>
               </span>
             </label>
           </div>
           <label className="choice">
             <input type="checkbox" checked={rulesRegister} onChange={(e) => setRulesRegister(e.target.checked)} />
             <span className="choice-body">
-              <span className="choice-title">Keep a rules register</span>
-              <span className="choice-desc">
-                Agents record the project's rules (requirements, decisions, constraints) with where each came from and whether it's met.
-                You browse and filter them in the Docs tab. You can turn it off later.
-              </span>
+              <span className="choice-title">{t("newProject.rules.title")}</span>
+              <span className="choice-desc">{t("newProject.rules.desc")}</span>
             </span>
           </label>
           <div className="field">
-            <span>Connections</span>
-            <span className="hint">GitHub accounts and servers agents may use. Optional — you can change this later.</span>
+            <span>{t("newProject.connections.title")}</span>
+            <span className="hint">{t("newProject.connections.hint")}</span>
             <ConnectionsPicker value={projectConnections} onChange={setProjectConnections} />
           </div>
         </>
@@ -436,7 +427,7 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
       {step === 2 && (
         <>
           <div className="field">
-            <span>Agents run on</span>
+            <span>{t("newProject.runtime.title")}</span>
             {/* Only the installed runtimes (Settings → Agent runtimes installs the others). */}
             <div className="runtime-choice">
               {runtimes.map((r) => (
@@ -444,7 +435,7 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
                   <input type="radio" name="runtime" checked={runtime === r.kind} onChange={() => chooseRuntime(r.kind)} />
                   <span className="choice-body">
                     <span className="choice-title">{r.label}</span>
-                    <span className="choice-desc">{RUNTIME_CHOICE[r.kind]}</span>
+                    <span className="choice-desc">{t(RUNTIME_CHOICE[r.kind])}</span>
                   </span>
                 </label>
               ))}
@@ -457,7 +448,7 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
       {step === 0 && !inspection && !inspectError && directory.trim() === "" && (
         <div className="row subtle small">
           <FolderOpen size={14} />
-          Browse for a folder, or paste its full path.
+          {t("newProject.emptyHint")}
         </div>
       )}
     </Dialog>

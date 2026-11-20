@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { UsageLine } from "./Usage";
 import { useCostsShown } from "./privacy";
-import { api, formatTokens, subscribe, usageTokens, type Agent, type Asset, type Plan, type Project } from "./api";
+import { api, formatTokens, RUNTIME_LABEL, subscribe, usageTokens, type Agent, type Asset, type Plan, type Project } from "./api";
 import { Chat } from "./Chat";
 import { Docs } from "./Docs";
 import { Explorer, ExplorerPreview, ExplorerTree, type ExplorerPick } from "./Explorer";
@@ -37,6 +37,7 @@ import { Messages, useProjectLog } from "./Messages";
 import { ProjectMenu } from "./ProjectMenu";
 import { ProjectSettings } from "./ProjectSettings";
 import { Avatar, EmptyState, statusText, waitsForPinnedModel } from "./ui";
+import { useI18n } from "./i18n";
 
 type Tab = "chat" | "plan" | "explorer" | "messages" | "docs" | "files" | "settings";
 // The Workbench layout keeps the chat on the right and the Explorer in its side bar; its middle has
@@ -65,6 +66,7 @@ function useRemembered<T>(key: string, initial: T): [T, (v: T) => void] {
 }
 
 export function ProjectView({ projectId }: { projectId: string }) {
+  const { t } = useI18n();
   const [project, setProject] = useState<Project | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [plan, setPlan] = useState<Plan | null>(null);
@@ -181,20 +183,20 @@ export function ProjectView({ projectId }: { projectId: string }) {
   const tabs: { id: Tab; label: string; icon: React.ReactNode; extra?: React.ReactNode }[] = [
     {
       id: "chat",
-      label: "Chat",
+      label: t("project.tab.chat"),
       icon: <MessageSquare size={14} />,
       // The helper's name; hidden on phones, where the chat header already shows it.
       extra: agent && agent.role !== "coordinator" ? <span className="tab-agent">· {agent.name}</span> : null,
     },
     {
       id: "plan",
-      label: "Plan",
+      label: t("project.tab.plan"),
       icon: <KanbanSquare size={14} />,
       extra:
         plan?.status === "proposed" ? (
-          <motion.span className="tab-alert" initial={{ scale: 0 }} animate={{ scale: 1 }} title="A plan is waiting for your approval">
+          <motion.span className="tab-alert" initial={{ scale: 0 }} animate={{ scale: 1 }} title={t("project.plan.reviewTitle")}>
             <span className="tab-alert-dot" />
-            Review
+            {t("project.tab.review")}
           </motion.span>
         ) : plan && plan.status !== "none" && plan.tasks.length > 0 ? (
           <span className="count">
@@ -202,11 +204,11 @@ export function ProjectView({ projectId }: { projectId: string }) {
           </span>
         ) : null,
     },
-    { id: "explorer", label: "Explorer", icon: <FolderTree size={14} /> },
-    { id: "messages", label: "Messages", icon: <MessagesSquare size={14} /> },
-    { id: "docs", label: "Docs", icon: <BookOpen size={14} /> },
-    { id: "files", label: "Files", icon: <Paperclip size={14} /> },
-    { id: "settings", label: "Settings", icon: <Settings2 size={14} /> },
+    { id: "explorer", label: t("project.tab.explorer"), icon: <FolderTree size={14} /> },
+    { id: "messages", label: t("project.tab.messages"), icon: <MessagesSquare size={14} /> },
+    { id: "docs", label: t("project.tab.docs"), icon: <BookOpen size={14} /> },
+    { id: "files", label: t("project.tab.files"), icon: <Paperclip size={14} /> },
+    { id: "settings", label: t("project.tab.settings"), icon: <Settings2 size={14} /> },
   ];
 
   const isActive = (a: Agent) => (workbench || tab === "chat") && agent?.id === a.id;
@@ -215,10 +217,10 @@ export function ProjectView({ projectId }: { projectId: string }) {
       <div className="side-scroll">
         <div>
           <div className="side-group-title">
-            Team
+            {t("project.team")}
             <span className="tnum">{activeAgents.length}</span>
             {project.agents.some((a) => a.role === "coordinator" && a.status !== "stopped") && (
-              <button className="btn ghost icon xs side-add" title="New helper: one you talk to directly, in its own chat" aria-label="New helper" onClick={() => setNewHelper(true)}>
+              <button className="btn ghost icon xs side-add" title={t("project.newHelper")} aria-label={t("project.newHelper")} onClick={() => setNewHelper(true)}>
                 <Plus size={13} />
               </button>
             )}
@@ -231,7 +233,7 @@ export function ProjectView({ projectId }: { projectId: string }) {
           {project.agents.length === 0 && (
             <div style={{ padding: "4px 8px" }}>
               <button className="btn primary block" onClick={start} disabled={starting}>
-                {starting ? "Starting…" : "Start core"}
+                {starting ? t("project.starting") : t("project.startCore")}
               </button>
             </div>
           )}
@@ -239,7 +241,7 @@ export function ProjectView({ projectId }: { projectId: string }) {
             <>
               <button className="stopped-toggle" onClick={() => setShowStopped((s) => !s)}>
                 {showStopped ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-                {stopped.length} stopped
+                {t("project.stoppedCount", { n: stopped.length })}
               </button>
               {showStopped && stopped.map((a) => <AgentRow key={a.id} agent={a} active={isActive(a)} onClick={() => select(a)} />)}
             </>
@@ -247,10 +249,10 @@ export function ProjectView({ projectId }: { projectId: string }) {
         </div>
 
         <div>
-          <div className="side-group-title">Shared assets</div>
+          <div className="side-group-title">{t("project.sharedAssets")}</div>
           {assets.length === 0 ? (
             <div className="subtle small" style={{ padding: "0 8px" }}>
-              None declared yet.
+              {t("project.noAssets")}
             </div>
           ) : (
             assets.map((a) => (
@@ -259,8 +261,8 @@ export function ProjectView({ projectId }: { projectId: string }) {
                 <div className="grow">
                   <div className="asset-name ellipsis">{a.name}</div>
                   <div className="asset-sub">
-                    {a.holder ? `Held by ${nameOf(a.holder)}` : "Free"}
-                    {a.queue.length > 0 && ` · ${a.queue.length} waiting`}
+                    {a.holder ? t("project.heldBy", { name: nameOf(a.holder) }) : t("project.free")}
+                    {a.queue.length > 0 && ` · ${t("project.waitingCount", { n: a.queue.length })}`}
                   </div>
                 </div>
               </div>
@@ -281,10 +283,10 @@ export function ProjectView({ projectId }: { projectId: string }) {
           <button
             className="btn sm block"
             onClick={() => (project.paused ? api.resumeTeam(project.id) : api.pauseTeam(project.id)).then(setProject).catch((e) => alert(e.message))}
-            title={project.paused ? "Deliver held messages and let agents continue" : "Interrupt working agents and hold their messages"}
+            title={project.paused ? t("project.resume.title") : t("project.pause.title")}
           >
             {project.paused ? <Play size={13} /> : <Pause size={13} />}
-            {project.paused ? "Resume team" : "Pause team"}
+            {project.paused ? t("project.resume") : t("project.pause")}
           </button>
         )}
       </div>
@@ -295,7 +297,7 @@ export function ProjectView({ projectId }: { projectId: string }) {
     <div className="main-actions">
       {inbox.count > 0 && (
         <motion.button className="needs-you" onClick={() => setInboxOpen(true)} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
-          Needs you
+          {t("project.needsYou")}
           <span className="count">{inbox.count}</span>
         </motion.button>
       )}
@@ -309,16 +311,16 @@ export function ProjectView({ projectId }: { projectId: string }) {
         <div className="banner blue">
           <Pause size={15} />
           <div className="grow">
-            <strong>The team is paused.</strong>{" "}
+            <strong>{t("project.paused.banner.title")}</strong>{" "}
             <span className="muted">
               {project.heldMessages?.length
-                ? `${project.heldMessages.length} message(s) between agents will be delivered when you resume.`
-                : "Agents won't start anything on their own; you can still talk to them."}
+                ? t("project.paused.banner.held", { n: project.heldMessages.length })
+                : t("project.paused.banner.idle")}
             </span>
           </div>
           <button className="btn sm" onClick={() => api.resumeTeam(project.id).then(setProject).catch((e) => alert(e.message))}>
             <Play size={13} />
-            Resume
+            {t("project.resume.banner")}
           </button>
         </div>
       )}
@@ -326,13 +328,13 @@ export function ProjectView({ projectId }: { projectId: string }) {
         <div className="banner red">
           <CircleAlert size={15} />
           <div className="grow ellipsis" title={stuck[0].problem ?? ""}>
-            <strong>{stuck.map((a) => a.name).join(", ")} can't continue</strong> <span className="muted">— every allowed model failed.</span>
+            <strong>{stuck.map((a) => a.name).join(", ")} {t("project.stuck.title")}</strong> <span className="muted">{t("project.stuck.subtitle")}</span>
           </div>
           <button className="btn sm" onClick={() => api.retryModels(project.id).catch((e) => alert(e.message))}>
-            Retry now
+            {t("common.retryNow")}
           </button>
           <button className="btn primary sm" onClick={() => openTab("settings")}>
-            Add a model
+            {t("project.addModel")}
           </button>
         </div>
       )}
@@ -342,8 +344,8 @@ export function ProjectView({ projectId }: { projectId: string }) {
   const chat = agent ? (
     <Chat key={agent.id} project={project} agent={agent} />
   ) : (
-    <EmptyState icon={<MessageSquare size={20} />} title="Start the conversation">
-      Start core to begin discussing the project.
+    <EmptyState icon={<MessageSquare size={20} />} title={t("project.startConversation.title")}>
+      {t("project.startConversation.body")}
     </EmptyState>
   );
 
@@ -418,8 +420,8 @@ export function ProjectView({ projectId }: { projectId: string }) {
         key={v}
         className={`wb-activity-item ${activeKey === v ? "active" : ""}`}
         onClick={() => openInCenter({ view: v })}
-        title={v === "settings" ? "Project settings" : tabInfo(v).label}
-        aria-label={v === "settings" ? "Project settings" : tabInfo(v).label}
+        title={v === "settings" ? t("project.wb.settings") : tabInfo(v).label}
+        aria-label={v === "settings" ? t("project.wb.settings") : tabInfo(v).label}
       >
         {viewIcon[v]}
         {v === "plan" && plan?.status === "proposed" && <span className="wb-activity-badge amber" />}
@@ -430,12 +432,12 @@ export function ProjectView({ projectId }: { projectId: string }) {
         className={`workbench ${sideView ? "" : "no-side"}`}
         style={{ "--wb-side": `${sideWidth}px`, "--wb-chat": `${chatWidth}px` } as React.CSSProperties}
       >
-        <nav className="wb-activity" aria-label="Views">
-          <button className={`wb-activity-item ${sideView === "team" ? "active" : ""}`} onClick={() => side("team")} title="Team" aria-label="Team" aria-pressed={sideView === "team"}>
+        <nav className="wb-activity" aria-label={t("project.wb.views")}>
+          <button className={`wb-activity-item ${sideView === "team" ? "active" : ""}`} onClick={() => side("team")} title={t("project.team")} aria-label={t("project.team")} aria-pressed={sideView === "team"}>
             <Users size={20} />
             {stuck.length > 0 && <span className="wb-activity-badge red" />}
           </button>
-          <button className={`wb-activity-item ${sideView === "explorer" ? "active" : ""}`} onClick={() => side("explorer")} title="Explorer" aria-label="Explorer" aria-pressed={sideView === "explorer"}>
+          <button className={`wb-activity-item ${sideView === "explorer" ? "active" : ""}`} onClick={() => side("explorer")} title={t("project.tab.explorer")} aria-label={t("project.tab.explorer")} aria-pressed={sideView === "explorer"}>
             <FolderTree size={20} />
           </button>
           <span className="wb-activity-sep" />
@@ -444,34 +446,34 @@ export function ProjectView({ projectId }: { projectId: string }) {
           {viewButton("settings")}
         </nav>
         {sideView && (
-          <aside className="wb-side" aria-label={sideView === "team" ? "Team" : "Explorer"}>
+          <aside className="wb-side" aria-label={sideView === "team" ? t("project.team") : t("project.tab.explorer")}>
             {sideView === "team" ? (
               teamPanel
             ) : (
               <div className="wb-side-scroll explorer-tree">
-                <div className="wb-side-title">Explorer</div>
+                <div className="wb-side-title">{t("project.tab.explorer")}</div>
                 <ExplorerTree project={project} agentId={explorerAgent} onAgent={setExplorerAgent} picked={picked} onPick={(p) => openInCenter({ file: p })} />
               </div>
             )}
-            <Resizer side="right" width={sideWidth} min={180} max={Math.min(600, innerWidth - 48 - chatWidth - 320)} initial={260} onResize={setSideWidth} label="Resize the side bar" />
+            <Resizer side="right" width={sideWidth} min={180} max={Math.min(600, innerWidth - 48 - chatWidth - 320)} initial={260} onResize={setSideWidth} label={t("project.wb.resizeSide")} />
           </aside>
         )}
         <section className="main wb-center">
           <div className="main-head">
             <div className="tabs">
-              {openTabs.map((t) => {
-                const key = tabKey(t);
+              {openTabs.map((item) => {
+                const key = tabKey(item);
                 const active = key === activeKey;
-                const info = "view" in t ? tabInfo(t.view) : null;
-                const name = "view" in t ? info!.label : t.file.path.split("/").pop();
+                const info = "view" in item ? tabInfo(item.view) : null;
+                const name = "view" in item ? info!.label : (item.file.path.split("/").pop() ?? item.file.path);
                 return (
-                  <div key={key} className={`tab wb-tab ${active ? "active" : ""}`} title={"file" in t ? t.file.path : undefined}>
+                  <div key={key} className={`tab wb-tab ${active ? "active" : ""}`} title={"file" in item ? item.file.path : undefined}>
                     <button className="wb-tab-open" onClick={() => setActiveKey(key)}>
                       {info ? info.icon : <FileText size={14} />}
                       <span className="ellipsis">{name}</span>
                       {info?.extra}
                     </button>
-                    <button className="wb-tab-close" aria-label={`Close ${name}`} title="Close" onClick={() => closeTab(key)}>
+                    <button className="wb-tab-close" aria-label={t("project.wb.closeTab", { name })} title={t("common.close")} onClick={() => closeTab(key)}>
                       <X size={12} />
                     </button>
                     {active && <motion.span layoutId="tab-underline" className="tab-underline" transition={{ duration: 0.15 }} />}
@@ -486,21 +488,21 @@ export function ProjectView({ projectId }: { projectId: string }) {
             {activeTab ? (
               view("view" in activeTab ? activeTab.view : "file", picked)
             ) : (
-              <EmptyState icon={<FolderTree size={20} />} title="Nothing open">
-                Open the plan, messages, docs, files or settings from the bar on the left, or a file from the Explorer.
+              <EmptyState icon={<FolderTree size={20} />} title={t("project.wb.nothingOpen.title")}>
+                {t("project.wb.nothingOpen.body")}
               </EmptyState>
             )}
           </div>
         </section>
-        <section className="wb-chat" aria-label="Chat">
-          <Resizer side="left" width={chatWidth} min={300} max={Math.min(1000, innerWidth - 48 - (sideView ? sideWidth : 0) - 320)} initial={420} onResize={setChatWidth} label="Resize the chat" />
+        <section className="wb-chat" aria-label={t("project.tab.chat")}>
+          <Resizer side="left" width={chatWidth} min={300} max={Math.min(1000, innerWidth - 48 - (sideView ? sideWidth : 0) - 320)} initial={420} onResize={setChatWidth} label={t("project.wb.resizeChat")} />
           <div className="wb-chat-head">
-            <span className="wb-side-title">Chat</span>
-            <select value={agent?.id ?? ""} onChange={(e) => select(e.target.value)} aria-label="Talk to" title="Who you're talking to">
+            <span className="wb-side-title">{t("project.tab.chat")}</span>
+            <select value={agent?.id ?? ""} onChange={(e) => select(e.target.value)} aria-label={t("project.wb.talkTo")} title={t("project.wb.talkToTitle")}>
               {[...activeAgents, ...stopped].map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
-                  {a.role === "coordinator" ? " (lead)" : a.status === "stopped" ? " (stopped)" : ""}
+                  {a.role === "coordinator" ? t("project.wb.lead") : a.status === "stopped" ? t("project.wb.stopped") : ""}
                 </option>
               ))}
             </select>
@@ -508,30 +510,31 @@ export function ProjectView({ projectId }: { projectId: string }) {
           <div className="wb-chat-body">{chat}</div>
         </section>
         <footer className="wb-status">
-          <span className="wb-status-item" title="The agent runtime this project runs on">
+          <span className="wb-status-item" title={t("project.runtime.label")}>
             <Bot size={12} />
-            {project.runtime === "copilot" ? "GitHub Copilot CLI" : "OpenCode"}
+            {RUNTIME_LABEL[project.runtime ?? "opencode"]}
           </span>
           {project.paused ? (
             <span className="wb-status-item">
               <Pause size={12} />
-              Paused
+              {t("project.status.paused")}
             </span>
           ) : (
             <span className="wb-status-item">
-              {working} working{waiting > 0 ? ` · ${waiting} waiting` : ""}
+              {t("project.status.working", { n: working })}
+              {waiting > 0 ? t("project.status.waiting", { n: waiting }) : ""}
             </span>
           )}
           {plan && plan.tasks.length > 0 && (
             <button className="wb-status-item" onClick={() => openInCenter({ view: "plan" })}>
               <KanbanSquare size={12} />
-              {done}/{plan.tasks.length} tasks done
+              {t("project.status.tasksDone", { done, total: plan.tasks.length })}
             </button>
           )}
           <span className="grow" />
           {inbox.count > 0 && (
             <button className="wb-status-item attention" onClick={() => setInboxOpen(true)}>
-              Needs you: {inbox.count}
+              {t("project.status.needsYou", { n: inbox.count })}
             </button>
           )}
           {agent && <span className="wb-status-item">{agent.name} · {agent.model.split("/").pop()}</span>}
@@ -548,7 +551,7 @@ export function ProjectView({ projectId }: { projectId: string }) {
 
       <section className="main">
         <div className="main-head">
-          <button className="btn ghost sm team-toggle" onClick={() => setTeamOpen(true)} title="Team" aria-label="Show the team">
+          <button className="btn ghost sm team-toggle" onClick={() => setTeamOpen(true)} title={t("project.team")} aria-label={t("project.showTeam")}>
             <Users size={15} />
             <span className="tnum">{activeAgents.length}</span>
           </button>
@@ -573,8 +576,15 @@ export function ProjectView({ projectId }: { projectId: string }) {
 }
 
 function AgentRow({ agent: a, active, onClick }: { agent: Agent; active: boolean; onClick: () => void }) {
+  const { t } = useI18n();
   const costs = useCostsShown();
-  const sub = waitsForPinnedModel(a) ? `Waiting for ${a.model.split("/").pop()}` : a.problem ? "Needs attention" : a.status === "idle" ? (a.purpose ?? (a.role === "coordinator" ? "Coordinates the team" : "Idle")) : statusText(a.status);
+  const sub = waitsForPinnedModel(a)
+    ? t("project.agent.waitingForModel", { model: a.model.split("/").pop() ?? a.model })
+    : a.problem
+      ? t("project.agent.needsAttention")
+      : a.status === "idle"
+        ? (a.purpose ?? (a.role === "coordinator" ? t("project.agent.defaultPurpose") : t("project.agent.defaultIdle")))
+        : statusText(a.status);
   const subClass = waitsForPinnedModel(a) ? "waiting" : a.problem ? "problem" : a.status === "busy" ? "working" : a.status === "waiting" ? "waiting" : "";
   return (
     <motion.button
@@ -590,9 +600,9 @@ function AgentRow({ agent: a, active, onClick }: { agent: Agent; active: boolean
       <span className="grow">
         <span className="agent-name">
           {a.name}
-          {a.role === "coordinator" && <span className="tag accent">lead</span>}
+          {a.role === "coordinator" && <span className="tag accent">{t("project.agent.lead")}</span>}
           {a.modelPinned && (
-            <span className="agent-pin" title={`Pinned to ${a.model}`} aria-label={`Pinned to ${a.model}`}>
+            <span className="agent-pin" title={t("project.agent.pinnedTo", { model: a.model })} aria-label={t("project.agent.pinnedTo", { model: a.model })}>
               <Pin size={11} />
             </span>
           )}

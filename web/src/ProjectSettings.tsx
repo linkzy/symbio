@@ -9,9 +9,11 @@ import { UsageSection } from "./Usage";
 import { HousekeepingSection } from "./Housekeeping";
 import { RuntimeSection } from "./SwitchRuntime";
 import { EffortSection } from "./Effort";
+import { useI18n } from "./i18n";
 
 /** Project configuration: name, connections, models, remembered permissions, removal. */
 export function ProjectSettings({ project, onChanged }: { project: Project; onChanged: (p: Project) => void }) {
+  const { t } = useI18n();
   const [removing, setRemoving] = useState(false);
   return (
     <div className="settings-scroll">
@@ -28,12 +30,12 @@ export function ProjectSettings({ project, onChanged }: { project: Project; onCh
         <section className="section danger-zone">
           <div className="section-head">
             <div>
-              <h2>Remove project</h2>
-              <p>Stops the agents and removes their workspaces. Your files are never touched.</p>
+              <h2>{t("projectSettings.remove.title")}</h2>
+              <p>{t("projectSettings.remove.desc")}</p>
             </div>
             <button className="btn danger" onClick={() => setRemoving(true)}>
               <Trash2 size={14} />
-              Remove…
+              {t("common.remove")}…
             </button>
           </div>
         </section>
@@ -46,20 +48,22 @@ export function ProjectSettings({ project, onChanged }: { project: Project; onCh
 }
 
 function SaveBar({ dirty, saving, onSave, onReset }: { dirty: boolean; saving: boolean; onSave: () => void; onReset: () => void }) {
+  const { t } = useI18n();
   if (!dirty) return null;
   return (
     <div className="row" style={{ justifyContent: "flex-end", padding: "10px 12px 4px" }}>
       <button className="btn ghost sm" onClick={onReset} disabled={saving}>
-        Discard
+        {t("common.discard")}
       </button>
       <button className="btn primary sm" onClick={onSave} disabled={saving}>
-        {saving ? "Saving…" : "Save changes"}
+        {saving ? t("common.saving") : t("common.saveChanges")}
       </button>
     </div>
   );
 }
 
 function General({ project, onChanged }: { project: Project; onChanged: (p: Project) => void }) {
+  const { t } = useI18n();
   const [name, setName] = useState(project.name);
   const [saving, setSaving] = useState(false);
   const [rules, setRules] = useState(!!project.rulesRegister);
@@ -78,40 +82,33 @@ function General({ project, onChanged }: { project: Project; onChanged: (p: Proj
     <section className="section">
       <div className="section-head">
         <div>
-          <h2>General</h2>
+          <h2>{t("projectSettings.general")}</h2>
         </div>
       </div>
       <div className="stack" style={{ padding: 16, gap: 14 }}>
         <label className="field">
-          <span>Name</span>
+          <span>{t("newProject.name")}</span>
           <input value={name} onChange={(e) => setName(e.target.value)} />
         </label>
         <div className="field">
-          <span>Folder</span>
+          <span>{t("projectSettings.folder")}</span>
           <code className="muted">{project.directory}</code>
         </div>
         <div className="field">
-          <span>Documentation</span>
+          <span>{t("projectSettings.documentation")}</span>
           <div className="muted small">
             {project.docsLocation === "private" ? (
-              <>
-                Private — kept in <code>.symbio/docs</code> and handed to agents by Symbio.
-              </>
+              <>{t("projectSettings.docs.private")}</>
             ) : (
-              <>
-                In the project — <code>AGENTS.md</code> and <code>docs/</code>.
-              </>
+              <>{t("projectSettings.docs.project")}</>
             )}
           </div>
         </div>
         <label className="choice">
           <input type="checkbox" checked={rules} onChange={(e) => setRules(e.target.checked)} />
           <span className="choice-body">
-            <span className="choice-title">Rules register</span>
-            <span className="choice-desc">
-              Agents record the project's rules with where each came from and whether it's met; you browse them in the Docs tab. Turning
-              it off keeps what's recorded.
-            </span>
+            <span className="choice-title">{t("projectSettings.rules.title")}</span>
+            <span className="choice-desc">{t("projectSettings.rules.desc")}</span>
           </span>
         </label>
       </div>
@@ -153,76 +150,71 @@ function Team({ project, onChanged }: { project: Project; onChanged: (p: Project
       setSaving(false);
     }
   }
+  const { t } = useI18n();
   return (
     <section className="section">
       <div className="section-head">
         <div>
-          <h2>Team</h2>
-          <p>How the agents of this project work together.</p>
+          <h2>{t("projectSettings.team.title")}</h2>
+          <p>{t("projectSettings.team.desc")}</p>
         </div>
       </div>
       <div className="stack" style={{ padding: 16, gap: 14 }}>
         <div className="field">
-          <span>Where new helpers work</span>
+          <span>{t("projectSettings.team.workspace.title")}</span>
           <div className="seg">
             <button className={workspace === "own" ? "on" : ""} onClick={() => setWorkspace("own")}>
-              Their own copy
+              {t("projectSettings.team.workspace.own")}
             </button>
             <button className={workspace === "shared" ? "on" : ""} onClick={() => setWorkspace("shared")}>
-              The project folder
+              {t("projectSettings.team.workspace.shared")}
             </button>
           </div>
           <span className="hint">
-            {workspace === "own"
-              ? "Each helper gets its own copy of the project on its own branch, and core merges finished work. Best when helpers change the same files in parallel."
-              : "Helpers work in the project folder itself: what one writes, the next sees at once, with nothing to merge. Best for step-by-step work where each step uses the previous one's files."}{" "}
-            core can still choose per helper. Existing helpers stay where they are; move one from its chat. Only applies to git projects: without git, helpers always share the folder.
+            {workspace === "own" ? t("projectSettings.team.workspace.hint.own") : t("projectSettings.team.workspace.hint.shared")}{" "}
+            {t("projectSettings.team.workspace.hint.tail")}
           </span>
         </div>
         {project.subRepositories !== undefined && <RepositoriesChoice project={project} onChanged={onChanged} />}
         <CoauthorsChoice project={project} onChanged={onChanged} />
         <div className="field">
-          <span>Who reviews the work</span>
+          <span>{t("projectSettings.team.review.title")}</span>
           <div className="seg">
             <button className={review === "core" ? "on" : ""} onClick={() => setReview("core")}>
-              core
+              {t("projectSettings.team.review.core")}
             </button>
             <button className={review === "every" ? "on" : ""} onClick={() => setReview("every")}>
-              Me, every task
+              {t("projectSettings.team.review.every")}
             </button>
             <button className={review === "marked" ? "on" : ""} onClick={() => setReview("marked")}>
-              Me, marked tasks
+              {t("projectSettings.team.review.marked")}
             </button>
           </div>
           <span className="hint">
             {review === "core"
-              ? "core reviews and merges the helpers' work, and tasks are done when it says so. Nothing waits on you; each task still has a guide for checking it, in the Plan tab."
-              : `${review === "marked" ? "Only the tasks marked for your review (core marks them in the plan, following what you told it; you tick or untick them on each task in the Plan tab). " : ""}When a task's work is finished, it waits in your list (Needs you, and the Plan tab) with its helper's guide: where to look and how to check it. It's done when you approve it; tasks that depend on it wait meanwhile. Sending it back gives your note to the helper that did it.`}
+              ? t("projectSettings.team.review.hint.core")
+              : `${review === "marked" ? t("projectSettings.team.review.hint.marked") : ""}${t("projectSettings.team.review.hint.human")}`}
           </span>
         </div>
         <div className="field">
-          <span>Fresh sessions for helpers</span>
+          <span>{t("projectSettings.team.renew.title")}</span>
           <div className="seg">
             <button className={renew === "manual" ? "on" : ""} onClick={() => setRenew("manual")}>
-              When I ask
+              {t("projectSettings.team.renew.manual")}
             </button>
             <button className={renew === "after-task" ? "on" : ""} onClick={() => setRenew("after-task")}>
-              After each finished task
+              {t("projectSettings.team.renew.afterTask")}
             </button>
           </div>
-          <span className="hint">
-            Long conversations get slow and costly, since every step re-reads them. A fresh session keeps the helper's name, folder, tasks
-            and assets and starts from a handoff note; the old conversation stays readable. "When I ask": use New session in the agent's
-            chat.
-          </span>
+          <span className="hint">{t("projectSettings.team.renew.hint")}</span>
         </div>
         <label className="field">
-          <span>Messages two agents may exchange in 30 minutes</span>
+          <span>{t("projectSettings.team.limit.title")}</span>
           <input type="number" min={0} max={1000} value={value} onChange={(e) => setValue(e.target.value)} style={{ maxWidth: 140 }} />
           <span className="hint">
             {valid && parsed === 0
-              ? "No limit: agents can message each other freely."
-              : `Guards against two agents going back and forth without progress; task assignments, shared-asset requests and review reports don't count. When two agents reach it, further messages between them wait until older ones are 30 minutes old, and you're told. 0 removes the limit. Default ${DEFAULT_MESSAGE_LIMIT}.`}
+              ? t("projectSettings.team.limit.none")
+              : t("projectSettings.team.limit.hint", { n: DEFAULT_MESSAGE_LIMIT })}
           </span>
         </label>
       </div>
@@ -243,6 +235,7 @@ function Team({ project, onChanged }: { project: Project; onChanged: (p: Project
 
 /** Whether commits may name the AI as a co-author (Project.aiCoauthors; off by default). Applies at once. */
 function CoauthorsChoice({ project, onChanged }: { project: Project; onChanged: (p: Project) => void }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   async function choose(on: boolean) {
     if (on === !!project.aiCoauthors) return;
@@ -257,18 +250,17 @@ function CoauthorsChoice({ project, onChanged }: { project: Project; onChanged: 
   }
   return (
     <div className="field">
-      <span>AI co-authors in commits</span>
+      <span>{t("projectSettings.coauthors.title")}</span>
       <div className="seg">
         <button className={!project.aiCoauthors ? "on" : ""} disabled={busy} onClick={() => choose(false)}>
-          Leave them out
+          {t("projectSettings.coauthors.leaveOut")}
         </button>
         <button className={project.aiCoauthors ? "on" : ""} disabled={busy} onClick={() => choose(true)}>
-          Allow them
+          {t("projectSettings.coauthors.allow")}
         </button>
       </div>
       <span className="hint">
-        Some agent runtimes add a <code>Co-authored-by</code> line naming the AI to every commit (GitHub Copilot CLI does).
-        "Leave them out": agents are told not to add one, and Copilot's own line is turned off. Commits made before keep theirs.
+        {t("projectSettings.coauthors.hint.before")}<code>Co-authored-by</code>{t("projectSettings.coauthors.hint.after")}
       </span>
     </div>
   );
@@ -276,6 +268,7 @@ function CoauthorsChoice({ project, onChanged }: { project: Project; onChanged: 
 
 /** Shown once core (or the human) decided about a repository created on top of others. Applies at once. */
 function RepositoriesChoice({ project, onChanged }: { project: Project; onChanged: (p: Project) => void }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   async function choose(on: boolean) {
     if (on === !!project.subRepositories) return;
@@ -290,24 +283,22 @@ function RepositoriesChoice({ project, onChanged }: { project: Project; onChange
   }
   return (
     <div className="field">
-      <span>Git repositories</span>
+      <span>{t("projectSettings.repos.title")}</span>
       <div className="seg">
         <button className={project.subRepositories ? "on" : ""} disabled={busy} onClick={() => choose(true)}>
-          Each repository inside
+          {t("projectSettings.repos.inside")}
         </button>
         <button className={!project.subRepositories ? "on" : ""} disabled={busy} onClick={() => choose(false)}>
-          The project folder's repository
+          {t("projectSettings.repos.outer")}
         </button>
       </div>
-      <span className="hint">
-        The project folder is a git repository with other repositories inside it. "Each repository inside": helpers get a copy of one of
-        them, and merges and pushes go to it; the outer repository is left alone. Nothing on disk changes when you switch.
-      </span>
+      <span className="hint">{t("projectSettings.repos.hint")}</span>
     </div>
   );
 }
 
 function Connections({ project, onChanged }: { project: Project; onChanged: (p: Project) => void }) {
+  const { t } = useI18n();
   const [value, setValue] = useState<ProjectConnection[]>(project.connections);
   const [saving, setSaving] = useState(false);
   const dirty = JSON.stringify(value) !== JSON.stringify(project.connections);
@@ -325,11 +316,8 @@ function Connections({ project, onChanged }: { project: Project; onChanged: (p: 
     <section className="section">
       <div className="section-head">
         <div>
-          <h2>Connections</h2>
-          <p>
-            GitHub accounts, Azure DevOps organizations and servers this project's agents may use. They act through Symbio and never see the credentials. With{" "}
-            <strong>Ask me</strong>, every push, deploy or remote command waits for your approval.
-          </p>
+          <h2>{t("projectSettings.connections.title")}</h2>
+          <p>{t("projectSettings.connections.desc2", { ask: t("projectSettings.connections.askMe") })}</p>
         </div>
       </div>
       <div style={{ padding: 12 }}>
@@ -341,6 +329,7 @@ function Connections({ project, onChanged }: { project: Project; onChanged: (p: 
 }
 
 function Models({ project, onChanged }: { project: Project; onChanged: (p: Project) => void }) {
+  const { t } = useI18n();
   const [choice, setChoice] = useState(() => choiceOf(project));
   const [saving, setSaving] = useState(false);
   const dirty = JSON.stringify(choice) !== JSON.stringify(choiceOf(project));
@@ -359,12 +348,8 @@ function Models({ project, onChanged }: { project: Project; onChanged: (p: Proje
     <section className="section">
       <div className="section-head">
         <div>
-          <h2>Models</h2>
-          <p>
-            Agents switch to the next model they may use when one fails. The crown marks the models core may use (core runs on the
-            first unless you change it in its chat), the lock keeps a model for core only. Adding a model also resumes agents that got
-            stuck. This project's agents run on {RUNTIME_LABEL[project.runtime ?? "opencode"]}.
-          </p>
+          <h2>{t("projectSettings.models.title")}</h2>
+          <p>{t("projectSettings.models.desc2", { runtime: RUNTIME_LABEL[project.runtime ?? "opencode"] })}</p>
         </div>
       </div>
       <div style={{ padding: 12 }}>
@@ -381,6 +366,7 @@ function Models({ project, onChanged }: { project: Project; onChanged: (p: Proje
 }
 
 function AlwaysAllowed({ project, onChanged }: { project: Project; onChanged: (p: Project) => void }) {
+  const { t } = useI18n();
   async function remove(action: string, pattern: string) {
     try {
       onChanged(
@@ -396,21 +382,21 @@ function AlwaysAllowed({ project, onChanged }: { project: Project; onChanged: (p
     <section className="section">
       <div className="section-head">
         <div>
-          <h2>Always allowed</h2>
-          <p>Permission requests you answered with “Always allow”. Matching requests are approved automatically.</p>
+          <h2>{t("projectSettings.alwaysAllowed.title")}</h2>
+          <p>{t("projectSettings.alwaysAllowed.desc")}</p>
         </div>
       </div>
       {project.allowedPatterns.length === 0 ? (
-        <div className="section-empty">Nothing yet.</div>
+        <div className="section-empty">{t("projectSettings.alwaysAllowed.empty")}</div>
       ) : (
         <div className="section-body">
           {project.allowedPatterns.map((a) => (
             <div key={`${a.action}:${a.pattern}`} className="list-row">
               <span className="tag">{a.action}</span>
               <code className="grow">{a.pattern}</code>
-              <button className="btn ghost sm" onClick={() => remove(a.action, a.pattern)} title="Ask me again for these">
+              <button className="btn ghost sm" onClick={() => remove(a.action, a.pattern)} title={t("projectSettings.alwaysAllowed.revokeTitle")}>
                 <X size={13} />
-                Revoke
+                {t("projectSettings.alwaysAllowed.revoke")}
               </button>
             </div>
           ))}

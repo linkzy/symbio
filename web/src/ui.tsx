@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { X } from "lucide-react";
+import { t } from "./i18n";
 
 // Muted, distinguishable hues for agent avatars (stable per name).
 const AVATAR_COLORS = ["#5b5fc7", "#2f8f6f", "#a87326", "#a2508f", "#3b78cc", "#3c8c9b", "#8a5bb5", "#7c7448"];
@@ -41,17 +42,17 @@ export function Avatar({
 export function statusText(status: string): string {
   switch (status) {
     case "busy":
-      return "Working";
+      return t("status.working");
     case "waiting":
-      return "Waiting for you";
+      return t("status.waiting");
     case "stuck":
-      return "Recovering";
+      return t("status.stuck");
     case "error":
-      return "Needs attention";
+      return t("status.error");
     case "stopped":
-      return "Stopped";
+      return t("status.stopped");
     default:
-      return "Idle";
+      return t("status.idle");
   }
 }
 
@@ -111,7 +112,7 @@ export function Dialog({
       >
         <div className="dialog-head">
           <h2>{title}</h2>
-          <button className="btn ghost icon sm" onClick={onClose} aria-label="Close">
+          <button className="btn ghost icon sm" onClick={onClose} aria-label={t("common.close")}>
             <X size={15} />
           </button>
         </div>
@@ -139,7 +140,7 @@ export function Drawer({ title, onClose, children, actions }: { title: ReactNode
         <div className="drawer-head">
           <h2>{title}</h2>
           {actions}
-          <button className="btn ghost icon sm" onClick={onClose} aria-label="Close">
+          <button className="btn ghost icon sm" onClick={onClose} aria-label={t("common.close")}>
             <X size={15} />
           </button>
         </div>
@@ -162,9 +163,9 @@ export function EmptyState({ icon, title, children, action }: { icon: ReactNode;
 
 export function timeAgo(ms: number) {
   const s = Math.round((Date.now() - ms) / 1000);
-  if (s < 45) return "just now";
-  if (s < 3600) return `${Math.round(s / 60)}m ago`;
-  if (s < 86400) return `${Math.round(s / 3600)}h ago`;
+  if (s < 45) return t("common.justNow");
+  if (s < 3600) return t("common.minutesAgo", { n: Math.round(s / 60) });
+  if (s < 86400) return t("common.hoursAgo", { n: Math.round(s / 3600) });
   return new Date(ms).toLocaleDateString();
 }
 
@@ -180,7 +181,7 @@ export function RetryIn({ until }: { until: number }) {
     return () => clearInterval(timer);
   }, []);
   const left = Math.max(0, Math.round((until - now) / 1000));
-  if (left === 0) return <>now</>;
+  if (left === 0) return <>{t("common.justNow")}</>;
   return <>in {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}</>;
 }
 

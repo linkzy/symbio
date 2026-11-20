@@ -9,6 +9,7 @@ import { Avatar, RetryIn, statusText, waitsForPinnedModel } from "./ui";
 import { callsFromCode, stepLabels, summarize, type StepLabel, type ToolCall } from "./steps";
 import { FileCard, Md } from "./files";
 import { modelsForRole } from "./ModelPicker";
+import { t, useI18n } from "./i18n";
 
 type Block =
   | { kind: "text" | "reasoning"; key: string; text: string }
@@ -75,18 +76,9 @@ const SYSTEM_PREFIX = /^Symbio( watchdog)?:\s*/;
 /** Messages delivered by Symbio between agents start with "[from: name · kind]". */
 const AGENT_HEADER = /^\[from: ([^\]·]+?) · ([\w-]+)\]\n?/;
 
-const KIND_LABEL: Record<string, string> = {
-  request: "Request",
-  info: "Update",
-  blocking: "Blocking",
-  urgent: "Urgent",
-  "asset-request": "Asset request",
-  "asset-granted": "Asset granted",
-  "asset-denied": "Asset denied",
-  "asset-released": "Asset released",
-  "task-review": "Ready for review",
-  "task-blocked": "Blocked",
-};
+function kindLabel(kind: string) {
+  return t(`chat.kind.${kind}` as any) === `chat.kind.${kind}` ? kind : t(`chat.kind.${kind}` as any);
+}
 const KIND_TONE: Record<string, string> = {
   "asset-granted": "green",
   "task-review": "amber",
@@ -100,6 +92,7 @@ const KIND_TONE: Record<string, string> = {
 
 /** The agent's name; helpers can be renamed in place (the old name keeps working for other agents). */
 function AgentName({ project, agent }: { project: Project; agent: Agent }) {
+  const { t } = useI18n();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(agent.name);
   const [saving, setSaving] = useState(false);
@@ -141,7 +134,7 @@ function AgentName({ project, agent }: { project: Project; agent: Agent }) {
       {agent.role !== "coordinator" && (
         <button
           className="btn ghost icon xs"
-          title="Rename"
+          title={t("chat.rename")}
           onClick={() => {
             setValue(agent.name);
             setEditing(true);
@@ -173,6 +166,7 @@ function mergeLatest(prev: any[] | null, page: { messages: any[]; hasMore: boole
 }
 
 export function Chat({ project, agent }: { project: Project; agent: Agent }) {
+  const { t } = useI18n();
   const [history, setHistory] = useState<any[] | null>(null);
   const [hasOlder, setHasOlder] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -327,21 +321,24 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
 
   return (
     <div className="chat" {...drop}>
-      {dragging && <DropOverlay label={`Drop to attach to your message to ${agent.name}`} />}
+      {dragging && <DropOverlay label={t("chat.drop", { name: agent.name })} />}
       {waitsForPinnedModel(agent) && (
         <div className="banner amber pin-wait">
           <Pin size={14} />
           <div className="grow ellipsis" title={agent.problem ?? ""}>
-            <strong>Waiting for {agent.model}</strong>{" "}
+            <strong>{t("chat.waitingModel.title", { model: agent.model })}</strong>{" "}
             <span className="muted">
-              — pinned, so it retries this model instead of switching. Next try <RetryIn until={agent.modelWait!.until} />.
+              {/* keep RetryIn element */}
+              {t("chat.waitingModel.desc").split("{until}")[0]}
+              <RetryIn until={agent.modelWait!.until} />
+              {t("chat.waitingModel.desc").split("{until}")[1] ?? ""}
             </span>
           </div>
           <button className="btn sm" onClick={() => api.retryModels(project.id).catch((e) => alert(e.message))}>
-            Retry now
+            {t("common.retryNow")}
           </button>
           <button className="btn sm ghost" onClick={() => api.pinAgentModel(project.id, agent.id, false).catch((e) => alert(e.message))}>
-            Unpin
+            {t("chat.pin.unpin")}
           </button>
         </div>
       )}
@@ -350,14 +347,14 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
         <div className="grow">
           <AgentName project={project} agent={agent} />
           <div className="sub ellipsis">
-            {waitsForPinnedModel(agent) ? "Waiting for its model" : statusText(agent.status)} ·{" "}
+            {waitsForPinnedModel(agent) ? t("chat.waitingForModel") : statusText(agent.status)} ·{" "}
             {agent.status === "stopped" ? (
               agent.model
             ) : (
               <select
                 className="inline-select"
                 value={agent.model}
-                title={`Model ${agent.name} runs on — applies from its next turn`}
+                title={t("chat.model.title", { name: agent.name })}
                 onChange={(e) => api.setAgentModel(project.id, agent.id, e.target.value).catch((err) => alert(err.message))}
               >
                 {[...new Set([agent.model, ...modelsForRole(project, agent.role)])].map((m) => (
@@ -376,9 +373,9 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
               </>
             ) : (
               agent.role !== "coordinator" && (
-                <span title={`Works in the project folder itself: ${project.directory}`}>
+                <span title={t("chat.projectFolder.title", { path: project.directory })}>
                   {" · "}
-                  <Folder size={11} style={{ verticalAlign: -1 }} /> project folder{agent.repo ? ` · ${agent.repo}` : ""}
+                  <Folder size={11} style={{ verticalAlign: -1 }} /> {t("chat.projectFolder")}{agent.repo ? ` · ${agent.repo}` : ""}
                 </span>
               )
             )}
@@ -388,13 +385,13 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
                 <select
                   className="inline-select"
                   value={viewSession ?? ""}
-                  title="Earlier sessions stay readable after the agent got a fresh one"
+                  title={t("chat.sessions.earlier")}
                   onChange={(e) => setViewSession(e.target.value || null)}
                 >
-                  <option value="">current session</option>
+                  <option value="">{t("chat.sessions.current")}</option>
                   {[...agent.previousSessions!].reverse().map((s, i) => (
                     <option key={s.sessionId} value={s.sessionId}>
-                      earlier session {agent.previousSessions!.length - i} (until {new Date(s.endedAt).toLocaleString()})
+                      {t("chat.sessions.earlierItem", { n: agent.previousSessions!.length - i, date: new Date(s.endedAt).toLocaleString() })}
                     </option>
                   ))}
                 </select>
@@ -406,9 +403,9 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
           <button
             className="btn ghost sm"
             disabled={renewing || busy || agent.status === "waiting"}
-            title={busy ? "Available when the agent is idle" : "Continue in a fresh session: lighter and cheaper; a handoff note carries the essentials over"}
+            title={busy ? t("chat.renew.disabled") : t("chat.renew.title")}
             onClick={() => {
-              if (!confirm(`Give ${agent.name} a fresh session? It keeps its name, folder, tasks and assets, and starts from a handoff note. The current conversation stays readable.`)) return;
+              if (!confirm(t("chat.renew.confirm", { name: agent.name }))) return;
               setRenewing(true);
               setViewSession(null);
               api
@@ -418,26 +415,16 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
             }}
           >
             <RefreshCw size={14} />
-            <span className="btn-label">{renewing ? "Renewing…" : "New session"}</span>
+            <span className="btn-label">{renewing ? t("chat.renewing") : t("chat.newSession")}</span>
           </button>
         )}
         {agent.role !== "coordinator" && agent.branch && agent.status !== "stopped" && (
           <button
             className="btn ghost sm"
             disabled={moving || busy || agent.status === "waiting"}
-            title={
-              busy
-                ? "Available when the agent is idle"
-                : "Work in the project folder itself instead of its own copy: what it writes is there at once, nothing to merge"
-            }
+            title={busy ? t("chat.renew.disabled") : t("chat.move.title")}
             onClick={() => {
-              if (
-                !confirm(
-                  `Move ${agent.name} into the project folder? Its own copy (branch ${agent.branch}) is removed, so its work must be merged first. ` +
-                    "It continues in a fresh session with a handoff note; the current conversation stays readable.",
-                )
-              )
-                return;
+              if (!confirm(t("chat.move.confirm", { name: agent.name, branch: agent.branch ?? "" }))) return;
               setMoving(true);
               setViewSession(null);
               api
@@ -447,20 +434,20 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
             }}
           >
             <FolderInput size={14} />
-            <span className="btn-label">{moving ? "Moving…" : "Move to project folder"}</span>
+            <span className="btn-label">{moving ? t("chat.moving") : t("chat.moveToProjectFolder")}</span>
           </button>
         )}
         {agent.role !== "coordinator" && agent.status !== "stopped" && (
           <button
             className="btn ghost sm"
             onClick={() => {
-              if (confirm(`Stop ${agent.name}? Any assets it holds are released; unmerged work is kept.`)) {
+              if (confirm(t("chat.stop.confirm", { name: agent.name }))) {
                 api.stopAgent(project.id, agent.id).catch((e) => alert(e.message));
               }
             }}
           >
             <CircleStop size={14} />
-            <span className="btn-label">Stop agent</span>
+            <span className="btn-label">{t("chat.stopAgent")}</span>
           </button>
         )}
         {agent.role !== "coordinator" && agent.status === "stopped" && (
@@ -476,7 +463,7 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
             }}
           >
             <RotateCcw size={14} />
-            {restarting ? "Restarting…" : "Restart agent"}
+            {restarting ? t("chat.restarting") : t("chat.restartAgent")}
           </button>
         )}
       </div>
@@ -491,16 +478,16 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
         }}
       >
         <div className="chat-col">
-          {history === null && <div className="subtle center">Loading conversation…</div>}
+          {history === null && <div className="subtle center">{t("chat.loading")}</div>}
           {hasOlder && (
             <button className="btn ghost sm load-older" onClick={() => void loadOlder()} disabled={loadingOlder}>
-              {loadingOlder ? "Loading earlier messages…" : "Load earlier messages"}
+              {loadingOlder ? t("common.loadingOlder") : t("common.loadOlder")}
             </button>
           )}
           {history?.length === 0 && live.length === 0 && (
             <div className="chat-empty">
-              <h2>Let's talk about the project</h2>
-              <p>Tell core what you want to build. It will ask questions, agree on the scope with you, and then plan the work.</p>
+              <h2>{t("chat.empty.title")}</h2>
+              <p>{t("chat.empty.body")}</p>
             </div>
           )}
           <AnimatePresence initial={false}>
@@ -533,9 +520,9 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
       {viewSession ? (
         <div className="composer-wrap">
           <div className="session-note">
-            You're reading an earlier session of {agent.name} (read-only).
+            {t("chat.readingEarlier", { name: agent.name })}
             <button className="btn sm" onClick={() => setViewSession(null)}>
-              Back to the current session
+              {t("chat.backToCurrent")}
             </button>
           </div>
         </div>
@@ -547,10 +534,10 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
             value={draft}
             placeholder={
               busy
-                ? `${agent.name} is working — your message will be queued`
+                ? t("chat.composer.busy", { name: agent.name })
                 : agent.role === "coordinator" && project.coreMode === "plan"
-                  ? `Message ${agent.name}… (Plan: nothing starts)`
-                  : `Message ${agent.name}…`
+                  ? t("chat.composer.plan", { name: agent.name })
+                  : t("chat.composer.placeholder", { name: agent.name })
             }
             onChange={(e) => setDraft(e.target.value)}
             onPaste={(e) => {
@@ -574,16 +561,16 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
             <AttachButton onFiles={pending.add} />
             {agent.role === "coordinator" && <ModeSelector project={project} />}
             <span className="composer-hint">
-              <span className="kbd">Enter</span> to send · <span className="kbd">Shift</span>+<span className="kbd">Enter</span> for a new line
+              <span className="kbd">Enter</span> {t("chat.composer.toSend")} <span className="kbd">Shift</span>+<span className="kbd">Enter</span> {t("chat.composer.newLine")}
             </span>
             <span className="spacer" />
             {busy && (
-              <button className="btn ghost sm" onClick={() => api.interrupt(project.id, agent.id)} title="Interrupt the current turn">
+              <button className="btn ghost sm" onClick={() => api.interrupt(project.id, agent.id)} title={t("chat.interrupt")}>
                 <CircleStop size={14} />
-                Stop
+                {t("common.stop")}
               </button>
             )}
-            <button className="btn primary icon sm" onClick={send} disabled={(!draft.trim() && !pending.ready.length) || pending.uploading || sending} title={pending.uploading ? "Waiting for the files to upload" : "Send"} aria-label="Send">
+            <button className="btn primary icon sm" onClick={send} disabled={(!draft.trim() && !pending.ready.length) || pending.uploading || sending} title={pending.uploading ? t("chat.composer.uploading") : t("common.send")} aria-label={t("common.send")}>
               <ArrowUp size={15} />
             </button>
           </div>
@@ -603,14 +590,11 @@ function splitModeNote(text: string): { text: string; mode: "Plan" | "Act" | nul
   return m ? { text: text.slice(0, m.index), mode: m[1] as "Plan" | "Act" } : { text, mode: null };
 }
 
-const MODES: { id: CoreMode; label: string; hint: string }[] = [
-  { id: "auto", label: "Auto", hint: "core decides whether to talk, plan or start the work" },
-  { id: "plan", label: "Plan", hint: "Discuss and plan only: core can't start work, edit files or push until you switch" },
-  { id: "act", label: "Act", hint: "Get it done without a plan to approve" },
-];
+const MODE_IDS: CoreMode[] = ["auto", "plan", "act"];
 
 /** How core handles your messages; applies at once (switch to Plan to stop it starting things). */
 function ModeSelector({ project }: { project: Project }) {
+  const { t } = useI18n();
   const mode = project.coreMode ?? "auto";
   const [saving, setSaving] = useState(false);
   async function choose(next: CoreMode) {
@@ -625,10 +609,10 @@ function ModeSelector({ project }: { project: Project }) {
     }
   }
   return (
-    <div className="seg mode-seg" role="radiogroup" aria-label="How core handles your messages">
-      {MODES.map((m) => (
-        <button key={m.id} role="radio" aria-checked={mode === m.id} className={`${mode === m.id ? "on" : ""} mode-${m.id}`} title={m.hint} onClick={() => choose(m.id)}>
-          {m.label}
+    <div className="seg mode-seg" role="radiogroup" aria-label={t("chat.mode.aria")}>
+      {MODE_IDS.map((id) => (
+        <button key={id} role="radio" aria-checked={mode === id} className={`${mode === id ? "on" : ""} mode-${id}`} title={t(`chat.mode.${id}.hint` as any)} onClick={() => choose(id)}>
+          {t(`chat.mode.${id}` as any)}
         </button>
       ))}
     </div>
@@ -663,7 +647,7 @@ function Folded({ children }: { children: React.ReactNode }) {
       </div>
       {(long || open) && (
         <button className="btn ghost sm folded-toggle" onClick={() => setOpen((o) => !o)}>
-          {open ? "Show less" : "Show all"}
+          {open ? t("common.showLess") : t("common.showAll")}
         </button>
       )}
     </div>
@@ -686,7 +670,7 @@ function HistoryItem({ message: m, project }: { message: any; project: Project }
           <div className="msg-agent-head">
             <Avatar name={fromAgent[1]} size="sm" />
             <strong>{fromAgent[1]}</strong>
-            <span className={`tag ${KIND_TONE[kind] ?? ""}`}>{KIND_LABEL[kind] ?? kind}</span>
+            <span className={`tag ${KIND_TONE[kind] ?? ""}`}>{kindLabel(kind)}</span>
             {report && (
               <span className="report-task">
                 <span className="task-id">{report.task}</span>
@@ -697,7 +681,7 @@ function HistoryItem({ message: m, project }: { message: any; project: Project }
           <Folded>
             <Md
               className="msg-agent-body md"
-              text={report ? report.summary || "_No summary._" : body}
+              text={report ? report.summary || t("chat.noSummary") : body}
               projectId={projectId}
               agentId={project.agents.find((a) => a.name === fromAgent[1])?.id}
             />
@@ -729,8 +713,8 @@ function HistoryItem({ message: m, project }: { message: any; project: Project }
     return (
       <motion.div className="msg-user" {...anim}>
         {mode && (
-          <span className={`mode-tag ${mode.toLowerCase()}`} title={`Sent in ${mode} mode`}>
-            {mode}
+          <span className={`mode-tag ${mode.toLowerCase()}`} title={t("chat.mode.sentIn", { mode: t(`chat.mode.${mode.toLowerCase()}` as any) })}>
+            {t(`chat.mode.${mode.toLowerCase()}` as any)}
           </span>
         )}
         {body}
@@ -744,7 +728,7 @@ function HistoryItem({ message: m, project }: { message: any; project: Project }
       <motion.div className="msg-note" {...anim}>
         <span>
           <Repeat size={12} style={{ verticalAlign: -2, marginRight: 6 }} />
-          Switched to {m.model?.providerID}/{m.model?.id}
+          {t("chat.modelSwitched", { model: `${m.model?.providerID}/${m.model?.id}` })}
         </span>
       </motion.div>
     );
@@ -850,7 +834,7 @@ function Reasoning({ text }: { text: string }) {
     <details className="reasoning">
       <summary>
         <Brain size={13} />
-        Thinking
+        {t("chat.thinking.label")}
       </summary>
       <div className="reasoning-body">{text}</div>
     </details>
@@ -874,7 +858,7 @@ function StepGroup({ items }: { items: Block[] }) {
         <span className={`tool-state ${state}`}>{running ? <Loader2 size={13} className="spin" /> : failed ? <X size={13} /> : <Check size={13} />}</span>
         <span className="step-run-title">{title}</span>
         <span className="step-run-count">
-          {all.length} steps{failed ? ` · ${failed} failed` : ""}
+          {t("chat.steps.count", { n: all.length })}{failed ? t("chat.steps.failed", { n: failed }) : ""}
         </span>
       </summary>
       <div className="step-run-body">
@@ -930,7 +914,8 @@ function lastTurnHasError(history: any[] | null): boolean {
 function retryLabel(data: any): string {
   const r = data?.retry ?? data;
   const reason = r?.error?.message ?? r?.message ?? "provider error";
-  return `Provider not responding — retrying${r?.attempt ? ` (attempt ${r.attempt})` : ""}: ${reason}`;
+  const attempt = r?.attempt ? t("chat.attempt", { n: r.attempt }) : "";
+  return t("chat.retry", { attempt, reason });
 }
 
 /** A turn that is waiting on provider retries shows up in history as an empty assistant message with `retry`. */
@@ -947,7 +932,7 @@ function Thinking({ stuck, retry }: { stuck: boolean; retry: string | null }) {
         <i />
         <i />
       </span>
-      {stuck ? "Looked stuck — recovering…" : (retry ?? "Working…")}
+      {stuck ? t("chat.thinking.stuck") : (retry ?? t("chat.thinking"))}
     </div>
   );
 }
@@ -958,16 +943,16 @@ function Thinking({ stuck, retry }: { stuck: boolean; retry: string | null }) {
  */
 function PinButton({ project, agent }: { project: Project; agent: Agent }) {
   const pinned = !!agent.modelPinned;
-  const by = agent.modelPinned?.by === "coordinator" ? " (by core)" : "";
+  const by = agent.modelPinned?.by === "coordinator" ? t("chat.pin.byCore") : "";
   return (
     <button
       className={`btn ghost icon xs pin-model ${pinned ? "on" : ""}`}
-      aria-label={pinned ? "Unpin the model" : "Pin the model"}
+      aria-label={pinned ? t("chat.pin.unpinModel") : t("chat.pin.pin")}
       aria-pressed={pinned}
       title={
         pinned
-          ? `Pinned to ${agent.model}${by}: if it fails, ${agent.name} waits and retries it. Click to unpin (it then switches to another allowed model when this one fails).`
-          : `Pin ${agent.name} to ${agent.model}: if it fails, wait and retry it instead of switching to another model.`
+          ? t("chat.pin.pinnedTitle", { model: agent.model, by, name: agent.name })
+          : t("chat.pin.unpinnedTitle", { name: agent.name, model: agent.model })
       }
       onClick={() => api.pinAgentModel(project.id, agent.id, !pinned).catch((e) => alert(e.message))}
     >

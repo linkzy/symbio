@@ -11,6 +11,7 @@ import { EmptyState, Logo } from "./ui";
 import { RemoteBanner } from "./Remote";
 import { UpdateBadge, useUpdate } from "./Updates";
 import { ReportProblemLink } from "./ReportProblem";
+import { useI18n } from "./i18n";
 
 function useHashRoute() {
   const [hash, setHash] = useState(location.hash);
@@ -38,6 +39,7 @@ function useHashRoute() {
 }
 
 export function App() {
+  const { t } = useI18n();
   const route = useHashRoute();
   const [runtime, setRuntime] = useState<RuntimeInfo | null>(null);
   const [projectName, setProjectName] = useState<string | null>(null);
@@ -96,17 +98,20 @@ export function App() {
   }, []);
 
   async function pauseAll() {
-    if (!confirm("Pause every project that has agents working? You can resume each project from its page.")) return;
+    if (!confirm(t("app.pauseAll.confirm"))) return;
     const { paused } = await api.pauseAll();
-    alert(paused.length ? `Paused: ${paused.join(", ")}` : "No agents were working.");
+    alert(paused.length ? t("app.pauseAll.result", { names: paused.join(", ") }) : t("app.pauseAll.none"));
   }
 
   if (locked) {
     return (
       <div className="locked">
-        <EmptyState icon={<KeyRound size={20} />} title="Open Symbio from its link">
-          This page doesn't have Symbio's key, so it can't show your projects. Use the link Symbio printed when it started, or start
-          it again (<code>sym</code> or <code>npm start</code>): it opens the right link for you.
+        <EmptyState icon={<KeyRound size={20} />} title={t("app.locked.title")}>
+          {t("app.locked.body.before")}
+          <code>sym</code>
+          {t("app.locked.body.or")}
+          <code>npm start</code>
+          {t("app.locked.body.after")}
         </EmptyState>
       </div>
     );
@@ -123,26 +128,26 @@ export function App() {
         <nav className="crumbs">
           <ChevronRight size={14} />
           {route.page === "settings" ? (
-            <span className="current">Settings</span>
+            <span className="current">{t("app.settings")}</span>
           ) : route.page === "project" ? (
             <>
-              <a href="#/">Projects</a>
+              <a href="#/">{t("app.projects")}</a>
               <ChevronRight size={14} />
               <ProjectSwitcher currentId={route.id} name={projectName} />
             </>
           ) : (
-            <span className="current">Projects</span>
+            <span className="current">{t("app.projects")}</span>
           )}
         </nav>
         <div className="topbar-actions">
-          <button className="btn ghost sm" onClick={pauseAll} title="Pause every project that has agents working">
+          <button className="btn ghost sm" onClick={pauseAll} title={t("app.pauseAll.title")}>
             <PauseCircle size={15} />
-            <span className="btn-label">Pause all</span>
+            <span className="btn-label">{t("app.pauseAll")}</span>
           </button>
           <a
             className={`btn ghost sm ${route.page === "settings" ? "active" : ""}`}
             href="#/settings"
-            title={route.page === "settings" ? "Close Settings" : "Settings"}
+            title={route.page === "settings" ? `${t("common.close")} ${t("app.settings")}` : t("app.settings")}
             // A second click closes Settings, back to where you were.
             onClick={(e) => {
               if (route.page !== "settings") return;
@@ -151,7 +156,7 @@ export function App() {
             }}
           >
             <SettingsIcon size={15} />
-            <span className="btn-label">Settings</span>
+            <span className="btn-label">{t("app.settings")}</span>
           </a>
           <ReportProblemLink />
           <UpdateBadge />
@@ -186,6 +191,7 @@ export function App() {
 
 /** The project name in the breadcrumb: opens a list of the other projects to jump to. */
 function ProjectSwitcher({ currentId, name }: { currentId: string; name: string | null }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [projects, setProjects] = useState<Project[] | null>(null);
   const ref = useRef<HTMLDivElement>(null);
@@ -203,14 +209,14 @@ function ProjectSwitcher({ currentId, name }: { currentId: string; name: string 
   }, [open]);
   return (
     <div className="menu switcher" ref={ref}>
-      <button className="switcher-button current" onClick={() => setOpen((o) => !o)} title="Switch project" aria-haspopup="menu" aria-expanded={open}>
+      <button className="switcher-button current" onClick={() => setOpen((o) => !o)} title={t("app.switchProject")} aria-haspopup="menu" aria-expanded={open}>
         <span className="ellipsis">{name ?? "…"}</span>
         <ChevronDown size={13} />
       </button>
       <AnimatePresence>
         {open && (
           <motion.div className="menu-list left" role="menu" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.1 }}>
-            {projects === null && <div className="menu-note">Loading…</div>}
+            {projects === null && <div className="menu-note">{t("common.loading")}</div>}
             {projects?.map((p) => (
               <button
                 key={p.id}
@@ -233,7 +239,7 @@ function ProjectSwitcher({ currentId, name }: { currentId: string; name: string 
               }}
             >
               <LayoutList size={14} />
-              All projects
+              {t("app.allProjects")}
             </button>
             <button
               onClick={() => {
@@ -242,7 +248,7 @@ function ProjectSwitcher({ currentId, name }: { currentId: string; name: string 
               }}
             >
               <Plus size={14} />
-              New project…
+              {t("app.newProject.menu")}
             </button>
           </motion.div>
         )}
@@ -266,14 +272,15 @@ function SymbioVersion() {
  * running (each starts when something needs it).
  */
 function RuntimeBadges({ runtime, only }: { runtime: RuntimeInfo | null; only: RuntimeKind | null }) {
-  if (!runtime) return <span className="runtime">Connecting…</span>;
+  const { t } = useI18n();
+  if (!runtime) return <span className="runtime">{t("app.connecting")}</span>;
   const all: RuntimeStatus[] = runtime.runtimes ?? [{ kind: "opencode", label: "OpenCode", ...runtime }];
   const shown = only ? all.filter((r) => r.kind === only) : all.filter((r) => r.state !== "stopped" || r.installing);
   if (!shown.length) {
     return (
-      <span className="runtime" title="Agent runtimes start when a project needs them (Settings → Agent runtimes installs them).">
+      <span className="runtime" title={t("app.runtime.startHint")}>
         <span className="dot stopped" />
-        <span className="runtime-label">{all.some((r) => r.installed !== false) ? "No runtime running" : "No runtime installed"}</span>
+        <span className="runtime-label">{all.some((r) => r.installed !== false) ? t("app.noRuntimeRunning") : t("app.noRuntimeInstalled")}</span>
       </span>
     );
   }
@@ -287,6 +294,7 @@ function RuntimeBadges({ runtime, only }: { runtime: RuntimeInfo | null; only: R
 }
 
 function RuntimeBadge({ runtime }: { runtime: RuntimeStatus }) {
+  const { t } = useI18n();
   const name = runtime.label;
   const memory = runtime.memoryMB
     ? runtime.memoryMB >= 1024
@@ -296,17 +304,17 @@ function RuntimeBadge({ runtime }: { runtime: RuntimeStatus }) {
   const label =
     runtime.installed === false
       ? runtime.installing
-        ? `Installing ${name}…`
-        : `${name} not installed`
+        ? t("app.runtime.installing", { name })
+        : t("app.runtime.notInstalled", { name })
       : runtime.state === "running"
-      ? `${name} ${runtime.version ?? ""}`
+      ? `${name} ${runtime.version ?? ""}`.trim()
       : runtime.state === "starting"
-        ? `Starting ${name}…`
+        ? t("app.runtime.starting", { name })
         : runtime.state === "crashed"
-          ? `${name} restarting`
-          : `${name} not started`;
+          ? t("app.runtime.restarting", { name })
+          : t("app.runtime.notStarted", { name });
   return (
-    <span className="runtime" data-runtime={runtime.kind} title={[runtime.error, memory && `Memory: ${memory}`].filter(Boolean).join("\n") || undefined}>
+    <span className="runtime" data-runtime={runtime.kind} title={[runtime.error, memory && t("app.runtime.memory", { value: memory })].filter(Boolean).join("\n") || undefined}>
       <span className={`dot ${runtime.state}`} />
       <span className="runtime-label">{label}</span>
       {memory && runtime.state === "running" && <span className="subtle tnum">{memory}</span>}

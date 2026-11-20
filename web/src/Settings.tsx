@@ -12,6 +12,7 @@ import { UpdatesSection } from "./Updates";
 import { FeedbackSection } from "./Feedback";
 import { ReportProblemSection } from "./ReportProblem";
 import { Dialog, EmptyState } from "./ui";
+import { useI18n } from "./i18n";
 
 /** Where the user was before Settings (a project, the project list…). */
 export function previousPage(): string {
@@ -25,16 +26,18 @@ export function leaveSettings() {
 
 /** "Back to <project>" / "Back to projects": where Back (and Escape) take you. */
 function useBackLabel(): string {
+  const { t } = useI18n();
   const target = previousPage();
   const id = target.match(/^#\/p\/([\w-]+)/)?.[1];
   const [name, setName] = useState<string | null>(null);
   useEffect(() => {
     if (id) api.project(id).then((p) => setName(p.name)).catch(() => {});
   }, [id]);
-  return id ? `Back to ${name ?? "the project"}` : "Back to projects";
+  return id ? t("app.backTo", { name: name ?? t("app.backToProject") }) : t("app.backToProjects");
 }
 
 export function Settings() {
+  const { t } = useI18n();
   const [connections, setConnections] = useState<ConnectionView[] | null>(null);
   const [editing, setEditing] = useState<ConnectionView | `new-${ConnectionView["type"]}` | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
@@ -74,7 +77,7 @@ export function Settings() {
   }
 
   async function remove(c: ConnectionView) {
-    if (!confirm(`Delete the connection “${c.name}”? Its stored credentials are deleted too. Projects using it lose access.`)) return;
+    if (!confirm(t("settings.connections.deleteConfirm", { name: c.name }))) return;
     await api.deleteConnection(c.id).catch((e) => alert(e.message));
     await load();
   }
@@ -82,14 +85,14 @@ export function Settings() {
   return (
     <div className="page-inner">
       <div>
-        <button className="btn sm settings-back" onClick={leaveSettings} title="Esc">
+        <button className="btn sm settings-back" onClick={leaveSettings} title={t("common.esc")}>
           <ArrowLeft size={14} />
           {backLabel}
         </button>
         <div className="page-head">
           <div>
-            <h1>Settings</h1>
-            <p>Set these once — every project can use them.</p>
+            <h1>{t("settings.title")}</h1>
+            <p>{t("settings.subtitle")}</p>
           </div>
         </div>
       </div>
@@ -99,11 +102,8 @@ export function Settings() {
       <section className="section">
         <div className="section-head">
           <div>
-            <h2>Connections</h2>
-            <p>
-              GitHub accounts, Azure DevOps organizations, servers and FTP accounts agents can use to push, open pull requests and deploy. Credentials are encrypted on this computer, tied to your Windows
-              login, and never shown to agents — they ask Symbio to act, and Symbio uses the credentials itself.
-            </p>
+            <h2>{t("settings.connections.title")}</h2>
+            <p>{t("settings.connections.desc")}</p>
           </div>
           <div className="row">
             <button className="btn sm" onClick={() => setEditing("new-github")}>
@@ -131,8 +131,8 @@ export function Settings() {
           </div>
         )}
         {connections?.length === 0 && (
-          <EmptyState icon={<Plug size={20} />} title="No connections yet">
-            Add a GitHub account, an Azure DevOps organization, a server (SSH, SFTP) or an FTP account so agents can push code, open pull requests or deploy for you.
+          <EmptyState icon={<Plug size={20} />} title={t("settings.connections.none.title")}>
+            {t("settings.connections.none.body")}
           </EmptyState>
         )}
 
@@ -146,13 +146,13 @@ export function Settings() {
                   <div className="list-sub ellipsis">
                     {c.type === "github"
                       ? c.account
-                        ? `GitHub · ${c.account}`
-                        : "GitHub · not tested yet"
+                        ? `${t("settings.connections.github.label")} · ${c.account}`
+                        : `${t("settings.connections.github.label")} · ${t("settings.connections.notTested")}`
                       : c.type === "azure"
-                        ? `Azure DevOps · ${c.organization}${c.account ? ` · ${c.account}` : " · not tested yet"}`
+                        ? `${t("settings.connections.azure.label")} · ${c.organization}${c.account ? ` · ${c.account}` : ` · ${t("settings.connections.notTested")}`}`
                         : c.type === "ftp"
-                          ? `FTP · ${c.username}@${c.host}${c.port !== 21 ? `:${c.port}` : ""} · ${c.security === "none" ? "unencrypted" : c.security === "implicit" ? "implicit FTPS" : "FTPS"}`
-                          : `${c.username}@${c.host}${c.port !== 22 ? `:${c.port}` : ""} · ${c.auth === "password" ? "password" : c.keyPath ? `key file ${c.keyPath}` : "stored key"}`}
+                          ? `${t("settings.connections.ftp.label")} · ${c.username}@${c.host}${c.port !== 21 ? `:${c.port}` : ""} · ${c.security === "none" ? t("settings.connections.ftp.unencrypted") : c.security === "implicit" ? t("settings.connections.ftp.implicit") : t("settings.connections.ftp.ftps")}`
+                          : `${c.username}@${c.host}${c.port !== 22 ? `:${c.port}` : ""} · ${c.auth === "password" ? t("settings.connections.auth.password") : c.keyPath ? t("settings.connections.auth.keyFile", { path: c.keyPath }) : t("settings.connections.auth.storedKey")}`}
                   </div>
                   {c.lastTest && (
                     <div className={`conn-test ${c.lastTest.ok ? "ok" : "bad"}`}>
@@ -163,12 +163,12 @@ export function Settings() {
                 </div>
                 <button className="btn sm" onClick={() => test(c.id)} disabled={testing === c.id}>
                   <ShieldCheck size={13} />
-                  {testing === c.id ? "Testing…" : "Test"}
+                  {testing === c.id ? t("common.testing") : t("common.test")}
                 </button>
-                <button className="btn ghost icon sm" onClick={() => setEditing(c)} title="Edit">
+                <button className="btn ghost icon sm" onClick={() => setEditing(c)} title={t("settings.connections.edit")}>
                   <Pencil size={13} />
                 </button>
-                <button className="btn ghost icon sm" onClick={() => remove(c)} title="Delete">
+                <button className="btn ghost icon sm" onClick={() => remove(c)} title={t("settings.connections.delete")}>
                   <Trash2 size={13} />
                 </button>
               </div>
@@ -222,6 +222,7 @@ function ConnectionForm({
   onClose: () => void;
   onSaved: (id: string) => void;
 }) {
+  const { t } = useI18n();
   const server = existing?.type === "server" ? existing : null;
   const ftp = existing?.type === "ftp" ? existing : null;
   const [name, setName] = useState(existing?.name ?? "");
@@ -242,7 +243,7 @@ function ConnectionForm({
   const [error, setError] = useState<string | null>(null);
 
   const stored = (field: string) => !!existing?.secrets?.[field];
-  const keep = (field: string) => (stored(field) ? "Saved — leave empty to keep" : "");
+  const keep = (field: string) => (stored(field) ? t("settings.connections.keepSaved") : "");
 
   async function save() {
     setSaving(true);
@@ -277,69 +278,63 @@ function ConnectionForm({
 
   return (
     <Dialog
-      title={`${existing ? "Edit" : "New"} ${type === "github" ? "GitHub connection" : type === "azure" ? "Azure DevOps connection" : type === "ftp" ? "FTP connection" : "server connection"}`}
+      title={t(`settings.connections.title.${existing ? "edit" : "new"}.${type}`)}
       onClose={onClose}
       footer={
         <>
           <button className="btn ghost" onClick={onClose}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button className="btn primary" onClick={save} disabled={saving || !name.trim()}>
-            {saving ? "Saving…" : "Save and test"}
+            {saving ? t("common.saving") : t("settings.connections.saveAndTest")}
           </button>
         </>
       }
     >
       <label className="field">
-        <span>Name</span>
-        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={type === "github" ? "My GitHub" : type === "azure" ? "Company Azure DevOps" : type === "ftp" ? "Site hosting" : "My VPS"} />
+        <span>{t("settings.connections.name")}</span>
+        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={t(`settings.connections.name.${type}`)} />
       </label>
 
       {type === "github" ? (
         <label className="field">
-          <span>Personal access token</span>
+          <span>{t("settings.connections.token")}</span>
           <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder={keep("token") || "github_pat_… or ghp_…"} />
-          <span className="hint">
-            GitHub → Settings → Developer settings → Personal access tokens. A fine-grained token limited to the repositories agents should
-            work on is safest; give it Contents (read &amp; write), Pull requests and Issues as needed.
-          </span>
+          <span className="hint">{t("settings.connections.token.hint.github")}</span>
         </label>
       ) : type === "azure" ? (
         <>
           <label className="field">
-            <span>Organization</span>
-            <input value={organization} onChange={(e) => setOrganization(e.target.value)} placeholder="contoso, or https://dev.azure.com/contoso" />
-            <span className="hint">The name in your Azure DevOps address: https://dev.azure.com/&lt;organization&gt;.</span>
+            <span>{t("settings.connections.azure.org")}</span>
+            <input value={organization} onChange={(e) => setOrganization(e.target.value)} placeholder={t("settings.connections.azure.orgPlaceholder")} />
+            <span className="hint">{t("settings.connections.azure.orgHint")}</span>
           </label>
           <label className="field">
-            <span>Personal access token</span>
+            <span>{t("settings.connections.token")}</span>
             <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder={keep("token") || "Paste the token"} />
-            <span className="hint">
-              Azure DevOps → User settings → Personal access tokens. Give it access to this organization only, with Code (Read &amp; write) so
-              agents can push and open pull requests; add Work Items if they should update boards. Pick a short expiry and renew it here.
-            </span>
+            <span className="hint">{t("settings.connections.token.hint.azure")}</span>
           </label>
         </>
       ) : type === "ftp" ? (
         <>
           <div className="field-row">
             <label className="field" style={{ flex: 3 }}>
-              <span>Host</span>
+              <span>{t("settings.connections.host")}</span>
               <input value={host} onChange={(e) => setHost(e.target.value)} placeholder="ftp.example.com" />
             </label>
             <label className="field" style={{ flex: 1 }}>
-              <span>Port</span>
+              <span>{t("settings.connections.port")}</span>
               <input value={port} onChange={(e) => setPort(e.target.value)} />
             </label>
           </div>
           <div className="field">
-            <span>Security</span>
+            <span>{t("settings.connections.security")}</span>
             <div className="seg">
               {(
                 [
-                  ["explicit", "FTPS", "21"],
-                  ["implicit", "Implicit FTPS", "990"],
-                  ["none", "Plain FTP", "21"],
+                  ["explicit", t("settings.connections.security.explicit"), "21"],
+                  ["implicit", t("settings.connections.security.implicit"), "990"],
+                  ["none", t("settings.connections.security.none"), "21"],
                 ] as const
               ).map(([value, label, defaultPort]) => (
                 <button
@@ -356,52 +351,52 @@ function ConnectionForm({
             </div>
             <span className="hint">
               {security === "none"
-                ? "Unencrypted: the password and files travel in the clear. Use it only if the hosting has nothing else."
+                ? t("settings.connections.security.hint.none")
                 : security === "implicit"
-                  ? "TLS from the first byte, usually on port 990. For older hostings."
-                  : "The usual: FTP upgraded to TLS. Your hosting panel shows which it supports."}
+                  ? t("settings.connections.security.hint.implicit")
+                  : t("settings.connections.security.hint.explicit")}
             </span>
           </div>
           {security !== "none" && (
             <label className="check">
               <input type="checkbox" checked={acceptAnyCertificate} onChange={(e) => setAcceptAnyCertificate(e.target.checked)} />
-              Accept the server's certificate as it is (self-signed, or issued for the hosting company's name)
+              {t("settings.connections.acceptAnyCert")}
             </label>
           )}
           <label className="field">
-            <span>User</span>
+            <span>{t("settings.connections.user")}</span>
             <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="user@example.com" />
           </label>
           <label className="field">
-            <span>Password</span>
+            <span>{t("settings.connections.password")}</span>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={keep("password")} />
-            <span className="hint">Agents upload with it (replacing files that are there) and can list, move, rename and delete files; they can't run commands, FTP has none. Whether each change needs your OK is set per project, like other connections. For a server with SSH or SFTP, add a Server connection instead.</span>
+            <span className="hint">{t("settings.connections.ftp.passwordHint")}</span>
           </label>
         </>
       ) : (
         <>
           <div className="field-row">
             <label className="field" style={{ flex: 3 }}>
-              <span>Host</span>
+              <span>{t("settings.connections.host")}</span>
               <input value={host} onChange={(e) => setHost(e.target.value)} placeholder="203.0.113.10 or vps.example.com" />
             </label>
             <label className="field" style={{ flex: 1 }}>
-              <span>Port</span>
+              <span>{t("settings.connections.port")}</span>
               <input value={port} onChange={(e) => setPort(e.target.value)} />
             </label>
           </div>
           <label className="field">
-            <span>User</span>
+            <span>{t("settings.connections.user")}</span>
             <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="deploy" />
           </label>
           <div className="field">
-            <span>Authentication</span>
+            <span>{t("settings.connections.auth")}</span>
             <div className="seg">
               <button className={auth === "key" ? "on" : ""} onClick={() => setAuth("key")}>
-                SSH key
+                {t("settings.connections.auth.sshKey")}
               </button>
               <button className={auth === "password" ? "on" : ""} onClick={() => setAuth("password")}>
-                Password
+                {t("settings.connections.auth.passwordLabel")}
               </button>
             </div>
           </div>
@@ -409,20 +404,20 @@ function ConnectionForm({
             <>
               <div className="seg">
                 <button className={keySource === "file" ? "on" : ""} onClick={() => setKeySource("file")}>
-                  Key file on this computer
+                  {t("settings.connections.keySource.file")}
                 </button>
                 <button className={keySource === "paste" ? "on" : ""} onClick={() => setKeySource("paste")}>
-                  Paste the key
+                  {t("settings.connections.keySource.paste")}
                 </button>
               </div>
               {keySource === "file" ? (
                 <label className="field">
-                  <span>Key file</span>
+                  <span>{t("settings.connections.keyFile")}</span>
                   <input value={keyPath} onChange={(e) => setKeyPath(e.target.value)} placeholder="~/.ssh/id_ed25519" />
                 </label>
               ) : (
                 <label className="field">
-                  <span>Private key</span>
+                  <span>{t("settings.connections.privateKey")}</span>
                   <textarea
                     rows={5}
                     className="mono"
@@ -430,17 +425,17 @@ function ConnectionForm({
                     onChange={(e) => setPrivateKey(e.target.value)}
                     placeholder={keep("privateKey") || "-----BEGIN OPENSSH PRIVATE KEY-----"}
                   />
-                  <span className="hint">Stored encrypted.</span>
+                  <span className="hint">{t("settings.connections.privateKey.stored")}</span>
                 </label>
               )}
               <label className="field">
-                <span>Passphrase (if the key has one)</span>
+                <span>{t("settings.connections.passphrase")}</span>
                 <input type="password" value={passphrase} onChange={(e) => setPassphrase(e.target.value)} placeholder={keep("passphrase")} />
               </label>
             </>
           ) : (
             <label className="field">
-              <span>Password</span>
+              <span>{t("settings.connections.password")}</span>
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={keep("password")} />
             </label>
           )}
