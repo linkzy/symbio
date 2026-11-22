@@ -4,6 +4,8 @@ import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { api, openProjectFile, projectFileBlob, type ProjectFile } from "./api";
 import { parseFileHref, remarkPaths } from "./paths";
+import { CopyButton } from "./ui";
+import { t } from "./i18n";
 
 // Files in what the team writes: paths become links (to the files that exist), files agents share
 // show as cards, and Markdown or code opens in a viewer page at the line mentioned (files.ts).
@@ -98,6 +100,13 @@ function FileLink({ projectId, agentId, path, line, children }: { projectId: str
  * Markdown from the team, with paths turned into links to the files that exist (looked up as
  * `agentId` meant them) and other links opening in a new tab.
  */
+const codeText = (node: unknown): string => {
+  if (typeof node === "string") return node;
+  if (Array.isArray(node)) return node.map(codeText).join("");
+  if (node && typeof node === "object" && "props" in (node as any)) return codeText((node as any).props?.children);
+  return "";
+};
+
 export function Md({ text, projectId, agentId, className = "md" }: { text: string; projectId: string; agentId?: string | null; className?: string }) {
   const components: Components = {
     a: ({ href, children }) => {
@@ -115,6 +124,12 @@ export function Md({ text, projectId, agentId, className = "md" }: { text: strin
         </a>
       );
     },
+    pre: ({ children, ...props }) => (
+      <div className="code-block">
+        <CopyButton text={codeText(children).replace(/\n$/, "")} label={t("common.copy")} copiedLabel={t("common.copied")} className="code-copy" />
+        <pre {...props}>{children}</pre>
+      </div>
+    ),
   };
   return (
     <div className={className}>

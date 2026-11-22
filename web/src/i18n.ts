@@ -62,6 +62,8 @@ const en: Dict = {
   "common.clear": "Clear",
   "common.showAll": "Show all",
   "common.showLess": "Show less",
+  "common.copy": "Copy",
+  "common.copied": "Copied",
 
   "status.working": "Working",
   "status.waiting": "Waiting for you",
@@ -529,6 +531,8 @@ const ptBR: Dict = {
   "common.clear": "Limpar",
   "common.showAll": "Mostrar tudo",
   "common.showLess": "Mostrar menos",
+  "common.copy": "Copiar",
+  "common.copied": "Copiado",
 
   "status.working": "Trabalhando",
   "status.waiting": "Aguardando você",

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
-import { X } from "lucide-react";
+import { Check, Copy, X } from "lucide-react";
 import { t } from "./i18n";
 
 // Muted, distinguishable hues for agent avatars (stable per name).
@@ -187,3 +187,43 @@ export function RetryIn({ until }: { until: number }) {
 
 /** A pinned agent waiting for its model (not one stuck because every model failed). */
 export const waitsForPinnedModel = (a: { modelPinned?: unknown; modelWait?: unknown; problem?: string | null }) => !!(a.modelPinned && a.modelWait && a.problem);
+
+export async function copyToClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const el = document.createElement("textarea");
+  el.value = text;
+  el.style.position = "fixed";
+  el.style.opacity = "0";
+  document.body.appendChild(el);
+  el.select();
+  document.execCommand("copy");
+  document.body.removeChild(el);
+}
+
+export function CopyButton({ text, className = "", label = "Copy", copiedLabel = "Copied" }: { text: string; className?: string; label?: string; copiedLabel?: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      className={`btn ghost icon xs copy-btn ${copied ? "copied" : ""} ${className}`.trim()}
+      title={copied ? copiedLabel : label}
+      aria-label={copied ? copiedLabel : label}
+      onClick={async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          await copyToClipboard(text);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        } catch {
+          /* ignore */
+        }
+      }}
+    >
+      {copied ? <Check size={13} /> : <Copy size={13} />}
+    </button>
+  );
+}

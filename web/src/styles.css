@@ -377,8 +377,18 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); margi
 .chat-col { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
 .chat-col > .load-older { align-self: center; }
 .list-compact { display: flex; flex-direction: column; gap: 4px; }
-.msg-user { align-self: flex-end; max-width: 82%; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px 12px 4px 12px; padding: 9px 13px; white-space: pre-wrap; line-height: 1.55; font-size: 14px; }
-.msg-assistant { display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.65; }
+.msg-user { position: relative; align-self: flex-end; max-width: 82%; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px 12px 4px 12px; padding: 9px 13px; white-space: pre-wrap; line-height: 1.55; font-size: 14px; }
+.msg-assistant { position: relative; display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.65; }
+.msg-blocks { position: relative; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.msg-copy { position: absolute; top: -2px; right: -2px; opacity: 0; z-index: 2; }
+.msg-user > .msg-copy { top: 4px; right: 4px; }
+.msg-user:hover > .msg-copy, .msg-user:focus-within > .msg-copy,
+.msg-blocks:hover > .msg-copy, .msg-blocks:focus-within > .msg-copy,
+.code-block:hover > .code-copy, .code-block:focus-within > .code-copy { opacity: 1; }
+.copy-btn.copied { color: var(--green); }
+.code-block { position: relative; margin: 0 0 10px; }
+.code-block pre { margin: 0; padding-right: 40px; }
+.code-copy { position: absolute; top: 6px; right: 6px; opacity: 0; z-index: 2; }
 .msg-note { display: flex; justify-content: center; color: var(--text-3); font-size: 12px; text-align: center; line-height: 1.5; }
 .msg-note > span { max-width: 88%; padding: 4px 10px; border-radius: 999px; background: var(--panel); border: 1px solid var(--border); }
 .msg-agent { border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--panel); overflow: hidden; }

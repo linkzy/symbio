@@ -294,7 +294,7 @@ async function runStep(state, step, ctl) {
     case "coauthor":
       return say(state, `coauthor: ${state.config.coauthorEnabled === false ? "off" : "on"}`);
     case "say":
-      return say(state, step.rest);
+      return say(state, step.rest.replace(/\\n/g, "\n"));
     case "wait":
       return new Promise((r) => setTimeout(r, Number(step.rest) || 500));
     case "tool": {

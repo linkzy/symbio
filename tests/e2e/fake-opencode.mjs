@@ -201,7 +201,7 @@ async function runStep(session, step, ctl) {
     case "coauthor":
       return sayStep(session, `coauthor: ${Object.values(session.instructions).some((v) => String(v).includes("Co-authored-by")) ? "off" : "on"}`);
     case "say":
-      return sayStep(session, step.rest);
+      return sayStep(session, step.rest.replace(/\\n/g, "\n"));
     case "wait":
       return new Promise((r) => setTimeout(r, Number(step.rest) || 500));
     case "tool": {

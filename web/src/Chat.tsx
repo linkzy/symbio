@@ -10,6 +10,7 @@ import { callsFromCode, stepLabels, summarize, type StepLabel, type ToolCall } f
 import { FileCard, Md } from "./files";
 import { modelsForRole } from "./ModelPicker";
 import { t, useI18n } from "./i18n";
+import { CopyButton } from "./ui";
 
 type Block =
   | { kind: "text" | "reasoning"; key: string; text: string }
@@ -678,14 +679,15 @@ function HistoryItem({ message: m, project }: { message: any; project: Project }
               </span>
             )}
           </div>
-          <Folded>
-            <Md
-              className="msg-agent-body md"
-              text={report ? report.summary || t("chat.noSummary") : body}
-              projectId={projectId}
-              agentId={project.agents.find((a) => a.name === fromAgent[1])?.id}
-            />
-          </Folded>
+          <MessageCopy text={report ? report.summary || t("chat.noSummary") : body} />
+      <Folded>
+        <Md
+          className="msg-agent-body md"
+          text={report ? report.summary || t("chat.noSummary") : body}
+          projectId={projectId}
+          agentId={project.agents.find((a) => a.name === fromAgent[1])?.id}
+        />
+      </Folded>
         </motion.div>
       );
     }
@@ -693,8 +695,9 @@ function HistoryItem({ message: m, project }: { message: any; project: Project }
       const { body, files } = splitAttachmentNote(text.slice(fromAgent[0].length));
       return (
         <motion.div className="msg-user" {...anim}>
-          {body}
-          <MessageAttachments projectId={projectId} files={files} />
+          <MessageCopy text={body} />
+      {body}
+      <MessageAttachments projectId={projectId} files={files} />
         </motion.div>
       );
     }
@@ -712,6 +715,7 @@ function HistoryItem({ message: m, project }: { message: any; project: Project }
     const { body, files } = splitAttachmentNote(plain);
     return (
       <motion.div className="msg-user" {...anim}>
+        <MessageCopy text={body} />
         {mode && (
           <span className={`mode-tag ${mode.toLowerCase()}`} title={t("chat.mode.sentIn", { mode: t(`chat.mode.${mode.toLowerCase()}` as any) })}>
             {t(`chat.mode.${mode.toLowerCase()}` as any)}
@@ -756,6 +760,19 @@ function partToBlock(p: any, key: string): Block {
 
 type HistoryUnit = { kind: "assistant"; key: string; blocks: Block[] } | { kind: "other"; message: any };
 
+function MessageCopy({ text }: { text: string }) {
+  const copy = text.trim();
+  if (!copy) return null;
+  return <CopyButton text={copy} label={t("common.copy")} copiedLabel={t("common.copied")} className="msg-copy" />;
+}
+
+function messageText(blocks: Block[]): string {
+  return blocks
+    .flatMap((b) => (b.kind === "text" ? [b.text] : b.kind === "tool" && b.output ? [`${b.name}\n${b.output}`] : []))
+    .join("\n\n")
+    .trim();
+}
+
 /**
  * The conversation as the chat shows it. OpenCode stores each model step as its own assistant
  * message, so a run of 7 tool steps is 7 messages: consecutive ones are joined, and their steps
@@ -793,6 +810,7 @@ function sharedIn(b: ToolBlock): { path: string; caption?: string }[] {
  * folded into one line each, and files the agent shared shown as cards, outside the fold.
  */
 function Blocks({ blocks, projectId, agentId }: { blocks: Block[]; projectId: string; agentId: string }) {
+  const copy = messageText(blocks);
   type Group = Block | { kind: "steps"; key: string; items: Block[] } | { kind: "file"; key: string; path: string; caption?: string };
   const groups: Group[] = [];
   for (const b of blocks) {
@@ -808,7 +826,8 @@ function Blocks({ blocks, projectId, agentId }: { blocks: Block[]; projectId: st
     } else groups.push(b);
   }
   return (
-    <>
+    <div className="msg-blocks">
+      {copy && <MessageCopy text={copy} />}
       {groups.map((g) => {
         if (g.kind === "steps") return <StepGroup key={g.key} items={g.items} />;
         if (g.kind === "file") return <FileCard key={g.key} projectId={projectId} agentId={agentId} path={g.path} caption={g.caption} />;
@@ -824,7 +843,7 @@ function Blocks({ blocks, projectId, agentId }: { blocks: Block[]; projectId: st
         }
         return null;
       })}
-    </>
+    </div>
   );
 }
 
