@@ -22,6 +22,9 @@ All optional, set as environment variables:
 | `SYMBIO_OVERLOAD_FREE_MB` | | A different free-memory floor, in MB |
 | `SYMBIO_BACKUP_DAYS` | `7` | How many daily backups of Symbio's state to keep |
 | `SYMBIO_BUILD_ALERT_GB` | `2` | Build outputs in a helper's folder above this size are reported by the daily check |
+| `SYMBIO_NOTIFY_GROUP_MS` | `20000` | How long notifications gather what happens together before sending it as one message |
+| `SYMBIO_NOTIFY_QUIET_MS` | `60000` | How long no agent works before the team counts as stopped (a notification) |
+| `SYMBIO_NOTIFY_MIN_RUN_MS` | `180000` | Shorter stretches of work (a quick reply) don't count as the team stopping |
 
 ## Where your data lives
 
@@ -31,7 +34,8 @@ All optional, set as environment variables:
 | `~/.symbio/runtime-settings.json` | Whether an OpenCode on PATH is used instead of Symbio's copy |
 | `~/.symbio/skills/` | Your skills (one folder with a `SKILL.md` each), added in Settings → Skills |
 | `~/.symbio/connections.json` | Connection settings (no secrets) |
-| `~/.symbio/secrets.enc` | Connection secrets, encrypted with a key kept in your OS credential store |
+| `~/.symbio/secrets.enc` | Connection secrets and notification tokens (Telegram, ntfy, the webhook address, the e-mail password), encrypted with a key kept in your OS credential store |
+| `~/.symbio/notifications.json` | Where notifications go, and what they say (no secrets) |
 | `~/.symbio/worktrees/` | Helpers' working copies |
 | `~/.symbio/runtimes/` | The agent runtimes you installed from Symbio |
 | `~/.symbio/copilot/` | GitHub Copilot CLI's sessions for Symbio's agents (kept apart from your own Copilot history) |

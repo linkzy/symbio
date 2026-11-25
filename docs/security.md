@@ -89,7 +89,7 @@ Every agent session gets permission rules from `src/server/guard.ts`:
 |---|---|
 | **Deny** killing processes by name or PID (`taskkill`, `Stop-Process`, `kill`, `pkill`, `killall`, `wmic … process`…) | Your terminals, editors and Symbio itself run the same executables. An agent once ran `taskkill /F /IM node.exe /T` and closed all of them. Agents stop what they started with `stop_process`; core can stop a program any agent started with `stop_program`, and you from the machine view in the top bar. Those stop by process id, and only processes Symbio recognizes as agents' programs (under a runtime's shells, or seen there before), never the rest of the machine. |
 | **Deny** reading or editing `~/.ssh`, Symbio's secret store, the UI key, the approvals store, Symbio's backups and OpenCode's provider logins (`auth.json`), and shell commands that mention them or private key files | Servers, GitHub and Azure DevOps are reached through Symbio's connection tools instead |
-| **Deny** editing what decides which programs Symbio runs: its settings and state (`runtime-settings.json`, `config.json`, `connections.json`, `machine.json`, `updates.json`, `opencode.pid`, and each project's `.symbio/project.json`, which holds its checks), the runtimes it installed (`runtimes/`), the downloaded `cloudflared` (`bin/`), its own Copilot folder, the skill library (`skills/`: instructions other agents follow; a skill's scripts may still run), and OpenCode shims anywhere (`opencode.cmd`, `.ps1`, `.bat`, `.exe`); shell commands that mention them are refused too. Reading them is allowed | Otherwise an agent could turn on "OpenCode from the PATH", put its own `opencode.cmd` there, and Symbio would run it as the runtime, outside these rules, with the runtime's server password. Shell commands are matched on their text, so for shell writes this is best effort, as for the secrets |
+| **Deny** editing what decides which programs Symbio runs: its settings and state (`runtime-settings.json`, `config.json`, `connections.json`, `machine.json`, `updates.json`, `notifications.json` (where notifications go), `opencode.pid`, and each project's `.symbio/project.json`, which holds its checks), the runtimes it installed (`runtimes/`), the downloaded `cloudflared` (`bin/`), its own Copilot folder, the skill library (`skills/`: instructions other agents follow; a skill's scripts may still run), and OpenCode shims anywhere (`opencode.cmd`, `.ps1`, `.bat`, `.exe`); shell commands that mention them are refused too. Reading them is allowed | Otherwise an agent could turn on "OpenCode from the PATH", put its own `opencode.cmd` there, and Symbio would run it as the runtime, outside these rules, with the runtime's server password. Shell commands are matched on their text, so for shell writes this is best effort, as for the secrets |
 | **Ask** before installing software (`winget`, `choco`, `npm -g`, `pip install`…) and "download and run" commands (`… \| sh`, `… \| bash -s`, `… \| sudo bash`, `… \| iex`) | You approve installs from the *Needs you* inbox. A project can let its team install packages without asking (Project settings → *Install software without asking*): only the package managers' installs stop asking; running downloaded scripts, system installers (`msiexec`) and `| sudo` still ask, and every deny stays |
 | **Refuse** reading image files (png, jpg, gif, webp, bmp) and PDFs with the read tool; Symbio answers with a pointer to `view_image` or `read_document` | The read tool puts the whole file in the conversation, re-sent every turn; a few large ones made one too big to send |
 
@@ -181,6 +181,22 @@ project the connections it needs.
   so keep the PATH free of folders others can write to. An npm shim (`opencode.cmd`) is started
   through `cmd.exe`, which keeps the server password in its own environment (OpenCode itself removes
   it); programs running as you could read it from there.
+
+## Notifications
+
+- They go only to the channels the human turns on in Settings → Notifications: the open Symbio
+  tabs, and Telegram (their own bot), ntfy (ntfy.sh or their own server), a webhook address and an
+  SMTP server. What they carry is the project's name and what happened (a question's text, a task's
+  title, what core last said); with *Only that a project needs you*, nothing about the project's
+  content leaves the computer.
+- The bot token, the ntfy token, the webhook address (it holds Discord's and Slack's keys) and the
+  e-mail password are kept in the vault like connections' secrets: the API says only whether each
+  is set. Telegram's error replies can quote the request URL, which holds the token, so only their
+  description is kept.
+- On ntfy.sh, anyone who knows a topic can read it: Symbio suggests a random one, and the human can
+  use their own server with a token.
+- Agents can't change where notifications go: `notifications.json` is one of Symbio's own files
+  (*What agents can't do*).
 
 ## Things to know
 

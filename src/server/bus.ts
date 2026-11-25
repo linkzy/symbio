@@ -17,6 +17,7 @@ export type UiEvent =
   | { type: "agent.stream"; projectId: string; agentId: string; event: { type: string; data: any } }
   | { type: "message"; projectId: string; message: unknown }
   | { type: "runtime.switch"; projectId: string; progress: unknown }
+  | { type: "notification"; notification: { id: string; projectId: string; title: string; body: string; important: boolean; at: number } }
   | { type: "machine.updated"; load: unknown };
 
 // Recent events are also kept, numbered, for clients that can't hold a stream open (some

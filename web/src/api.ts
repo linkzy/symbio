@@ -294,6 +294,8 @@ export interface Project {
   standingPermissions?: string;
   /** Installing software without asking. */
   allowInstalls?: boolean;
+  /** Which notifications the project sends: everything (unset), only what waits on the human, or none. */
+  notify?: "all" | "important" | "off";
   /** Every reported task gets a reviewer before core sees it. */
   requireReviewer?: boolean;
   subRepositories?: boolean;
@@ -485,7 +487,32 @@ export type UiEvent =
   | { type: "agent.context"; projectId: string; agentId: string; context: NonNullable<Agent["context"]> }
   | { type: "agent.stream"; projectId: string; agentId: string; event: { type: string; data: any } }
   | { type: "message"; projectId: string; message: LoggedMessage }
-  | { type: "machine.updated"; load: MachineLoad };
+  | { type: "machine.updated"; load: MachineLoad }
+  | { type: "notification"; notification: AppNotification };
+
+export interface AppNotification {
+  id: string;
+  projectId: string;
+  title: string;
+  body: string;
+  important: boolean;
+  at: number;
+}
+
+export type NotifyChannel = "browser" | "telegram" | "ntfy" | "webhook" | "email";
+
+export interface NotificationSettings {
+  detail: "full" | "short";
+  browser: { on: boolean };
+  telegram: { on: boolean; chatId: string };
+  ntfy: { on: boolean; server: string; topic: string };
+  webhook: { on: boolean };
+  email: { on: boolean; host: string; port: number; secure: boolean; user: string; from: string; to: string };
+  /** Which secrets are set ("telegram.token", "webhook.url"…): their values never come back. */
+  secrets: Record<string, boolean>;
+  /** How each channel's latest send went. */
+  status: Partial<Record<NotifyChannel, { at: number; error: string | null }>>;
+}
 
 export interface ProviderFormField {
   key: string;
@@ -834,7 +861,7 @@ export const api = {
   updateProject: (
     id: string,
     patch: Partial<
-      Pick<Project, "name" | "allowedModels" | "coordinatorModel" | "connections" | "allowedPatterns" | "messageLimit" | "renewSessions" | "helperWorkspace" | "rulesRegister" | "subRepositories" | "coreMode" | "reviewBy" | "aiCoauthors" | "coreSkills" | "requireReviewer" | "autonomy" | "questionStyle" | "standingPermissions" | "allowInstalls">
+      Pick<Project, "name" | "allowedModels" | "coordinatorModel" | "connections" | "allowedPatterns" | "messageLimit" | "renewSessions" | "helperWorkspace" | "rulesRegister" | "subRepositories" | "coreMode" | "reviewBy" | "aiCoauthors" | "coreSkills" | "requireReviewer" | "autonomy" | "questionStyle" | "standingPermissions" | "allowInstalls" | "notify">
     > & { checks?: (Omit<Check, "id"> & { id?: string })[]; modelEfforts?: Record<string, string | null>; helperSkills?: string[] | null },
   ) =>
     call<Project>("PATCH", `/projects/${id}`, patch),
@@ -859,6 +886,10 @@ export const api = {
   checkUpdate: () => call<UpdateState>("POST", "/update/check"),
   setUpdateMode: (mode: UpdateMode) => call<UpdateState>("PUT", "/update/settings", { mode }),
   applyUpdate: () => call<{ message: string }>("POST", "/update/apply", { force: true }),
+  notifications: () => call<NotificationSettings>("GET", "/notifications"),
+  updateNotifications: (patch: Record<string, unknown>) => call<NotificationSettings>("PUT", "/notifications", patch),
+  testNotification: (channel: NotifyChannel) => call<{ ok: true }>("POST", `/notifications/test/${channel}`),
+  findTelegramChat: () => call<{ chatId: string; name: string }>("POST", "/notifications/telegram/chat"),
   remote: () => call<RemoteStatus>("GET", "/remote"),
   startRemote: () => call<RemoteStatus>("POST", "/remote/start"),
   stopRemote: () => call<RemoteStatus>("POST", "/remote/stop"),

@@ -21,6 +21,11 @@
   where to look, the steps and what you should see. Let core review (the default), or review every
   task yourself from a "To review" list (approve it, or send it back with a note to the helper), or
   only the tasks marked in the plan. Each task's changed files and diffs are a click away.
+- **Notifications where you are.** Symbio tells you when something waits on you (a question, an
+  approval, a plan or work to review, an agent that can't continue) and what got done (a task, every
+  task, the team stopping after a stretch of work): in the browser while a tab is open, and on your
+  phone or inbox through Telegram, ntfy, a webhook (Discord, Slack…) or e-mail. What happens close
+  together arrives as one message. Each project sends everything, only what needs you, or nothing.
 - **Questions in one list, not lost in the chat.** When the team needs a decision from you, it goes
   to your open questions (numbered, with context and suggested answers). Answer several at once
   when you have a moment; each agent gets its answers, and the same question isn't asked twice.

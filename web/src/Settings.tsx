@@ -10,6 +10,7 @@ import { RuntimesSection, useRuntimes } from "./Runtimes";
 import { CostsSection, PricesSection } from "./Usage";
 import { RemoteSection } from "./Remote";
 import { UpdatesSection } from "./Updates";
+import { NotificationsSection } from "./Notifications";
 import { FeedbackSection } from "./Feedback";
 import { ReportProblemSection } from "./ReportProblem";
 import { Dialog, EmptyState } from "./ui";
@@ -102,6 +103,8 @@ export function Settings() {
       <RuntimesSection />
 
       <SkillsSection />
+
+      <NotificationsSection />
 
       <section className="section">
         <div className="section-head">

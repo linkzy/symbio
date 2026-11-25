@@ -39,7 +39,7 @@ async function writeBackup(projects: Project[], dest: string): Promise<string> {
     const src = path.join(p.directory, ".symbio");
     if (existsSync(src)) await fs.cp(src, path.join(tmp, "projects", `${path.basename(p.directory)}-${p.id}`), { recursive: true });
   }
-  for (const name of ["config.json", "connections.json", "secrets.enc", "prices.json", "runtime-settings.json", "approvals"]) {
+  for (const name of ["config.json", "connections.json", "secrets.enc", "prices.json", "runtime-settings.json", "notifications.json", "approvals"]) {
     const src = path.join(globalDir, name);
     if (existsSync(src)) await fs.cp(src, path.join(tmp, "symbio", name), { recursive: true });
   }

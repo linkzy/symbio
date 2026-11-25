@@ -12,6 +12,7 @@ import { HousekeepingSection } from "./Housekeeping";
 import { RuntimeSection } from "./SwitchRuntime";
 import { EffortSection } from "./Effort";
 import { useI18n } from "./i18n";
+import { ProjectNotifyChoice } from "./Notifications";
 
 /** Project configuration: name, connections, models, remembered permissions, removal. */
 export function ProjectSettings({ project, onChanged }: { project: Project; onChanged: (p: Project) => void }) {
@@ -116,6 +117,7 @@ function General({ project, onChanged }: { project: Project; onChanged: (p: Proj
             <span className="choice-desc">{t("projectSettings.rules.desc")}</span>
           </span>
         </label>
+        <ProjectNotifyChoice project={project} onChanged={onChanged} />
       </div>
       <SaveBar
         dirty={dirty}

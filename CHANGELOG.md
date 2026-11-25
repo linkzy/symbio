@@ -5,6 +5,19 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.33.0]
+
+- **Notifications** (#5): Symbio tells you when something waits on you and what got done, where you are.
+  - **What:** an open question or a briefing, a decision core made, an approval or a permission request, a plan or work to
+    review, an agent that can't continue, a file shared with you, each task done, every task done, and the team stopping
+    after a stretch of work (with what core last said). What happens close together arrives as one message
+    ("My site: needs you (3)"), what waits on you first.
+  - **Where** (Settings → Notifications): this browser, while a Symbio tab is open in the background; **Telegram** (your
+    own bot: paste its token, send it /start, *Find my chat*); **ntfy** (the phone app, on ntfy.sh with a random topic or
+    your own server); a **webhook** (Discord's and Slack's incoming webhooks work as they are); **e-mail** through your
+    SMTP server. Each has *Send a test* and shows how its last message went. Tokens, the webhook address and the password
+    are kept in the encrypted vault, and a notification can say only "My site needs you".
+  - **Per project** (its settings): everything, only what needs you, or nothing.
 - **Remote access: copy and share the link and code together** (#61), by @TariQMah (#64). The copy button next to the
   link copies the link and the access code, ready to paste into a message; a Share button opens the system share sheet
   with them (or copies them where the browser has none), and the code has its own copy button.

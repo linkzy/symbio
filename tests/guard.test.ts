@@ -153,6 +153,9 @@ test("agents can't change what decides which programs Symbio runs (its settings,
   assert.equal(effect("edit", `${home}\\bin\\cloudflared.exe`), "deny");
   assert.equal(effect("edit", `${home}\\config.json`), "deny");
   assert.equal(effect("edit", "/home/me/.symbio/machine.json"), "deny");
+  // Where notifications go: an agent could send the human's to itself.
+  assert.equal(effect("edit", `${home}\\notifications.json`), "deny");
+  assert.equal(effect("shell", `Set-Content ${home}\\notifications.json '{}'`), "deny");
   // A project's settings hold the checks Symbio runs: an agent can't plant or approve one.
   assert.equal(effect("edit", String.raw`C:\proj\.symbio\project.json`), "deny");
   assert.equal(effect("shell", `node -e "fs.writeFileSync('.symbio/project.json', x)"`), "deny");

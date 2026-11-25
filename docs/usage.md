@@ -71,6 +71,10 @@ itself. Whoever gets in controls your agents, so keep the link and code to yours
    runtime later: its **Settings → Agent runtime**.
 5. **Answer what needs you.** Questions, decisions, approvals and permission requests show up in
    **Needs you** (top right) and in the relevant chat.
+6. **Be told when you're away.** In **Settings → Notifications**, allow notifications in the
+   browser, and turn on Telegram, ntfy, a webhook or e-mail to hear about it on your phone or in
+   your inbox (each has a *Send a test*). A project's own settings choose what it sends: everything,
+   only what needs you, or nothing.
 
 ## Words used in the app
 

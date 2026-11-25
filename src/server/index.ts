@@ -23,6 +23,8 @@ import { Team } from "./team.js";
 import { removeOrphanWorkspaces } from "./workspaces.js";
 import { packageRoot, QUIET_MS, SelfUpdate, type UpdateMode } from "./self-update.js";
 import { labeledBackup } from "./housekeeping.js";
+import { CHANNELS, Notifications, type Channel } from "./notifications.js";
+import { Notifier } from "./notifier.js";
 
 // Background work (timers, event handlers) must never take the whole app down: an error there
 // (e.g. OpenCode restarting mid-call) is logged and the next tick tries again.
@@ -93,6 +95,20 @@ const installer = new RuntimeInstaller();
     notify: (project, agent, text) => team.notify(project, agent, text),
     save: (project) => store.update(project),
   });
+  // Notifications: what's worth telling the human (notifier.ts), and where it goes (notifications.ts).
+  const notifications = new Notifications(globalDir, connections.vault);
+  await notifications.load();
+  const notifier = new Notifier(
+    {
+      project: (id) => store.get(id),
+      projects: () => store.list(),
+      plan: async (project) => (await team.plan(project)).plan,
+      question: async (project, id) => (await team.questions.store(project)).questions.find((q) => q.id === id),
+    },
+    (n) => notifications.send(n),
+    () => notifications.current.detail,
+  );
+  await notifier.start();
   // Agents that were working when Symbio last went down (crash, killed, machine off)
   // are told to continue once OpenCode is up again.
   team.markInterrupted("Symbio was stopped and has been restarted");
@@ -184,6 +200,32 @@ const installer = new RuntimeInstaller();
       return c.json({ error: (err as Error).message }, 400);
     }
   });
+  // Notifications: settings (secrets only as set / not set), a test per channel, Telegram's chat.
+  app.get("/api/notifications", async (c) => c.json(await notifications.view()));
+  app.put("/api/notifications", async (c) => {
+    try {
+      return c.json(await notifications.update(await c.req.json()));
+    } catch (err) {
+      return c.json({ error: (err as Error).message }, 400);
+    }
+  });
+  app.post("/api/notifications/test/:channel", async (c) => {
+    const channel = c.req.param("channel") as Channel;
+    if (!CHANNELS.includes(channel)) return c.json({ error: "Unknown channel" }, 404);
+    try {
+      await notifications.test(channel);
+      return c.json({ ok: true });
+    } catch (err) {
+      return c.json({ error: (err as Error).message }, 400);
+    }
+  });
+  app.post("/api/notifications/telegram/chat", async (c) => {
+    try {
+      return c.json(await notifications.findTelegramChat());
+    } catch (err) {
+      return c.json({ error: (err as Error).message }, 400);
+    }
+  });
   // Remote access: status for everyone (the code only locally), start locally, stop from anywhere.
   app.get("/api/remote", (c) => c.json(remote.status(!remoteRequests.has(c.req.raw))));
   app.post("/api/remote/start", async (c) => {
@@ -255,6 +297,7 @@ const installer = new RuntimeInstaller();
     remote.stop("Symbio stopped");
     team.shuttingDown = true;
     team.stopWatchdog();
+    notifier.stop();
     machine.stop();
     updates.stop();
     stopRunningChecks();

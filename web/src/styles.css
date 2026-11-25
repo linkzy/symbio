@@ -1177,3 +1177,12 @@ body.resizing iframe { pointer-events: none; }
 .pick-commands { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .pick-command { display: inline-flex; align-items: center; gap: 2px; padding: 1px 2px 1px 6px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface); }
 .pick-command code { font-size: 11px; }
+
+/* Settings → Notifications */
+.notify-channel { display: flex; flex-direction: column; }
+.notify-channel.on > .choice { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.notify-body { gap: 12px; padding: 12px; border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent); border-top: none; border-radius: 0 0 var(--r) var(--r); }
+.notify-footer { gap: 10px; flex-wrap: wrap; }
+.notify-ok { color: var(--green); }
+.notify-error { color: var(--red); }
+.notify-steps { margin: 0; padding-left: 18px; color: var(--text-2); line-height: 1.6; }

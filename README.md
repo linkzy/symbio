@@ -206,7 +206,9 @@ a sandbox. Start with a test folder and read what's allowed.
 **Does Symbio send my data anywhere?**
 Symbio itself only contacts npm and GitHub to check for updates and read release notes. Your
 conversations go to the model provider you chose, through the agent runtime. Remote access goes
-through Cloudflare only while you have it on. There are no analytics.
+through Cloudflare only while you have it on. Notifications go only to the channels you turn on
+(Telegram, ntfy, a webhook, your e-mail server), and can say only "a project needs you". There are
+no analytics.
 
 **Do I need git?**
 It's recommended: helpers then work in parallel in their own copies. Without git they share the

@@ -179,6 +179,8 @@ export interface Project {
   standingPermissions?: string;
   /** Installing software (pip, npm -g, winget…) without asking the human first. Unset = ask. */
   allowInstalls?: boolean;
+  /** Which notifications the project sends (notifier.ts): everything (unset), only what waits on the human, or none. */
+  notify?: NotifyLevel;
   /** Commands Symbio runs itself when a helper reports a task and before its work is merged (checks.ts). */
   checks?: Check[];
   /**
@@ -203,6 +205,8 @@ export type CoreMode = "auto" | "plan" | "act";
 export type ReviewBy = "core" | "every" | "marked";
 
 export type Autonomy = "ask" | "decide";
+
+export type NotifyLevel = "all" | "important" | "off";
 
 export interface ProjectConnection {
   id: string;

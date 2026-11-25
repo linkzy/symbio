@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { MachineBadge } from "./Machine";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, ChevronDown, ChevronRight, Globe, KeyRound, LayoutList, PauseCircle, Plus, Settings as SettingsIcon } from "lucide-react";
+import { useBrowserNotifications } from "./Notifications";
 import { api, LOCKED_EVENT, subscribe, type Project, type RuntimeInfo, type RuntimeKind, type RuntimeStatus } from "./api";
 import { FileViewer } from "./files";
 import { Home } from "./Home";
@@ -41,6 +42,7 @@ function useHashRoute() {
 export function App() {
   const { t } = useI18n();
   const route = useHashRoute();
+  useBrowserNotifications();
   const [runtime, setRuntime] = useState<RuntimeInfo | null>(null);
   const [projectName, setProjectName] = useState<string | null>(null);
   // The open project's runtime: the top bar shows that one there.

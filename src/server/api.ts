@@ -9,7 +9,7 @@ import { findOnPath, hasInstalledCopy, isInstalled, locate, NotInstalledError, R
 import { loadRuntimeSettings, saveRuntimeSettings } from "./runtime/settings.js";
 import { CopilotRuntime } from "./copilot/runtime.js";
 import { validCommandPattern, type Approval } from "./remote.js";
-import type { Autonomy, CoreMode, ReviewBy, Store, Project, DocsLocation, HelperWorkspace, ProjectConnection } from "./store.js";
+import type { Autonomy, CoreMode, NotifyLevel, ReviewBy, Store, Project, DocsLocation, HelperWorkspace, ProjectConnection } from "./store.js";
 import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 import os from "node:os";
@@ -692,6 +692,7 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       questionStyle?: "briefing" | "grill";
       standingPermissions?: string;
       allowInstalls?: boolean;
+      notify?: NotifyLevel;
     }>();
     if (body.autonomy !== undefined || body.questionStyle !== undefined || body.standingPermissions !== undefined || body.allowInstalls !== undefined) {
       if (body.autonomy !== undefined && body.autonomy !== "ask" && body.autonomy !== "decide") return c.json({ error: 'autonomy is "ask" or "decide".' }, 400);
@@ -747,6 +748,11 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     if (coauthorsChanged) {
       if (body.aiCoauthors) project.aiCoauthors = true;
       else delete project.aiCoauthors;
+    }
+    if (body.notify !== undefined) {
+      if (body.notify !== "all" && body.notify !== "important" && body.notify !== "off") return c.json({ error: 'notify is "all", "important" or "off".' }, 400);
+      if (body.notify === "all") delete project.notify;
+      else project.notify = body.notify;
     }
     if (body.reviewBy === "core" || body.reviewBy === "every" || body.reviewBy === "marked") await team.setReviewBy(project, body.reviewBy);
     if (body.coreMode === "auto" || body.coreMode === "plan" || body.coreMode === "act") await team.setCoreMode(project, body.coreMode);
