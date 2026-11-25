@@ -71,7 +71,8 @@ inside each one.
 ![New project dialog](docs/images/new-project.png)
 
 **2. Approve the plan.** After asking a couple of questions, core proposes a plan with
-dependencies and declares the shared assets. Nothing starts until you approve.
+dependencies and declares the shared assets. Here nothing starts until you approve; if you'd rather
+it ran on its own, a project setting lets core decide, start, and tell you what it decided.
 
 ![A proposed plan waiting for approval](docs/images/plan-proposed.png)
 
@@ -100,17 +101,29 @@ moment; the agent that asked carries on.
 - **A whole team from one conversation.** You talk to core; it plans with you, creates helpers, and
   reviews and merges their work. Helpers work in parallel in their own git copies, or one after
   another in the project folder.
+- **Runs on its own, or asks: your choice.** Per project, core either decides what it can undo and
+  tells you (decisions you keep or change later), or asks you and waits. You write what the team
+  may do without asking (spending, deploying, deleting…).
+- **Quality without babysitting.** Every task has a *Done when*. Checks you approve (a build, tests,
+  a spellcheck…) run on each finished task, a separate reviewer can check the work, and anything
+  that fails goes back to the helper before it reaches you. A project glossary keeps everyone using
+  the same words.
+- **Skills.** A library of methods agents load when a task calls for one (planning, software,
+  design, writing, data, operations, media), Symbio's own and popular ones by other authors; core
+  gives each helper the ones its work needs.
 - **Agents talk to each other** through Symbio, and shared assets (files, a database, a
   spreadsheet) go to one agent at a time, granted by core.
-- **You stay in control.** Plans wait for your approval; questions, permission requests and deploy
-  approvals collect in **Needs you**; you can review every task yourself or let core do it.
+- **You stay in control.** Questions (or core's questions about a feature, grouped in a briefing),
+  decisions, permission requests and deploy approvals collect in **Needs you**; you can review every
+  task yourself or let core do it.
 - **Your choice of runtime and models.** OpenCode or GitHub Copilot CLI per project, with any model
   they offer; move a project from one to the other; pin an agent to its model; set reasoning effort.
 - **Connections without exposing secrets.** Agents push to GitHub, call Azure DevOps or deploy over
   SSH/FTP through Symbio, which holds the credentials and can ask you before each action.
 - **Built for long-running work.** Crash recovery, a watchdog, model fallback, fresh sessions with
-  handoff notes, daily backups, self-updates, and a machine view that keeps small computers usable.
-- **A UI to live in.** Live kanban, docs with search, an Explorer, costs per agent and model,
+  handoff notes, daily backups, self-updates, and a machine view that shows who started each program
+  and keeps small computers usable.
+- **A UI to live in.** Live kanban, docs with search, an Explorer, files tagged by task, costs per agent and model,
   themes (including VS Code's), an editor-like *Workbench* layout, English or Portuguese, and a phone
   layout with remote access.
 
@@ -226,8 +239,8 @@ has an [AGENTS.md](AGENTS.md) for them). Start with [CONTRIBUTING.md](CONTRIBUTI
 item has an issue; say there that you're taking it.
 
 Small, self-contained [good first issues](https://github.com/linkzy/symbio/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
-are waiting, for example copy buttons in the chat (#23), find in a chat (#28), keyboard shortcuts
-(#29), exporting a chat as Markdown (#31) and an accessibility pass (#33). Bigger ones are labelled
+are waiting, for example find in a chat (#28), keyboard shortcuts (#29), exporting a chat as
+Markdown (#31), filters for a project's skills (#60) and an accessibility pass (#33). Bigger ones are labelled
 [help wanted](https://github.com/linkzy/symbio/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
 
 ## Contributors
@@ -246,9 +259,12 @@ Symbio ships a few skills by other authors, each credited in Settings → Skills
 [GitHub](https://github.com/github/awesome-copilot), [Siqi Chen](https://github.com/blader/humanizer) and
 [Corey Haines](https://github.com/coreyhaines31/marketingskills) (details in `skills/catalog.json`).
 
-<a href="https://github.com/linkzy/symbio/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=linkzy/symbio&max=99" alt="Contributors" />
-</a>
+<a href="https://github.com/linkzy" title="linkzy"><img src="https://github.com/linkzy.png?size=128" width="64" height="64" alt="linkzy" /></a>
+<a href="https://github.com/wesleyhjpr" title="wesleyhjpr"><img src="https://github.com/wesleyhjpr.png?size=128" width="64" height="64" alt="wesleyhjpr" /></a>
+<a href="https://github.com/Veeramanikandanr48" title="Veeramanikandanr48"><img src="https://github.com/Veeramanikandanr48.png?size=128" width="64" height="64" alt="Veeramanikandanr48" /></a>
+<a href="https://github.com/TariQMah" title="TariQMah"><img src="https://github.com/TariQMah.png?size=128" width="64" height="64" alt="TariQMah" /></a>
+
+[All contributors on GitHub](https://github.com/linkzy/symbio/graphs/contributors).
 
 ## License
 

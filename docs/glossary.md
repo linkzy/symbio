@@ -37,11 +37,11 @@ and align the rest.
 
 | Term | Means | pt-BR | In the code |
 |---|---|---|---|
-| **plan** | The project's goal and tasks, proposed by core and approved by the human; shown as a board in the Plan tab | plano | `PlanStore`, `Kanban.tsx` |
+| **plan** | The project's goal and tasks, proposed by core and approved by the human (or approved as made, when the human lets core decide); shown as a board in the Plan tab | plano | `PlanStore`, `Kanban.tsx` |
 | **task** | One piece of the plan (`T3`): what to do, who does it, what it depends on | tarefa | `Task` |
 | **report** | A helper telling core a task is finished (its task moves to *review*), with a summary and a guide | relatório | `update_task(…, "review")` |
 | **guide** | With a report: where to look and how to check the work | guia | `guide` |
-| **review** | Checking finished work: by core, or also by the human (*To review*), per the project's setting | revisão | `reviewBy` (`"core"`, `"every"`, `"marked"`) |
+| **review** | Checking finished work: by core (with a reviewer when it asks for one, or the human requires it), and also by the human (*To review*) per the project's setting | revisão | `reviewBy` (`"core"`, `"every"`, `"marked"`) |
 | **send back** | The human returning reviewed work to its helper, with a note | devolver | |
 | **merge** | Bringing a helper's committed work from its own copy into the project | mesclar | `merge_work`, `mergeWorkspace` |
 | **own copy** | A helper's separate copy of a git project, on its own branch | a própria cópia | workspace `"own"`, git worktree |

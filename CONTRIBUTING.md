@@ -47,7 +47,10 @@ Please don't paste API keys, tokens or private project content. For security iss
    Add or update tests for logic you change (especially `guard.ts`, workspaces, the plan and the
    asset register), and an end-to-end test in `tests/e2e/` for what users see or do. For UI changes, run the app and look at it; include before/after screenshots in
    the pull request.
-6. **Update the docs** your change affects (`README.md`, `docs/`, `AGENTS.md`).
+6. **Update the docs** your change affects (`README.md`, `docs/`, `AGENTS.md`), and add an entry to
+   `CHANGELOG.md` under *Unreleased* for what users will notice. Adding a skill to the ones Symbio
+   ships follows the rules in [docs/development.md](docs/development.md) (license, credit, pinned
+   copy).
 7. **Open a pull request** that explains what changed and why, how you tested it, and any follow-up
    work. Keep pull requests focused: one topic each.
 

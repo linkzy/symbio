@@ -28,7 +28,7 @@ node bin/symbio.js run     # foreground, http://127.0.0.1:4310
 | `npm start` | Same as `sym`: starts the built app in the background and opens the browser (`node bin/symbio.js run` runs it in the foreground) |
 | `npm test` | Unit tests (`node:test` via tsx, `tests/*.test.ts`) |
 | `npm run test:contract` | The runtimes' APIs as Symbio uses them: a real `opencode serve`, and the real GitHub Copilot CLI when signed in (`tests/contract/`) |
-| `npm run test:e2e` | The whole app (built first), driven in Edge/Chrome, once per runtime (both at once, several files in parallel): against a stand-in OpenCode and a stand-in Copilot (`tests/e2e/`, `scripts/e2e.mjs`) |
+| `npm run test:e2e` | The whole app (run `npm run build` first: it tests the built app), driven in Edge/Chrome, once per runtime (both at once, several files in parallel): against a stand-in OpenCode and a stand-in Copilot (`tests/e2e/`, `scripts/e2e.mjs`) |
 | `npm run typecheck` | Type-checks the server and the UI |
 | `prepublishOnly` | Runs typecheck, tests and build before `npm publish` |
 
@@ -50,10 +50,14 @@ The Vite proxy follows `SYMBIO_PORT`.
 
 ```
 bin/symbio.js          CLI entry (symbio / sym)
-src/server/            Node server (Hono): API, team logic, MCP tools, OpenCode runtime
+src/server/            Node server (Hono): API, team logic, MCP tools
+src/server/team/       The team's parts (task flow, checks and reviewers, questions, sessions…)
+src/server/runtime/    AgentRuntime, installing the runtimes, their settings
 src/server/opencode/   OpenCode process supervisor and HTTP client
+src/server/copilot/    The GitHub Copilot CLI runtime (over the Copilot SDK)
 web/src/               React UI (Vite); styles.css is the whole design system
-tests/                 Unit tests
+skills/                The skills Symbio ships (its own and vetted third-party copies; catalog.json)
+tests/                 Unit tests; tests/e2e/ end-to-end, tests/contract/ the real runtimes
 scripts/               Dev helpers (dev runner, screenshots, a local SSH test server)
 docs/                  This documentation
 ```
@@ -74,8 +78,8 @@ docs/                  This documentation
 - **Stay domain-neutral.** Nothing in Symbio, including the agent briefs in `prompts.ts`, should
   assume the project is software. Use "shared asset", "helper", "work", not "database", "backend",
   "code".
-- **The UI reflects real events.** Status, kanban and inbox come from OpenCode events and Symbio's
-  records, never from asking a model.
+- **The UI reflects real events.** Status, kanban and inbox come from the runtimes' events and
+  Symbio's records, never from asking a model.
 - **Secrets stay on the server.** Nothing secret goes back to the browser or into an agent's context.
   When you proxy an OpenCode response, copy the fields you need instead of passing it through.
 - **Safety rules have tests.** If you touch `guard.ts`, extend `tests/guard.test.ts`.
@@ -96,12 +100,18 @@ docs/                  This documentation
   woken up), and the human sees them in Messages. New projects start with them marked as seen.
 - **Keep state in plain files.** JSON/JSONL under `.symbio/` or `~/.symbio/`. Each module owns its
   file and writes it atomically (temporary file, then rename): `store.ts` for projects and the
-  message log, and `plan.ts`, `assets.ts`, `rules.ts`, `costs.ts`, `connections.ts`, `remote.ts`
-  for their own data.
+  message log, and `plan.ts`, `assets.ts`, `questions.ts`, `files.ts`, `rules.ts`, `costs.ts`,
+  `connections.ts`, `remote.ts` for their own data.
+- **Skills Symbio ships** (`skills/`). Ours are written for any kind of project. A third-party one
+  comes in only with a permissive license (MIT, Apache-2.0), as a copy pinned to one commit with its
+  license file, credited in `skills/catalog.json` (author, source, license, what we changed), and
+  adapted only by an "In Symbio" note on how it maps to Symbio. No skills that bundle servers,
+  hooks, telemetry or many scripts. Frontmatter values with `: ` in them are quoted (Copilot skips
+  a skill whose frontmatter isn't valid YAML); `tests/skills.test.ts` checks all of this.
 
 ## Testing
 
-- `npm test` runs everything. Tests that touch the disk use a temporary `SYMBIO_HOME`, and the
+- `npm test` runs the unit tests. Tests that touch the disk use a temporary `SYMBIO_HOME`, and the
   vault tests use their own keyring service (`SYMBIO_KEYRING_SERVICE`), so your real data and
   credentials are never touched.
 - Git behavior (worktrees, merges, conflicts, restoring workspaces) is tested against real
@@ -183,10 +193,14 @@ helper's name), so a task given to a helper can carry the helper's own lines:
 | `write <path> <text>` | Writes a file in the agent's folder |
 | `question <title> \| <option> \| …` | Asks through the runtime's question tool and waits for the answer |
 | `wait <ms>` | Pauses |
+| `knows <text>` | Says `knows: yes` or `no`: whether the agent's instructions contain the text (its brief, glossary, private docs) |
+| `skills` | Says the skills the agent's session has, as the runtime filters them |
+| `coauthor` | Says whether the session may add AI co-author lines to commits |
 
 A session on the model `UNAVAILABLE_MODEL` (`fake/unavailable`, `copilot/unavailable`) fails every
 turn at once. `tests/e2e/harness.ts` has the helpers (`startSymbio`, `projectWithCore`, `idle`,
-`history`, `openPage` for a desktop or phone page). When a runtime changes how a turn looks, record it
+`history`, `openPage` for a desktop or phone page, `ownClipboard`). `projectWithCore` creates projects
+that ask and wait (`autonomy: "ask"`) unless a test passes `autonomy: "decide"`. When a runtime changes how a turn looks, record it
 again with a real model and update its stand-in to match.
 
 ### Running them fast, and keeping them steady

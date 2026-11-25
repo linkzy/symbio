@@ -7,7 +7,8 @@ For people and AI agents working **on** Symbio. To *use* Symbio, start with the 
 | Document | Read it when |
 |---|---|
 | [architecture.md](architecture.md) | You want the big picture: how the server, the agent runtimes (OpenCode, GitHub Copilot CLI) and the UI fit together, what each module does, project lifecycle, reliability, where data lives |
-| [agent-protocol.md](agent-protocol.md) | You're changing how agents behave: roles, messages, shared assets, plan and tasks, the tools they call |
+| [agent-protocol.md](agent-protocol.md) | You're changing how agents behave: roles, messages, shared assets, plan and tasks, checks and reviewers, questions and briefings, the tools they call |
+| [glossary.md](glossary.md) | You're naming something people or agents read: the one word for each thing, in English and Portuguese, and its name in the code |
 | [opencode-api.md](opencode-api.md) | You're calling OpenCode: the endpoints Symbio uses and the behaviors verified against 2.1.4 |
 | [copilot-api.md](copilot-api.md) | You're working on GitHub Copilot CLI as a runtime: the Copilot SDK as Symbio uses it, verified live |
 | [development.md](development.md) | You're setting up, running, testing or debugging Symbio, or want the code conventions |

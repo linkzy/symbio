@@ -31,7 +31,8 @@ the same GitHub account. To keep the two from colliding:
 ## Steps
 
 1. Move the entries under `[Unreleased]` in `CHANGELOG.md` to a new version and set the same
-   version in `package.json`.
+   version in `package.json` (`npm version <x.y.z> --no-git-tag-version`). Add a line for it to the
+   roadmap's *Done*, and mark or remove the items it finished.
 2. If agents work differently, make sure `src/server/updates.ts` has entries for it.
 3. `npm pack` and try the package from a temporary prefix before publishing:
    ```sh
@@ -40,8 +41,8 @@ the same GitHub account. To keep the two from colliding:
    SYMBIO_HOME=/tmp/symbio-pkg/home SYMBIO_PORT=4330 /tmp/symbio-pkg/prefix/sym doctor
    ```
 4. Commit, tag the commit with the version (`git tag v<version>`) and push the tag. The **Release**
-   workflow (`.github/workflows/release.yml`) checks that the tag matches `package.json`, runs the
-   type-check, tests and build, and publishes to npm through trusted publishing: no npm token is
+   workflow (`.github/workflows/release.yml`) checks that the tag matches `package.json`, runs every
+   check (type-check, unit, contract and end-to-end tests, build), and publishes to npm through trusted publishing: no npm token is
    stored anywhere, and the package gets provenance. It then creates the GitHub release, with the
    version's section of `CHANGELOG.md` (`scripts/release-notes.mjs`; pre-releases marked as such). It's authorized on npmjs.com → symbio →
    Settings → Trusted Publisher (GitHub Actions, user `linkzy`, repo `symbio`, workflow

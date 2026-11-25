@@ -5,7 +5,8 @@ themselves are in `src/server/prompts.ts`; the tools in `src/server/tools.ts`.
 
 ## Roles
 
-There are no predefined roles like "frontend" or "writer". There are only two kinds of agent:
+There are no predefined roles like "frontend" or "writer". There are two kinds of agent, plus
+reviewers:
 
 - **core** (the coordinator): one per project, working in the project folder. It scopes the work
   with the human, proposes the plan, creates and directs helpers, gatekeeps shared assets, reviews
@@ -24,8 +25,12 @@ There are no predefined roles like "frontend" or "writer". There are only two ki
   created one on top) can be switched to the inner ones (`subRepositories`): after the update,
   Symbio wakes core in such projects to check and switch on its own when the outer repository is
   Symbio's and has no remote, or ask the human otherwise. One helper is the default; each extra helper must be justified by
-  independent work. Idle helpers cost nothing and keep their context, so they're reused for
-  follow-ups and stopped only when their area is finished.
+  independent work. Idle helpers cost nothing and know their area, so they're reused for
+  follow-ups and stopped only when their area is finished. With a fresh session after each task
+  (the default for new projects) their conversation doesn't carry over: the project's documents,
+  glossary, rules and specs do.
+- **Reviewers**: one-off helpers (`review-t3`) that check one task's work in the folder of the
+  helper who did it, can't edit files, and are stopped after their verdict (see Plan and tasks).
 
 ## Messages
 
@@ -78,7 +83,9 @@ being merged (unless core forces the merge).
 ## Plan and tasks
 
 - core proposes the plan with `submit_plan`: a goal and tasks with dependencies. The human
-  approves or requests changes in the Plan tab. No work is assigned before approval.
+  approves or requests changes in the Plan tab, and no work is assigned before approval. When the
+  project lets core decide (*Decide and tell me*, below), the plan is approved as it's made: the
+  human sees it in the Plan tab and can ask for changes.
 - **Done when** (`done_when` on a task): how its work will be judged finished, as checks someone who
   didn't do it can verify. core writes it when planning (`submit_plan`, `add_task`) and can change it
   (`update_task` `done_when`, core only); the human sees and edits it on the board. The helper gets it
@@ -94,7 +101,8 @@ being merged (unless core forces the merge).
   the same as `spawn_agent` without a first task. Their brief says the human works with them directly; core gets a
   note at its next turn (it isn't woken) to leave them to the human unless asked.
 - Helpers report with `update_task`: `in-progress`, `blocked` (with the reason) or `review`
-  (finished, with a summary, which is their report to core).
+  (finished, with a summary, which is their report to core once the project's checks, and a
+  reviewer when required, have passed; see Checks and Reviewers below).
 - **Review guides and the human's review** (`Project.reviewBy`, `team/review.ts`). A helper reporting a
   task for review gives a guide (`update_task` `guide`): where to look, the steps to check it and what
   should be seen, and whether it ran them. *core* (the default): core's review is enough, done is
@@ -187,19 +195,18 @@ All agents:
 | Tool | What it does |
 |---|---|
 | `send_message` | Message another agent by name (`core` is the coordinator); wakes the recipient |
-| `start_briefing` | core: the questions about one feature together (feature, why, questions with context and options); answered, they become its spec |
 | `ask_human` | Add a question to the human's open questions (Needs you): one per call, with context, options, the task and whether work is blocked; the answer arrives later as a message. When the project lets the team decide: `decided` (or `blocking` with `wait_reason`) |
 | `list_questions` | The open questions, and the ones closed recently with their answers |
 | `close_question` | Close an open question: with the answer the human gave in the chat, or without one when it's no longer needed |
 | `share_file` | Show the human a file (image, video, report…): a card in the chat, shown in place or with a download button, and in the Files tab. `tag` (evidence, report, other) and `task_id`: evidence without a task goes to the agent's one task in progress or review |
 | `list_shared_files` | The files the team shared, newest first, by task and tag (a task's evidence) |
-| `list_team` | Agents on the project: name, role, purpose, status, model |
+| `list_team` | Agents on the project: name, role, purpose, status, model, reasoning effort, skills |
 | `list_assets` | Declared shared assets, holders and queues |
 | `request_asset` | Ask core for a shared asset; don't touch it until granted |
 | `release_asset` | Release a held asset with a summary of the changes |
 | `check_messages` | Collect messages that arrived mid-turn (any Symbio tool call also includes them) |
 | `list_tasks` | The plan: goal, approval status, tasks with status, assignee, dependencies |
-| `update_task` | Report progress on a task: in-progress, blocked, review (core can also change its `done_when`) |
+| `update_task` | Report progress on a task: in-progress, blocked, or review (finished: a summary, and a `guide` for checking it). core can also change any task, its `done_when` and its `spec` |
 | `submit_review` | Reviewers only: the verdict on the task they review (*pass*, or *changes* with findings) |
 | `read_document` | The text of a document: PDF by pages, Word (.docx, .odt), Excel (every sheet as rows), PowerPoint (by slide), long text files; a part at a time. Reading PDFs with the read tool is refused |
 | `view_image` | Look at an image as a scaled-down copy (1024 px by default, at most 2048), or a crop at full resolution; reading image files directly is refused |
@@ -219,13 +226,16 @@ core only:
 
 | Tool | What it does |
 |---|---|
-| `submit_plan` | Propose (or revise) the plan for approval; each task with its `done_when` |
-| `add_task` | Add a task to the approved plan, with its `done_when` |
+| `submit_plan` | Propose (or revise) the plan; each task with its `done_when` and optionally its `spec`. It waits for the human's approval, or is approved as made when the project lets core decide |
+| `add_task` | Add a task to the plan, with its `done_when` (and `spec`) |
+| `start_briefing` | The questions about one feature together (feature, why, questions with context and options); answered, they become its spec |
 | `assign_task` | Give a task to an existing helper |
 | `spawn_agent` | Create a helper with a name, purpose, first task, and optionally a model (and `pin_model` to keep it on that model), where it works (`workspace`: own / shared) and, in a folder of several repositories, which one (`repo`); its `skills` |
 | `list_skills` | The skills core may give helpers, by category (name and what each is for), and its own |
 | `create_skill` | Write a skill (instructions only) into the library, with core as its author, to give helpers |
 | `set_skills` | Set a helper's skills (from the ones the project allows); not skills the human chose |
+| `set_effort` | Set or clear a helper's reasoning effort level (one its model takes); not a level the human set |
+| `list_programs` / `stop_program` | This computer's load and the programs the team's agents started (heaviest first), and stopping one by pid |
 | `pin_model` | Pin a helper to its model (it waits and retries it when it fails, instead of switching) or unpin it; not a pin the human made |
 | `stop_agent` | Stop a helper; its assets are released |
 | `clean_build_outputs` | Delete an idle helper's git-ignored build folders (bin, obj, node_modules…) to free disk space |
@@ -237,9 +247,9 @@ core only:
 | `declare_asset` | Declare or update a shared asset |
 | `grant_asset` / `deny_asset` | Answer an asset request |
 
-Agents also have OpenCode's built-in tools (read, edit, shell, search…), restricted by the
-permission rules in [security.md](security.md). OpenCode's own `question` tool shows up in the UI as
-a form the human answers.
+Agents also have their runtime's built-in tools (read, edit, shell, search, skills…), restricted by
+the permission rules in [security.md](security.md). OpenCode's own `question` tool shows up in the UI
+as a form the human answers.
 
 ## Remote actions
 

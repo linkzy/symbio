@@ -59,14 +59,18 @@ itself. Whoever gets in controls your agents, so keep the link and code to yours
      connections (GitHub, Azure DevOps, servers) the agents may use.
    - **Models:** pick the agent runtime (among the installed ones), the models agents may use, and
      the one core runs on (the crown).
-3. **Talk to core.** Describe what you want. core asks questions, proposes a plan, and waits for
-   your approval in the **Plan** tab (it shows a *Review* badge).
+3. **Talk to core.** Describe what you want. By default a new project runs on its own: core works
+   from what you said and the folder's documents, makes the plan and starts, and what it decided
+   for you shows in **Needs you**, to keep or change. In the project's **Settings → How core runs
+   the project** you can have it ask and wait instead (the plan then waits for your approval in the
+   **Plan** tab, with a *Review* badge), choose briefings or grilling for its questions, and write
+   what the team may do without asking.
 4. **Watch and steer.** Helpers appear in the sidebar as core creates them. Click any agent to read
    its conversation or message it directly, change its model from its header, or stop and restart
    it. The **Messages** tab shows all traffic between agents. To move the project to another agent
    runtime later: its **Settings → Agent runtime**.
-5. **Answer what needs you.** Questions, approvals and permission requests show up in **Needs you**
-   (top right) and in the relevant chat.
+5. **Answer what needs you.** Questions, decisions, approvals and permission requests show up in
+   **Needs you** (top right) and in the relevant chat.
 
 ## Words used in the app
 
@@ -77,3 +81,8 @@ itself. Whoever gets in controls your agents, so keep the link and code to yours
 | **Shared asset** | Something more than one agent could change. Access goes through core: request, grant, release. |
 | **Connection** | A GitHub account, Azure DevOps organization, server (SSH, SFTP) or FTP account agents can use through Symbio, without ever seeing its credentials. |
 | **Allowed models** | The models a project's agents may run on. If one fails, agents fall back to the next. Some can be kept for core only, and core can be limited to some. |
+| **Needs you** | Everything waiting for you: questions, decisions to keep or change, approvals, work to review. |
+| **Done when** | A task's checks for being finished: the helper reports against them, and a reviewer checks them. |
+| **Skill** | A method an agent loads when a task calls for one (a review, a briefing, a writing style). |
+
+The full list, with the Portuguese names, is in [glossary.md](glossary.md).

@@ -5,7 +5,8 @@
   (nothing else on your machine changes), and move a project from one to the other in its settings:
   every agent writes a handoff and continues on the other runtime with its tasks and work.
 - **One conversation, a whole team.** You chat with core. It asks what you want, studies an
-  existing folder before touching it, and proposes a plan of tasks for you to approve.
+  existing folder before touching it, and makes a plan of tasks: for you to approve, or, when you
+  let it decide, started right away for you to change if you want.
 - **Helpers that work in parallel without collisions.** Each helper gets its own git worktree and
   branch, and core reviews and merges their work. For step-by-step work (each step using the
   previous one's files), helpers can share the project folder instead, with nothing to merge.
@@ -49,9 +50,8 @@
 - **Briefings, or grilling.** For a new, big or vague request, core asks the questions about it together (or
   you ask it to): Needs you shows them grouped under the feature, you answer them in one sitting,
   and the answers become the feature's spec, which its tasks link to and helpers and reviewers
-  work from. If you prefer more
-  questions and fewer surprises, choose *grilling*: rounds of questions, each with core's
-  recommended answer, until nothing is open.
+  work from. If you prefer more questions and fewer surprises, choose *grilling*: rounds of
+  questions, each with core's recommended answer, until nothing is open.
 - **Evidence you can find.** Files a helper shares to show its work (a screenshot, an output, a
   test result) are tagged with their task: the task lists them, reviewers get them, and the Files
   tab filters by kind (evidence, reports, yours) and task.
@@ -73,9 +73,9 @@
 - **A live plan.** The Plan tab is an animated kanban that moves by itself as helpers pick up
   tasks, ask for review and get merged. Each task says what *done* means (*Done when*): core writes
   it, the helper reports against it, and you can change it on the board.
-- **You stay in control.** Questions, plan approvals, permission requests (like installing
-  software) and deploy approvals collect in a **Needs you** inbox. Pause one team or everything at
-  once.
+- **You stay in control.** Questions, decisions to keep or change, plan approvals, work to review,
+  permission requests (like installing software) and deploy approvals collect in a **Needs you**
+  inbox. Pause one team or everything at once.
 - **Connections without exposing secrets.** Give agents a GitHub account, an Azure DevOps
   organization, a server (SSH, SFTP) or an FTP account. They ask Symbio to push, open pull requests, call the API or deploy, and Symbio does it with credentials the agents never
   see. Each connection can require your approval for every action; when it does, you can approve
@@ -88,10 +88,17 @@
 - **Long-running teams stay healthy.** Agents continue in a fresh session with a handoff note
   (helpers after each finished task, by default for new projects; any agent when you ask, or
   automatically when a conversation grows too large to send). When you ask, the agent can write its
-  own handoff first. Each chat shows how big the conversation is, so you can tell when it's time. A daily check backs up Symbio's state and tells you and core about work that exists only
-  on this machine and build outputs filling the disk.
+  own handoff first. Each chat shows how big the conversation is, so you can tell when it's time.
+  A daily check backs up Symbio's state and tells you and core about work that exists only on this
+  machine and build outputs filling the disk.
 - **Explorer.** The project's folders and files in a tab, read-only, to look at what the team wrote
   without leaving the browser (secrets stay hidden).
+- **Use it from another device.** Remote access opens a temporary link with an access code; copy
+  both at once or share them (to e-mail them to yourself, say), and the interface adapts to a
+  phone.
+- **Copy from the chat.** A whole answer as written, a code block, or your own message, with one
+  click.
+- **Two languages.** The interface in English or Portuguese (Brazil), chosen in the top bar.
 - **Themes and layouts.** The default look, or the colors of VS Code's Dark Modern and Light Modern
   themes, and a *Workbench* layout like an editor's: tools on the left, the work in the middle, the
   chat on the right (Settings → Appearance, kept per browser). Bring your own by importing a VS Code
@@ -105,8 +112,8 @@
   started each (filter by project; Stop works from a phone too),
   and an overloaded machine is reported to you and core, optionally holding new turns until it recovers.
 - **Safety rails.** Agents can't kill processes by name (which would take down your terminals and
-  editors), can't read your SSH keys or Symbio's secret store, and must ask before installing
-  software. They look at images through scaled-down copies, so a few large pictures can't make a
+  editors), can't read your SSH keys or Symbio's secret store, can't change Symbio's own settings,
+  and must ask before installing software (unless you let a project install packages). They look at images through scaled-down copies, so a few large pictures can't make a
   conversation too big to send.
 
 See also: [usage.md](usage.md) to get started, [configuration.md](configuration.md) for settings and where

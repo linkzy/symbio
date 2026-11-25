@@ -41,8 +41,9 @@ All optional, set as environment variables:
 | `~/.symbio/ui-token` | The key that unlocks the UI (it's in the link Symbio opens) |
 | `~/.symbio/logs/symbio.log` | Symbio's log when started in the background (`sym logs`); `update.log` next to it for updates |
 | `~/.symbio/updates.json` | Your update setting (automatic, tell me, off) |
-| `<project>/.symbio/` | Project state: agents, plan, message log, shared assets, and the files attached in chats (`attachments/`) — git-ignored automatically |
-| `<project>/AGENTS.md`, `<project>/docs/` | Project documentation for agents (unless you chose *private*), `docs/glossary.md` (the project's glossary), and `docs/rules.json` if the rules register is on |
+| `~/.symbio/machine.json` | What happens when the computer is overloaded |
+| `<project>/.symbio/` | Project state: agents and settings (`project.json`, including its checks), plan, message log, shared assets, questions and briefings, files agents shared, and the files attached in chats (`attachments/`) — git-ignored automatically |
+| `<project>/AGENTS.md`, `<project>/docs/` | Project documentation for agents (unless you chose *private*), `docs/glossary.md` (the project's glossary), `docs/specs/` (features' specs, from briefings), and `docs/rules.json` if the rules register is on |
 | The runtime's own storage | The conversations themselves: each agent is a session of its runtime. OpenCode keeps them in its database (open one with `opencode -s <session-id>`); GitHub Copilot CLI in `~/.symbio/copilot/`. |
 
 Symbio never deletes your project files. Removing a project from Symbio only forgets it, and can

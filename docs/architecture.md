@@ -1,6 +1,6 @@
 # Architecture
 
-Symbio is a local web app that runs a team of OpenCode agents on a project. You scope the work
+Symbio is a local web app that runs a team of AI agents (on OpenCode or GitHub Copilot CLI) on a project. You scope the work
 with a lead agent (**core**), it plans and splits the work across helper agents only when that
 helps, and you watch and steer everything from the browser.
 
@@ -10,15 +10,16 @@ helps, and you watch and steer everything from the browser.
   work, operations. Symbio never assumes roles ("backend agent") or asset types ("the database").
   core decides how to organize the work; Symbio only provides mechanisms (messaging, isolation,
   asset ownership, safety).
-- **Real events, not summaries.** The UI (status, kanban, inbox) is built from OpenCode events and
+- **Real events, not summaries.** The UI (status, kanban, inbox) is built from the runtimes' events and
   Symbio's own records, never from asking a model what happened.
 - **The human is never bypassed.** Questions, plan approval, permission requests, remote actions and
-  model failures surface in the UI; nothing waits silently.
+  model failures surface in the UI; nothing waits silently. When the human lets core decide, its
+  decisions still show in Needs you, to keep or change.
 - **Plain files.** State is JSON/JSONL on disk, easy to inspect. The native dependencies are the OS
   keyring binding (secret vault) and `sharp` (scaling images for `view_image`), both with prebuilt
   binaries.
 
-Non-goals for now: multiple users, remote hosting, runtimes other than OpenCode.
+Non-goals for now: multiple users, remote hosting.
 
 ## Overview
 
@@ -75,10 +76,10 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 | `origin.ts` | Host/Origin checks on every request (against DNS rebinding and cross-site requests) |
 | `ui-token.ts` | The UI key (`~/.symbio/ui-token`) every API request must carry |
 | `store.ts` | Projects and agents on disk (`~/.symbio/config.json`, `<project>/.symbio/`) and the message log |
-| `team.ts` | The heart: creating, stopping and restarting agents, delivering messages, status, pause/resume, routing the runtime's events, and the wiring of its parts. The parts live in `team/` and use the `TeamCore` interface (`team/core.ts`), or a host interface naming the few more things they need (`SessionsHost`, `TaskFlowHost`, `MachineWatchHost`) |
+| `team.ts` | The heart: creating, stopping and restarting agents, delivering messages, status, pause/resume, routing the runtime's events, and the wiring of its parts. The parts live in `team/` and use the `TeamCore` interface (`team/core.ts`), or a host interface naming the few more things they need (`SessionsHost`, `TaskFlowHost`, `VerifyHost`, `MachineWatchHost`) |
 | `team/asset-protocol.ts` | The shared-asset protocol: request (free ones granted at once), grant, deny, release |
 | `team/sessions.ts` | Fresh sessions: a new session for an agent with its identity kept, the handoff note Symbio writes from its records, the agent's own handoff (a last turn, when the human asks for it or a runtime switch does), and the fresh session after a task |
-| `team/tasks.ts` | The plan's task flow: proposing and deciding the plan, adding and assigning tasks (with their *Done when*), a helper's report (`update_task`), merging a helper's work |
+| `team/tasks.ts` | The plan's task flow: proposing and deciding the plan (approved as made when the project lets core decide), adding and assigning tasks (with their *Done when* and spec), a helper's report (`update_task`), merging a helper's work |
 | `team/effort.ts` | Reasoning effort: the levels each model takes, the level a session runs at, changing it (the human's or core's) |
 | `team/machine-watch.ts` | The load guard's side of the team: telling the human and core about an overloaded machine, delivering held messages after, and who started each program |
 | `team/watchdog.ts` | Hung agents interrupted and told why, OpenCode restarted before its memory makes it crash, interrupted agents woken after a restart |
@@ -86,9 +87,9 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 | `team/fallback.ts` | Failing providers: switch to the next allowed model (or, for a pinned agent, wait and retry its own), a fresh session when the conversation is too large, resuming stuck agents |
 | `team/review.ts` | The human's review of finished tasks (`reviewBy`): the gate on done, approve, send back |
 | `team/verify.ts` | Between a helper's report and core: the project's checks (on reports and before merges) and reviewers (one-off helpers, by core's request or on every task); what fails goes back to the helper |
-| `team/questions.ts` | The team's open questions for the human: asking (repeats refused), answering several at once, setting aside; briefings (answered together, written as the feature's spec) |
+| `team/questions.ts` | The team's open questions for the human: asking (repeats refused; in a project that lets core decide, a decision to keep or change), answering several at once, setting aside; briefings (answered together, written as the feature's spec) |
 | `team/quiet-helpers.ts` | Helpers that end their turn without reporting: reminded once, then core is told |
-| `team/permissions.ts` | OpenCode permission requests: answered from known rules, or held for the human |
+| `team/permissions.ts` | The runtimes' permission requests: answered from known rules, or held for the human |
 | `team/housekeeper.ts` | The hourly and daily housekeeping run (see `housekeeping.ts`) and its reports |
 | `team/usage.ts`, `team/processes.ts`, `team/loop-guard.ts` | Token usage per agent; agents' background processes; the message limit between two agents |
 | `tools.ts` | The MCP tools agents call (worker and coordinator sets) |
@@ -113,13 +114,15 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 | `rules.ts` | The rules register (`docs/rules.json`, or `rules.json` in private docs): validated writes, one at a time, ids that are never reused |
 | `docs.ts` | Project documentation (in the project, or private under `.symbio/docs`): list, read, write, search; the glossary |
 | `skills.ts` | Skills: Symbio's (`skills/` in the package: its own and vetted third-party copies, with categories and credits in `skills/catalog.json`) and the human's library (`~/.symbio/skills`), others found on this computer (to add a copy of), creating, importing and removing. Each runtime is told an agent's skills (`setSkills`): OpenCode as permission rules on its skill tool, Copilot as the session's skill folders and turned-off skills |
-| `guard.ts` | OpenCode permission rules for every agent (kill/secret denies, install asks) |
+| `guard.ts` | The permission rules for every agent (kill and secret denies, Symbio's own files, install asks, Plan mode's and reviewers' extra rules); OpenCode applies them, and the Copilot runtime evaluates them for each request |
 | `connections.ts`, `secrets.ts` | GitHub, Azure DevOps, server (SSH) and FTP connections, and the encrypted secret vault |
 | `remote.ts`, `ssh.ts`, `ftp.ts` | Running remote actions for agents (SSH exec/upload, FTP upload, git push/pull, GitHub and Azure DevOps APIs) with approvals |
 | `providers.ts` | Listing, adding and removing OpenCode model providers |
 | `self-update.ts` | Checks npm for a newer version, applies it when allowed (the team idle, remote access off) and reports the result; the install itself runs in `bin/update-runner.mjs`, a separate process that waits for Symbio to exit, installs, keeps or restores the old version on failure, and starts Symbio again |
 | `remote-access.ts` | Optional remote access: Cloudflare quick tunnel, access code, remote sessions, the remote login page |
 | `folder-picker.ts` | Native "choose a folder" dialog on the machine running Symbio |
+| `fsutil.ts` | Writing files atomically (a temporary file, then a rename), so a crash never leaves half a file |
+| `runtime/install.ts`, `runtime/settings.ts` | Installing and removing the runtimes Symbio runs (`~/.symbio/runtimes`), finding them, and the human's runtime settings (`runtime-settings.json`: e.g. an OpenCode on the PATH) |
 | `runtime/types.ts` | `AgentRuntime`: what Symbio needs from an agent runtime (sessions, prompts, interrupts, models, instructions, permissions, questions, history, usage, changes, background shells) and the event vocabulary the team logic and the chat use. The team and the API call runtimes only through it |
 | `opencode/runtime.ts` | The OpenCode runtime: starts, supervises and restarts `opencode serve`, measures its memory, and implements `AgentRuntime` over its API |
 | `opencode/client.ts` | Typed wrapper over the OpenCode HTTP API |
@@ -129,7 +132,7 @@ The UI (`web/src/`) is React + Vite with Motion for animation and lucide icons. 
 client; `ProjectView.tsx` holds the project screen (team sidebar and tabs), `Chat.tsx` renders a
 live session (with `steps.ts` labelling the team's steps in plain words, and `files.tsx` and `paths.ts` turning paths
 into links, showing shared files as cards and the viewer page that opens them), `Machine.tsx` the computer's load and agents' programs (top bar), `Effort.tsx` reasoning effort (in a chat header and project settings), `Kanban.tsx` the plan, `Explorer.tsx` the project's folders and files (read-only), `Messages.tsx` the message log, `Attachments.tsx` attachments in the chat and the Files tab, `Docs.tsx` the Docs tab and
-`Rules.tsx` the rules register in it, `Skills.tsx` skills (the library in Settings, a project's in its settings, an agent's in its chat), `Inbox.tsx` the *Needs you* drawer, `Usage.tsx` tokens and
+`Rules.tsx` the rules register in it, `Skills.tsx` skills (the library in Settings, a project's in its settings, an agent's in its chat), `Inbox.tsx` the *Needs you* drawer (with `Questions.tsx` the team's questions, briefings and decisions, and `Review.tsx` work waiting for the human's review), `Checks.tsx` checks and reviewers (project settings, and their results on a task), `ProjectSettings.tsx` a project's settings, `Usage.tsx` tokens and
 costs, `Housekeeping.tsx` the daily check, `Remote.tsx` remote access, and
 `Settings.tsx`/`Providers.tsx` the global settings. `styles.css` holds the design tokens (colors,
 radii, fonts) and every rule uses them; `themes.css` overrides them per theme under
@@ -151,14 +154,17 @@ bar), from the same pieces.
 3. **Onboarding.** For an existing folder, core studies it, writes up its understanding, confirms
    it with the human, and creates or updates `AGENTS.md` and `docs/` (or private docs).
 4. **Plan.** core calls `submit_plan`; the Plan tab shows it for approval. The human approves or
-   asks for changes.
+   asks for changes (when the project lets core decide, it's approved as made). Bigger or vaguer
+   requests can start with a briefing, whose answers become the feature's spec (`docs/specs/`).
 5. **Work.** core spawns helpers (`spawn_agent`) on tasks. Each helper gets its own session, the
    worker brief, and a folder: a worktree on branch `symbio/<name>` (of the repository it was
    given, in a folder of several repositories), or the project folder itself
    (project setting `helperWorkspace`, or core's `workspace` choice). A helper moved into the
    project folder continues in a fresh session there, since OpenCode ties a session to its folder. Helpers report with `update_task`, talk
    to core and to each other with `send_message`, and request shared assets.
-6. **Merge.** When a helper reports a task for review, core reviews and calls `merge_work` (shared
+6. **Merge.** When a helper reports a task for review, Symbio runs the project's checks first (and a
+   reviewer, when the human requires one; `team/verify.ts`); a failure goes back to the helper. Then
+   core reviews and calls `merge_work`, which runs the checks again if the work changed (shared
    helpers have nothing to merge: core marks the task done). Changes
    to shared assets the helper wasn't granted are flagged instead of merged silently. After a merge
    the helper's branch is synced with the project.
@@ -218,9 +224,9 @@ bar), from the same pieces.
   further messages are refused, the agents are told to bring the human in, and the human gets a
   notice.
 - **Fresh sessions.** A long-running agent can continue in a fresh session (Fresh session in
-  its chat, or automatically after each merged task if the project says so). It keeps its identity,
-  folder, tasks and assets, and starts from a handoff note Symbio builds from the plan, the asset
-  register and the message log. Old sessions stay readable. This keeps each step cheaper (every
+  its chat, or automatically after each merged task: the default for new projects). It keeps its
+  identity, folder, tasks and assets, and starts from a handoff note Symbio builds from the plan, the
+  asset register and the message log, after the agent's own handoff when the human asks for one. Old sessions stay readable. This keeps each step cheaper (every
   step re-reads the conversation), avoids repeated compactions, and keeps OpenCode's memory down.
 - **Switching runtimes** (Project settings → Agent runtime, `team/switch.ts`, `Team.switchRuntime`).
   Nothing is converted between runtimes: what the team knows is Symbio's (plan, tasks, messages,
@@ -245,9 +251,13 @@ bar), from the same pieces.
 |---|---|---|
 | Entry point for any agent: what the project is, conventions, where docs are | `AGENTS.md` | yes |
 | Durable knowledge: overview, decisions, how-tos | `docs/` | yes |
-| Agents, settings, allowed models | `.symbio/project.json` | no |
+| Agents, settings (incl. checks and how core runs the project), allowed models | `.symbio/project.json` | no |
 | Every message (from, to, kind, text, time) | `.symbio/messages.jsonl` | no |
-| Plan and tasks | `.symbio/plan.json` | no |
+| Plan and tasks (with their checks' results, reviews and evidence links) | `.symbio/plan.json` | no |
+| The team's questions for the human, and their answers | `.symbio/questions.json` | no |
+| Files agents shared with the human (with their tag and task) | `.symbio/shared-files.json` | no |
+| The glossary | `docs/glossary.md` (`.symbio/docs/glossary.md` with private docs) | yes (no, with private docs) |
+| Features' specs (from briefings) | `docs/specs/` (`.symbio/docs/specs/` with private docs) | yes (no, with private docs) |
 | Briefings | `.symbio/briefings.json` (their questions in `questions.json`; their specs in the docs, `specs/`) | no |
 | Shared-asset register | `.symbio/assets.json` | no |
 | Private docs (if chosen) | `.symbio/docs/` | no |
@@ -261,7 +271,10 @@ Global data is in `~/.symbio/`: `config.json` (projects), `connections.json`, `s
 `ui-token`, `prices.json` (model prices), `approvals/<project>.json` (remote-action approvals),
 `worktrees/`, `backups/<date>/` (and `<date>-before-<version>/` before an update), `logs/symbio.log`
 and `logs/update.log`, `updates.json` and `update-result.json` (update setting and the last
-result), `machine.json` (what happens when the computer is overloaded), `bin/` (a downloaded `cloudflared`, for remote access) and `opencode.pid`.
+result), `machine.json` (what happens when the computer is overloaded), `bin/` (a downloaded `cloudflared`, for remote access),
+`runtimes/` and `runtime.json` (the runtimes Symbio installed), `runtime-settings.json`, `copilot/` (Symbio's own
+Copilot folder), `skills/` (the human's skill library) and `opencode.pid`.
 
-Conversations live in OpenCode's own database. A project opened on another machine keeps its docs
-and plan, but its agents' sessions would need to be re-created.
+Conversations live in the runtime's own storage (OpenCode's database, Copilot's session store). A
+project opened on another machine keeps its docs and plan, but its agents' sessions would need to be
+re-created.

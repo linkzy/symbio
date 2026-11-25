@@ -29,4 +29,6 @@ Problems people ran into, to fix.
 - The interface is in English, and in Portuguese (Brazil) for the main screens
   ([#13](https://github.com/linkzy/symbio/issues/13)).
 - Relies on experimental OpenCode APIs (instructions, MCP registration), which may change between
-  OpenCode releases.
+  OpenCode releases. Symbio installs the OpenCode version it's tested with (2.1.x); a newer one on
+  the PATH (the opt-in) may not work: 2.4 changed the models and sessions API
+  ([#57](https://github.com/linkzy/symbio/issues/57)).

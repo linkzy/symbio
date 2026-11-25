@@ -7,7 +7,9 @@ When OpenCode changes, re-verify before relying on a behavior, and update this p
 `tests/contract/opencode.test.ts` (`npm run test:contract`) checks the endpoints below that don't
 need a model turn, plus the inbox and failed-turn behaviors, against a real `opencode serve`. CI
 runs it on every push and every day, also against the newest OpenCode release (2.2.7 passed on
-2026-11-11). Extend it when Symbio starts relying on another endpoint or behavior.
+2026-11-11; 2.4.1 fails on the models and sessions API, [#57](https://github.com/linkzy/symbio/issues/57),
+so Symbio stays on 2.1.x until it's adapted). Extend it when Symbio starts relying on another
+endpoint or behavior.
 
 The live OpenAPI document is served by OpenCode itself at `/openapi.json`. With Symbio running you
 can read it, and any other GET endpoint, through Symbio's read-only debug proxy (start Symbio with

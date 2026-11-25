@@ -89,11 +89,6 @@ The issues are also grouped into [milestones](https://github.com/linkzy/symbio/m
 11. **A public demo.** ([#14](https://github.com/linkzy/symbio/issues/14)) A container on a VPS with a light model, connections and other sensitive
     options disabled, and visitors' data reset every few minutes (needs Linux headless support).
 
-**Small improvements**, each with an issue and where to start, open to anyone: the browser tab showing what needs you (#24), unread markers on agents (#25), opening a
-folder in VS Code (#26), day separators (#27), find in a chat (#28), keyboard shortcuts (#29),
-filtering the plan board (#30), exporting a chat (#31) or usage (#32), an accessibility pass
-(#33), the projects list showing what needs you in each project (#34), and links into Settings
-opening the right section, like the update badge opening Updates (#35). The Explorer keeping its open folders when you leave it and come back (#41). All [good first issues](https://github.com/linkzy/symbio/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 12. **Model fallback that fits the conversation.** ([#38](https://github.com/linkzy/symbio/issues/38)) Retry the same model on network errors
    before switching; prefer models whose context holds the conversation; when none does, ask the human
    (continue in a fresh session from a handoff note, go back to the original model, or pick another).
@@ -105,12 +100,21 @@ opening the right section, like the update badge opening Updates (#35). The Expl
    that come later.
 15. **Filters for a project's skills.** ([#60](https://github.com/linkzy/symbio/issues/60)) Project settings → Skills
    gets the library's search and categories, and Select all / Clear for the skills shown.
-16. **Share remote access in one step.** ([#61](https://github.com/linkzy/symbio/issues/61)) Copy puts the link and the
-   access code on the clipboard together, and a Share button sends them (the system share sheet, or e-mail).
+16. ✅ **Share remote access in one step.** ([#61](https://github.com/linkzy/symbio/issues/61), merged for the next
+   release; by @TariQMah, #64) Copy puts the link and the access code on the clipboard together, and a Share button
+   sends them (the system share sheet, or a copy where there is none).
 17. **Settings you can find your way in.** ([#62](https://github.com/linkzy/symbio/issues/62)) The sections grouped
-   (agents, connections, usage and costs, this computer, help) as tabs or a side menu, each with its own address.
+   (agents, connections, usage and costs, this computer, help) as tabs or a side menu, each with its own address
+   (which also covers #35, links into Settings opening the right section).
 18. **Which skills were used.** ([#63](https://github.com/linkzy/symbio/issues/63)) Loading a skill shows as a step in
    the chat, and each agent's skills chip says which it used, so you can see whether skills pay off.
+
+**Small improvements**, also open to anyone, each with an issue and where to start: the browser tab showing what needs you (#24), unread markers on agents (#25), opening a
+folder in VS Code (#26), day separators (#27), find in a chat (#28), keyboard shortcuts (#29),
+filtering the plan board (#30), exporting a chat (#31) or usage (#32), an accessibility pass
+(#33), the projects list showing what needs you in each project (#34), links into Settings
+opening the right section, like the update badge opening Updates (#35), the Explorer keeping its
+open folders when you leave it and come back (#41), and filters for a project's skills (#60). All [good first issues](https://github.com/linkzy/symbio/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 ## Ideas
 
@@ -122,7 +126,8 @@ Collected, not sorted or promised yet.
   The first question from almost everyone who has seen Symbio running: "can I use it with my Codex
   or Claude Code?"; most people won't install another agent runtime. Big: Symbio is built on
   OpenCode's HTTP API (sessions, tools, permissions, events), so each runtime needs an adapter.
-  The runtime-neutral layer comes with GitHub Copilot CLI support (Next).
+  The runtime-neutral layer (`AgentRuntime`) came with GitHub Copilot CLI support (0.15.0), so the
+  work is an adapter per runtime, and #59 (using an install already on the computer).
 - **A generic connection** *(when a specific type isn't enough)*. Named secret values that Symbio
   hands to a command it runs as environment variables (e.g. `FTP_PASSWORD` for a project's deploy
   script, or any CLI), with the output scrubbed and *Ask me* by default. Weaker than the other
@@ -145,7 +150,7 @@ Collected, not sorted or promised yet.
   do on their machine.
 - **Agent graph.** A live view of agents and the messages flowing between them.
 - **Moving projects between machines.** Docs and plan travel with the folder, but agent sessions
-  live in the local OpenCode database; reopening a project elsewhere should re-create its agents
+  live in the runtime's local storage; reopening a project elsewhere should re-create its agents
   cleanly.
 - **Eyes for agents.** Screenshots of what they build, routed to vision-capable models (agents can
   already look at images with `view_image`).
