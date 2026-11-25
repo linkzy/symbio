@@ -353,7 +353,7 @@ export class CopilotRuntime extends EventEmitter<RuntimeEvents> implements Agent
    * before their next turn, with the new skill among the ones turned off.
    */
   skillsChanged(): void {
-    for (const [id, state] of this.sessions) if (state.skills && this.open.has(id)) state.stale = true;
+    for (const [id, state] of this.sessions) if (state.skills && this.live(id)) state.stale = true;
   }
 
   /** Copilot takes skills when a session is opened: an open one is reopened before its next turn. */
@@ -361,7 +361,7 @@ export class CopilotRuntime extends EventEmitter<RuntimeEvents> implements Agent
     const state = this.state_(sessionId);
     if (state.skills && state.skills.length === skills.length && state.skills.every((s, i) => s === skills[i])) return;
     state.skills = [...skills];
-    if (this.open.has(sessionId)) state.stale = true;
+    if (this.live(sessionId)) state.stale = true;
   }
 
   async setInstruction(sessionId: string, key: string, value: string | null): Promise<void> {
@@ -370,12 +370,16 @@ export class CopilotRuntime extends EventEmitter<RuntimeEvents> implements Agent
     if (value === null) state.instructions.delete(key);
     else state.instructions.set(key, value);
     // Copilot takes instructions when a session is opened: an open one is reopened before its next turn.
-    if (this.open.has(sessionId)) state.stale = true;
+    if (this.live(sessionId)) state.stale = true;
   }
 
   async prompt(sessionId: string, text: string, delivery: "queue" | "steer"): Promise<string | undefined> {
     const state = this.state_(sessionId);
-    if (state.stale && !state.busy) await this.close(sessionId);
+    if (state.stale && !state.busy) {
+      // Still opening with the old config: let it open, then reopen it with the new one.
+      await this.opening.get(sessionId)?.catch(() => {});
+      if (state.stale) await this.close(sessionId);
+    }
     const session = await this.session(sessionId);
     const notes = state.notes;
     const prompt = notes.length ? `${text}\n\n${NOTES_OPEN}\n${notes.join("\n\n")}\n${NOTES_CLOSE}` : text;
@@ -598,7 +602,7 @@ export class CopilotRuntime extends EventEmitter<RuntimeEvents> implements Agent
     // Copilot's MCP servers are per session, given when one is opened.
     if (this.toolsByFolder.get(directory) === url) return;
     this.toolsByFolder.set(directory, url);
-    for (const [id, state] of this.sessions) if (state.directory === directory && this.open.has(id)) state.stale = true;
+    for (const [id, state] of this.sessions) if (state.directory === directory && this.live(id)) state.stale = true;
   }
 
   /**
@@ -702,8 +706,9 @@ export class CopilotRuntime extends EventEmitter<RuntimeEvents> implements Agent
           state.directory = context?.workingDirectory ?? context?.cwd ?? null;
           if (!state.directory) console.error(`[copilot] no folder for session ${sessionId}: it opens without Symbio's tools`);
         }
-        const session = await this.api().resumeSession(sessionId, this.config(sessionId, state));
+        // Cleared before the config is read: a change while it opens marks it stale again (reopened before its next turn).
         state.stale = false;
+        const session = await this.api().resumeSession(sessionId, this.config(sessionId, state));
         this.attach(sessionId, session);
         await this.onlyItsSkills(session, state);
         return session;
@@ -711,6 +716,11 @@ export class CopilotRuntime extends EventEmitter<RuntimeEvents> implements Agent
       this.opening.set(sessionId, pending);
     }
     return pending;
+  }
+
+  /** Open, or being opened: a change to its config needs a reopen. */
+  private live(sessionId: string): boolean {
+    return this.open.has(sessionId) || this.opening.has(sessionId);
   }
 
   private async close(sessionId: string) {

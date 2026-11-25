@@ -112,6 +112,10 @@
   chat (core can set it for its helpers).
 - **Costs in view.** Tokens and estimated cost per agent and model, with prices you can set (and
   GitHub Copilot's own prices, in AI credits).
+- **Scheduled work.** Ask core for recurring jobs ("refresh the data every night", "check the site
+  every Monday"): Symbio wakes core at the set time with the job, and you see each run and its
+  result in the Plan tab, with Run now, pause and remove. In a project that asks, you approve a job
+  first.
 - **Budgets.** A spending limit per project, for the whole project and per day. Near a limit you
   and core are told (core then spends carefully); at the limit Symbio pauses the team. A daily pause
   ends by itself the next day, raising the limit resumes the team, and resuming it past the limit

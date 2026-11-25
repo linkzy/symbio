@@ -1192,3 +1192,17 @@ body.resizing iframe { pointer-events: none; }
 .budget-input { display: flex; align-items: center; gap: 6px; color: var(--text-2); font-size: 13px; }
 .budget-input input { flex: 1; min-width: 0; }
 .budget-unpriced { color: var(--amber, var(--text-2)); }
+
+/* Plan tab: scheduled jobs above the board */
+.plan-tab { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.plan-tab > .kanban { flex: 1; height: auto; }
+.jobs { border-bottom: 1px solid var(--border); }
+.jobs-head { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 20px; background: none; border: none; color: var(--text); font: inherit; font-size: 13px; cursor: pointer; text-align: left; }
+.jobs-head:hover { background: var(--surface-hover); }
+.jobs-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; padding: 0 20px 14px; max-height: 45vh; overflow: auto; }
+.job-card { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--border-strong); border-radius: var(--r-lg); background: var(--surface); }
+.job-card.job-proposed { border-color: color-mix(in srgb, var(--amber) 55%, transparent); }
+.job-card.job-paused { opacity: 0.75; }
+.job-instructions { color: var(--text-2); white-space: pre-wrap; max-height: 6.5em; overflow: auto; }
+.job-run { display: flex; flex-direction: column; gap: 4px; padding-top: 6px; border-top: 1px dashed var(--border); }
+.job-run-note { color: var(--text-2); }

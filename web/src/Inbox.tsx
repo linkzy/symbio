@@ -8,6 +8,9 @@ import { openQuestions } from "./Messages";
 import { AgentForms } from "./FormCard";
 import { ReviewActions, ReviewGuide, TaskChanges, waitingForReview } from "./Review";
 import { Avatar, Drawer, timeAgo, waitsForPinnedModel } from "./ui";
+import { JobApproval, useJobs } from "./Jobs";
+import type { Job } from "./api";
+import { CalendarClock } from "lucide-react";
 
 export interface InboxData {
   approvals: Approval[];
@@ -17,6 +20,8 @@ export interface InboxData {
   toReview: Task[];
   /** The team's questions (open ones wait for an answer; the rest are the record). */
   teamQuestions: Question[];
+  /** Scheduled jobs core proposed, waiting for the human's approval. */
+  jobs: Job[];
   count: number;
 }
 
@@ -50,13 +55,15 @@ export function useInbox(project: Project | null, log: LoggedMessage[] | null, p
   const stuck = project?.agents.filter((a) => a.problem && a.status !== "stopped" && !waitsForPinnedModel(a)).length ?? 0;
   const planWaiting = plan?.status === "proposed" ? 1 : 0;
   const toReview = plan?.tasks.filter(waitingForReview) ?? [];
+  const jobs = useJobs(id).filter((j) => j.state === "proposed");
   return {
+    jobs,
     approvals,
     permissions,
     questions,
     toReview,
     teamQuestions,
-    count: approvals.length + permissions.length + questions.length + stuck + planWaiting + toReview.length + openCount,
+    count: approvals.length + permissions.length + questions.length + stuck + planWaiting + toReview.length + openCount + jobs.length,
   };
 }
 
@@ -113,6 +120,18 @@ export function InboxDrawer({
         )}
 
         <OpenQuestions key="team-questions" project={project} questions={data.teamQuestions} />
+
+        {data.jobs.map((j) => (
+          <Item key={`job-${j.id}`} icon={<CalendarClock size={14} />} kind="Scheduled job to approve" time={j.createdAt}>
+            <div className="small">
+              <strong>{j.id}</strong> {j.title} · {j.when}
+            </div>
+            <div className="inbox-reason">{j.instructions}</div>
+            <div className="inbox-actions">
+              <JobApproval project={project} job={j} />
+            </div>
+          </Item>
+        ))}
 
         {data.toReview.map((t) => (
           <Item key={`review-${t.id}`} icon={<ListChecks size={14} />} kind="To review" agent={t.assignee ? nameOf(t.assignee) : undefined} time={t.humanReview?.at}>

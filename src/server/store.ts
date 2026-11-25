@@ -289,6 +289,7 @@ export type MessageKind =
   | "alert" // Symbio needs the human to act (e.g. no working model left)
   | "approval" // an agent wants to use a connection (deploy, push…) and waits for the human
   | "remote" // a connection action that ran (audit trail)
+  | "job" // a scheduled job: proposed, scheduled, a run's result (team/schedules.ts)
   | "budget" // a project's spending: a warning, or the team paused at a limit (team/budget.ts)
   | "permission"; // an agent asks to do something its rules require approval for (e.g. install software)
 

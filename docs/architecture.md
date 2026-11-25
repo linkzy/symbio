@@ -92,6 +92,7 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 | `team/permissions.ts` | The runtimes' permission requests: answered from known rules, or held for the human |
 | `team/housekeeper.ts` | The hourly and daily housekeeping run (see `housekeeping.ts`) and its reports |
 | `team/usage.ts`, `team/processes.ts`, `team/loop-guard.ts` | Token usage per agent; agents' background processes; the message limit between two agents |
+| `schedule.ts`, `team/schedules.ts` | Scheduled jobs: their schedules (next run, in words, checked), kept in `.symbio/schedules.json`; running them when due (core woken with the job), skipping and reporting |
 | `team/budget.ts` | Spending limits per project: warnings near a limit, the team paused at it, a daily pause ended by a new day, a raised limit resuming the team |
 | `tools.ts` | The MCP tools agents call (worker and coordinator sets) |
 | `mcp.ts` | Minimal MCP server (Streamable HTTP, JSON responses) |
@@ -260,6 +261,7 @@ bar), from the same pieces.
 | Files agents shared with the human (with their tag and task) | `.symbio/shared-files.json` | no |
 | The glossary | `docs/glossary.md` (`.symbio/docs/glossary.md` with private docs) | yes (no, with private docs) |
 | Features' specs (from briefings) | `docs/specs/` (`.symbio/docs/specs/` with private docs) | yes (no, with private docs) |
+| Scheduled jobs and their runs | `.symbio/schedules.json` | no |
 | Briefings | `.symbio/briefings.json` (their questions in `questions.json`; their specs in the docs, `specs/`) | no |
 | Shared-asset register | `.symbio/assets.json` | no |
 | Private docs (if chosen) | `.symbio/docs/` | no |

@@ -10,6 +10,7 @@ import type { Notification } from "./notifications.js";
 import type { Plan } from "./plan.js";
 import type { Question } from "./questions.js";
 import { BUDGET_PAUSED } from "./team/budget.js";
+import { JOB_PREFIX } from "./team/schedules.js";
 import { newId, type LoggedMessage, type NotifyLevel, type Project } from "./store.js";
 
 export interface NotifierHost {
@@ -160,6 +161,12 @@ export class Notifier {
         return { key, title: "Work to review", body: plain(m.text), important: true };
       case "alert":
         return { key, title: "Symbio needs you", body: plain(m.text), important: true };
+      case "job": {
+        const kind = (Object.keys(JOB_PREFIX) as (keyof typeof JOB_PREFIX)[]).find((k) => m.text.startsWith(JOB_PREFIX[k]));
+        const rest = kind ? m.text.slice(JOB_PREFIX[kind].length).trim() : m.text;
+        const titles = { proposed: "Scheduled job to approve", scheduled: "Job scheduled", done: "Scheduled job done", failed: "Scheduled job failed", skipped: "Scheduled job skipped" };
+        return { key, title: kind ? titles[kind] : "Scheduled jobs", body: plain(rest), important: kind === "proposed" || kind === "failed" };
+      }
       case "budget": {
         const paused = m.text.startsWith(BUDGET_PAUSED);
         return { key, title: paused ? "Budget reached: team paused" : "Budget", body: plain(paused ? m.text.slice(BUDGET_PAUSED.length) : m.text), important: paused };

@@ -43,7 +43,9 @@ script, unless marked otherwise. Re-verify when either changes, and update this 
 - **New instructions for an open session:** `resumeSession(id, { systemMessage, … })` on a
   session that is already open returns a new session object that uses them from the next turn
   ("Your name is Alpha" → resumed with "Bravo" → it answered Bravo). Symbio reopens a session
-  this way before its next turn when its brief or private docs change.
+  this way before its next turn when its brief, private docs or skills change, including a change
+  made while the session was still opening (it opened with the old config; a prompt waits for it to
+  open, then reopens it).
 - `session.getEvents()` is the stored conversation: `session.start`, `user.message`,
   `system.message`, `assistant.turn_start`, `assistant.message` (`content`, `toolRequests`),
   `tool.execution_start` / `_complete`, `permission.*`, `assistant.turn_end`, `abort`,

@@ -75,6 +75,16 @@ function toolLabel(tool: string, i: Record<string, unknown>): StepLabel {
       return { label: `Wrote a skill: ${s(i.name)}`, detail: firstLine(i.description), weight: 3 };
     case "start_briefing":
       return { label: "Started a briefing for you", detail: firstLine(i.feature), weight: 3 };
+    case "schedule_job":
+      return { label: `Scheduled a job: ${s(i.title)}`, detail: firstLine(i.instructions), weight: 3 };
+    case "change_job":
+      return { label: `Changed scheduled job ${s(i.job)}`, weight: 2 };
+    case "remove_job":
+      return { label: `Removed scheduled job ${s(i.job)}`, weight: 2 };
+    case "report_job":
+      return { label: `Reported scheduled job ${s(i.job)}: ${s(i.outcome)}`, detail: firstLine(i.summary), weight: 3 };
+    case "list_jobs":
+      return { label: "Looked at the scheduled jobs", weight: 1 };
     case "propose_check":
       return { label: `Proposed a check: ${s(i.name)}`, detail: firstLine(i.command), weight: 3 };
     case "request_review":

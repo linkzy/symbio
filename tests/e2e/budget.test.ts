@@ -41,6 +41,8 @@ test("a budget warns near its limit, pauses the team at it, and raising it lets 
     await idle(symbio, project.id);
   }
   await until("the team to pause", async () => (await symbio.call("GET", `/projects/${project.id}`)).paused);
+  // The human is told right after the pause.
+  await until("the pause to be explained", async () => (await log()).some((t: string) => t.startsWith("Paused:")));
   const notes = await log();
   assert.match(notes[0], /^\d+% of the project's budget is used/);
   assert.match(notes.at(-1)!, /^Paused: the project's budget is reached/);

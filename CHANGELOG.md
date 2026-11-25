@@ -5,6 +5,17 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Scheduled work** (#8): ask core for recurring (or one-off) jobs, "refresh the data every night", "check the site every
+  Monday". core sets one up with its instructions and when (every few hours, every day, some weekdays, a day of the
+  month, or once, in the computer's time); when it's due, Symbio wakes core with it, and core reports how it went.
+  - The Plan tab lists them (Scheduled jobs), with each one's next run, its latest result and earlier runs, and **Run
+    now**, pause / resume and remove.
+  - In a project that asks, a job core sets up waits for your approval (Needs you); in one that decides, it starts at once.
+  - A run due while the team is paused, or while the previous one is still going, is skipped and you're told why; one
+    missed while Symbio was off runs when it's back. Results reach you as notifications (a failure as something that needs you).
+
+- GitHub Copilot CLI: a change to an agent's skills or brief made while its session was still opening now applies on its
+  next turn (it used to wait for the one after; an end-to-end test caught it now and then).
 - **Budgets per project** (#7), in the project's settings: a spending limit for the whole project and per day, in the
   estimated cost Symbio already shows in Usage.
   - Near a limit (80%, or the share you set) you're told, and core gets a note to spend carefully.

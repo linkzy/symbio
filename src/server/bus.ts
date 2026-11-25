@@ -12,6 +12,7 @@ export type UiEvent =
   | { type: "plan.updated"; projectId: string }
   | { type: "approvals.updated"; projectId: string }
   | { type: "questions.updated"; projectId: string }
+  | { type: "schedules.updated"; projectId: string }
   | { type: "agent.status"; projectId: string; agentId: string; status: string }
   | { type: "agent.context"; projectId: string; agentId: string; context: { tokens: number; limit: number | null; at: number } }
   | { type: "agent.stream"; projectId: string; agentId: string; event: { type: string; data: any } }

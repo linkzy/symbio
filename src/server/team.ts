@@ -19,6 +19,7 @@ import { git } from "./git.js";
 import { defaultModel, globalDir, modelsFor, newId, type Agent, type Autonomy, type Budget, type CoreMode, type HelperWorkspace, type ReviewBy, type LoggedMessage, type MessageKind, type Project, type Store } from "./store.js";
 import { accountUsage, emptyUsage, Pricing } from "./costs.js";
 import { Budgets } from "./team/budget.js";
+import { Schedules } from "./team/schedules.js";
 import { AGENT_UPDATES, unseenUpdates, updatesNote } from "./updates.js";
 import { coordinatorTools, workerTools, type ToolContext } from "./tools.js";
 import { SharedAssets } from "./team/asset-protocol.js";
@@ -115,6 +116,8 @@ export class Team implements TeamCore {
   readonly questions = new Questions(this);
   readonly watchdog = new Watchdog(this, () => this.permissions.size);
   private loopGuard = new LoopGuard(this);
+  /** Scheduled jobs: core is woken with each when it's due. */
+  readonly schedules = new Schedules(this);
   /** Model prices, for usage reports and budgets. */
   readonly pricing = new Pricing(globalDir, () => [...this.runtimes.values()]);
   readonly budgets = new Budgets({
@@ -172,6 +175,7 @@ export class Team implements TeamCore {
   startWatchdog() {
     this.watchdog.start();
     this.budgets.start();
+    this.schedules.start();
     this.housekeeper.start();
     this.fallback.resumeWaits();
   }
@@ -204,6 +208,7 @@ export class Team implements TeamCore {
   stopWatchdog() {
     this.watchdog.stop();
     this.budgets.stop();
+    this.schedules.stop();
   }
 
   // ---------------------------------------------------------------- lookups

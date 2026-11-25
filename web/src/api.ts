@@ -486,6 +486,7 @@ export type UiEvent =
   | { type: "plan.updated"; projectId: string }
   | { type: "approvals.updated"; projectId: string }
   | { type: "questions.updated"; projectId: string }
+  | { type: "schedules.updated"; projectId: string }
   | { type: "agent.status"; projectId: string; agentId: string; status: AgentStatus }
   | { type: "agent.context"; projectId: string; agentId: string; context: NonNullable<Agent["context"]> }
   | { type: "agent.stream"; projectId: string; agentId: string; event: { type: string; data: any } }
@@ -500,6 +501,27 @@ export interface AppNotification {
   body: string;
   important: boolean;
   at: number;
+}
+
+export interface JobRun {
+  n: number;
+  at: number;
+  by?: "schedule" | "manual";
+  status: "running" | "done" | "failed" | "skipped" | "no-report";
+  note?: string;
+  endedAt?: number;
+}
+
+/** A scheduled job (schedule.ts): `when` is its schedule in words. */
+export interface Job {
+  id: string;
+  title: string;
+  instructions: string;
+  when: string;
+  state: "proposed" | "active" | "paused";
+  nextRun: number | null;
+  runs: JobRun[];
+  createdAt: number;
 }
 
 export interface BudgetStatus {
@@ -897,6 +919,9 @@ export const api = {
   checkUpdate: () => call<UpdateState>("POST", "/update/check"),
   setUpdateMode: (mode: UpdateMode) => call<UpdateState>("PUT", "/update/settings", { mode }),
   applyUpdate: () => call<{ message: string }>("POST", "/update/apply", { force: true }),
+  jobs: (projectId: string) => call<Job[]>("GET", `/projects/${projectId}/jobs`),
+  jobAction: (projectId: string, jobId: string, action: "approve" | "pause" | "resume" | "run") => call<Job[]>("POST", `/projects/${projectId}/jobs/${jobId}/${action}`),
+  removeJob: (projectId: string, jobId: string) => call<Job[]>("DELETE", `/projects/${projectId}/jobs/${jobId}`),
   budget: (projectId: string) => call<BudgetStatus>("GET", `/projects/${projectId}/budget`),
   notifications: () => call<NotificationSettings>("GET", "/notifications"),
   updateNotifications: (patch: Record<string, unknown>) => call<NotificationSettings>("PUT", "/notifications", patch),

@@ -1033,7 +1033,75 @@ const subRepositories: Tool = {
   },
 };
 
+const scheduleFields = {
+  every: { type: "string", enum: ["hours", "day", "week", "month", "once"], description: "How often" },
+  at: str("Time of day, HH:MM (24 hours, the computer's time); for day, week, month and once"),
+  days: { type: "array", items: { type: "string", enum: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] }, description: "For week: which days" },
+  day: { type: "number", description: "For month: the day of the month, 1 to 28" },
+  interval: { type: "number", description: "For hours: every how many hours, 1 to 24" },
+  date: str("For once: the date, YYYY-MM-DD"),
+};
+
+const scheduleJob: Tool = {
+  name: "schedule_job",
+  description:
+    "Set up recurring (or one-off) work the human asked for: \"refresh the data every night\", \"check the site every Monday\". When it's " +
+    "due, Symbio wakes you with its instructions; you do it (with helpers if needed) and report the run with report_job. In a project that " +
+    "asks, the human approves it first. Write the instructions so that you can start from them alone, weeks from now.",
+  inputSchema: obj(
+    { title: str("Short name, e.g. 'Nightly data refresh'"), instructions: str("What to do on each run, and what to report"), ...scheduleFields },
+    ["title", "instructions", "every"],
+  ),
+  async run(args, { team, project }) {
+    return team.schedules.create(project, { ...args, title: String(args.title ?? ""), instructions: String(args.instructions ?? "") });
+  },
+};
+
+const listJobs: Tool = {
+  name: "list_jobs",
+  description: "The project's scheduled jobs: their schedule, state, next run and last result.",
+  inputSchema: obj({}),
+  async run(_args, { team, project }) {
+    return team.schedules.describe(project);
+  },
+};
+
+const changeJob: Tool = {
+  name: "change_job",
+  description: "Change a scheduled job: its title, instructions or schedule (give every and its fields), or pause / resume it (paused).",
+  inputSchema: obj({ job: str("Job id, e.g. J1"), title: str("New title"), instructions: str("New instructions"), paused: { type: "boolean" }, ...scheduleFields }, ["job"]),
+  async run({ job, ...rest }, { team, project }) {
+    return team.schedules.change(project, String(job), rest);
+  },
+};
+
+const removeJob: Tool = {
+  name: "remove_job",
+  description: "Remove a scheduled job that's no longer wanted (the human is told).",
+  inputSchema: obj({ job: str("Job id, e.g. J1") }, ["job"]),
+  async run({ job }, { team, project }) {
+    return team.schedules.remove(project, String(job), "core");
+  },
+};
+
+const reportJob: Tool = {
+  name: "report_job",
+  description: "Report how a run of a scheduled job went, once it's finished: done or failed, and a short summary for the human.",
+  inputSchema: obj(
+    { job: str("Job id, e.g. J1"), outcome: { type: "string", enum: ["done", "failed"] }, summary: str("What happened: what changed, what you found, what they should look at") },
+    ["job", "outcome", "summary"],
+  ),
+  async run({ job, outcome, summary }, { team, project }) {
+    return team.schedules.report(project, String(job), outcome === "failed" ? "failed" : "done", String(summary ?? ""));
+  },
+};
+
 const COORDINATOR_ONLY = [
+  scheduleJob,
+  listJobs,
+  changeJob,
+  removeJob,
+  reportJob,
   subRepositories,
   submitPlan,
   addTask,

@@ -32,6 +32,7 @@ import { useLayout, useWide } from "./theme";
 import { FilesView } from "./Attachments";
 import { InboxDrawer, useInbox } from "./Inbox";
 import { Kanban } from "./Kanban";
+import { ScheduledJobs } from "./Jobs";
 import { NewHelperDialog } from "./NewHelper";
 import { Messages, useProjectLog } from "./Messages";
 import { ProjectMenu } from "./ProjectMenu";
@@ -362,7 +363,10 @@ export function ProjectView({ projectId }: { projectId: string }) {
     ) : t === "explorer" ? (
       <Explorer key={project.id} project={project} />
     ) : t === "plan" ? (
-      <Kanban project={project} plan={plan} />
+      <div className="plan-tab">
+        <ScheduledJobs project={project} />
+        <Kanban project={project} plan={plan} />
+      </div>
     ) : t === "messages" ? (
       <Messages project={project} log={log} onOpenAgent={(id) => select(id)} />
     ) : t === "settings" ? (

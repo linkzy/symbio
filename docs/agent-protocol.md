@@ -198,6 +198,20 @@ being merged (unless core forces the merge).
   the files in the project folder and marks the task done with `update_task` (shared helpers). Small follow-ups go in with `add_task`
   without re-approval.
 
+## Scheduled jobs
+
+core sets them up with `schedule_job` when the human asks for recurring work (`schedule.ts`,
+`.symbio/schedules.json`; `team/schedules.ts` runs them). Every 30 seconds Symbio looks for jobs
+that are due; a due job wakes core with its instructions ("scheduled job J1 … is due (run 3, every
+day at 07:00)"), and core does it and calls `report_job`. A run due while the team is paused, while
+the previous run is still going, or with core stopped is skipped, and the human told why; one missed
+while Symbio was off runs once when it's back. A run with no report after 6 hours is closed as *no
+report*. In a project that asks (`autonomy` *ask*), a new job is *proposed* and waits for the human
+(Needs you, or the Plan tab); in one that decides, it starts at once. The human can run one now,
+pause, resume or remove it from the Plan tab (Scheduled jobs); core gets a note. The human's
+messages about jobs have kind `job` (proposed, scheduled, done, failed, skipped), and reach them as
+notifications.
+
 ## Tools
 
 All agents:
@@ -252,6 +266,9 @@ core only:
 | `merge_work` | Merge a helper's committed work; refuses ungranted asset changes, or failing checks, unless forced |
 | `request_review` | Start a reviewer on a task in review (optionally with what to look at) |
 | `propose_check` | Propose a check (name, command, folder, time limit) for the human to approve |
+| `schedule_job` | Set up recurring (or one-off) work the human asked for: a title, instructions to start from alone, and when (`every` hours / day / week / month / once, with `at`, `days`, `day`, `interval`, `date`; the computer's time). In a project that asks, the human approves it first |
+| `list_jobs` / `change_job` / `remove_job` | The scheduled jobs (schedule, state, next run, last result); change one's title, instructions or schedule, or pause / resume it; remove one |
+| `report_job` | How a run went: done or failed, and a summary for the human |
 | `sub_repositories` | For a project folder that is a repository holding other repositories (one an older Symbio created on top of them): check the situation, switch to working in the inner repositories (`use`) or back (`stop`). Nothing on disk changes |
 | `move_to_project_folder` | Move an idle helper whose work is merged from its own copy into the project folder (fresh session, handoff note) |
 | `declare_asset` | Declare or update a shared asset |

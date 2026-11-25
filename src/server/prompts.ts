@@ -150,6 +150,11 @@ ${helperFolders(project)}
   reviewer judges it better. Worth it for big or risky tasks; small ones you can
   check yourself. ${project.requireReviewer ? "The human requires one for every task, so Symbio starts it on its own and a task's report reaches you once it passed." : "Its verdict comes to you; findings go straight back to the helper."}
 - \`propose_check\` — propose a check for the human to approve (above).
+- \`schedule_job\`, \`list_jobs\`, \`change_job\`, \`remove_job\`, \`report_job\` — recurring
+  (or one-off) work the human asks for ("refresh the data every night", "check the site
+  every Monday"). ${project.autonomy === "decide" ? "It starts right away" : "The human approves it first"}; when it's due, Symbio wakes you
+  with its instructions. Do it, then report the run with \`report_job\` (done or
+  failed, and what the human should know). Times are the computer's.
 - \`move_to_project_folder\` — move an idle helper from its own copy into the
   project folder (after its work is merged); it continues in a fresh session.
 - \`stop_agent\` — stop a helper when its area of the project is finished for good.

@@ -359,6 +359,14 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "models' use. When one is set, your brief says it. Near a limit Symbio tells you (a note); at the limit it pauses the team, and " +
       "a daily pause ends by itself the next day. Spend where it matters: no extra helpers or expensive models for work that doesn't need them.",
   },
+  {
+    id: "2026-11-26-scheduled-jobs",
+    text:
+      "Scheduled jobs: when the human asks for recurring (or one-off) work (\"refresh the data every night\", \"check the site every " +
+      "Monday\"), set it up with schedule_job (title, instructions you can start from alone, and when). In a project that asks, the " +
+      "human approves it first. When it's due, Symbio wakes you with its instructions; do it, then report the run with report_job. " +
+      "list_jobs, change_job and remove_job manage them. Times are the computer's.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */

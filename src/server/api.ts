@@ -25,6 +25,7 @@ import { addAttachment, attachmentNote, getAttachments, listAttachments, markSen
 import { fileResponse, listDir, listShared, resolveFile, type ResolvedFile } from "./files.js";
 import type { Team } from "./team.js";
 import type { Connections } from "./connections.js";
+import { describeSchedule } from "./schedule.js";
 import { averageDailyUsage, modelsUsed, projectUsage, type Price } from "./costs.js";
 import { defaultModel, globalDir, modelsFor } from "./store.js";
 
@@ -977,6 +978,36 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       throw new HttpError(409, (err as Error).message);
     }
     return c.json((await team.plan(project)).plan);
+  });
+
+  // Scheduled jobs (team/schedules.ts): the list with their runs, and the human's actions on one.
+  const jobsOf = async (project: Project) => (await team.schedules.store(project)).jobs.map((j) => ({ ...j, when: describeSchedule(j.schedule) }));
+  api.get("/projects/:id/jobs", async (c) => c.json(await jobsOf(withProject(c.req.param("id")))));
+
+  api.post("/projects/:id/jobs/:jobId/:action", async (c) => {
+    const project = withProject(c.req.param("id"));
+    const id = c.req.param("jobId");
+    const action = c.req.param("action");
+    try {
+      if (action === "approve") await team.schedules.approve(project, id);
+      else if (action === "pause") await team.schedules.setPaused(project, id, true);
+      else if (action === "resume") await team.schedules.setPaused(project, id, false);
+      else if (action === "run") await team.schedules.runNow(project, id);
+      else return c.json({ error: "action is approve, pause, resume or run" }, 404);
+    } catch (err) {
+      throw new HttpError(409, (err as Error).message);
+    }
+    return c.json(await jobsOf(project));
+  });
+
+  api.delete("/projects/:id/jobs/:jobId", async (c) => {
+    const project = withProject(c.req.param("id"));
+    try {
+      await team.schedules.remove(project, c.req.param("jobId"), "human");
+    } catch (err) {
+      throw new HttpError(404, (err as Error).message);
+    }
+    return c.json(await jobsOf(project));
   });
 
   // The team's questions for the human (team/questions.ts): all of them, newest last.
