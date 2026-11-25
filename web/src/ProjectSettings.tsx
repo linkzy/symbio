@@ -13,6 +13,7 @@ import { RuntimeSection } from "./SwitchRuntime";
 import { EffortSection } from "./Effort";
 import { useI18n } from "./i18n";
 import { ProjectNotifyChoice } from "./Notifications";
+import { BudgetSection } from "./Budget";
 
 /** Project configuration: name, connections, models, remembered permissions, removal. */
 export function ProjectSettings({ project, onChanged }: { project: Project; onChanged: (p: Project) => void }) {
@@ -30,6 +31,7 @@ export function ProjectSettings({ project, onChanged }: { project: Project; onCh
         <Team project={project} onChanged={onChanged} />
         <ChecksSection project={project} onChanged={onChanged} />
         <ProjectSkillsSection project={project} onChanged={onChanged} />
+        <BudgetSection project={project} onChanged={onChanged} />
         <UsageSection project={project} />
         <HousekeepingSection project={project} />
         <AlwaysAllowed project={project} onChanged={onChanged} />

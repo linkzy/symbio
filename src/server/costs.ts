@@ -11,6 +11,7 @@
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import type { AgentRuntime } from "./runtime/types.js";
 import type { Agent, Project } from "./store.js";
 
 export interface Usage {
@@ -130,6 +131,67 @@ export class PriceBook {
   }
 }
 
+/**
+ * Prices for the models in use: the human's price book, and the running runtimes' catalogs (read
+ * at most every 10 minutes). Shared by the usage reports and the budgets (team/budget.ts).
+ */
+export class Pricing {
+  readonly book: PriceBook;
+  private loaded: Promise<unknown>;
+  private catalog: { at: number; kinds: string; models: any[] } | null = null;
+
+  constructor(dir: string, private readonly runtimes: () => AgentRuntime[]) {
+    this.book = PriceBook.at(dir);
+    this.loaded = this.book.load();
+  }
+
+  private async catalogModels(): Promise<any[]> {
+    const running = this.runtimes().filter((r) => r.state === "running");
+    if (!running.length) return this.catalog?.models ?? [];
+    const kinds = running.map((r) => r.kind).join();
+    if (!this.catalog || this.catalog.kinds !== kinds || Date.now() - this.catalog.at > 10 * 60_000) {
+      const lists = await Promise.all(running.map((r) => r.listModels().catch(() => [])));
+      this.catalog = { at: Date.now(), kinds, models: lists.flat().map((m) => m.raw) };
+    }
+    return this.catalog.models;
+  }
+
+  /** The runtimes' prices have been read (after a restart they aren't until a runtime runs). */
+  get hasCatalog(): boolean {
+    return !!this.catalog?.models.length;
+  }
+
+  /** A project's cost, and its use and counted price per model (team/budget.ts). */
+  async spending(project: Project) {
+    const prices = await this.pricesFor(modelsUsed([project]));
+    const report = projectUsage(project, prices);
+    return {
+      cost: report.cost,
+      models: report.byModel.map((m) => ({ model: m.model, usage: m.usage, price: countedPrice(prices[m.model]) ?? null })),
+      reliable: this.hasCatalog,
+    };
+  }
+
+  async pricesFor(refs: string[]) {
+    await this.loaded;
+    return resolvePrices([...new Set(refs)], this.book.prices, await this.catalogModels().catch(() => []));
+  }
+
+  async setPrice(model: string, price: Price | null) {
+    await this.loaded;
+    await this.book.set(model, price);
+  }
+
+  /** A project's usage report, priced. */
+  async projectUsage(project: Project) {
+    return projectUsage(project, await this.pricesFor(modelsUsed([project])));
+  }
+}
+
+/** Every model the projects allow or have used. */
+export const modelsUsed = (projects: Project[]) =>
+  projects.flatMap((p) => [...p.allowedModels, ...p.agents.flatMap((a) => [a.model, ...Object.keys(a.usageByModel ?? {})])]);
+
 /** OpenCode's base price for a model (first tier), USD per million tokens, if it has one. */
 export function catalogPrice(model: any): Price | null {
   const c = Array.isArray(model?.cost) ? model.cost[0] : model?.cost;
@@ -170,6 +232,11 @@ const rank = (provider: string) => (provider === "anthropic" ? 0 : provider === 
 /** The provider of a model reference ("provider/model"): the part before the first "/". */
 export const providerOf = (model: string) => (model.includes("/") ? model.slice(0, model.indexOf("/")) : model);
 
+/** The price a model's use is counted at: the human's or the runtime's, not a suggestion (the same model can cost something else, or nothing, at another provider). */
+export function countedPrice(info: ReturnType<typeof resolvePrices>[string] | undefined): Price | undefined {
+  return info && (info.source === "yours" || info.source === "opencode") ? (info.price ?? undefined) : undefined;
+}
+
 /** Usage report for a project: per agent and model, with estimated costs. */
 export function projectUsage(project: Project, prices: ReturnType<typeof resolvePrices>) {
   let total = emptyUsage();
@@ -179,8 +246,7 @@ export function projectUsage(project: Project, prices: ReturnType<typeof resolve
     const byModel = Object.entries(agentUsageByModel(agent)).map(([model, usage]) => {
       // A suggestion only counts once the user accepts it: the same model can cost something else (or
       // nothing) at another provider.
-      const info = prices[model];
-      const cost = costOf(usage, info && (info.source === "yours" || info.source === "opencode") ? (info.price ?? undefined) : undefined);
+      const cost = costOf(usage, countedPrice(prices[model]));
       if (cost === null && tokensOf(usage) > 0) unpriced.add(model);
       total = addUsage(total, usage);
       totalCost += cost ?? 0;

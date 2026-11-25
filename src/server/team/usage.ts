@@ -37,6 +37,7 @@ export class Usage {
     await this.refreshChildren(agent).catch(() => {});
     await this.team.store.update(project);
     bus.publish({ type: "project.updated", projectId: project.id });
+    await this.team.budgets.check(project).catch((err) => console.error("[budget]", err.message));
   }
 
   /** Sub-agent sessions (and theirs), under the agent's current and earlier sessions. */

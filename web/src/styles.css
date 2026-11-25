@@ -1186,3 +1186,9 @@ body.resizing iframe { pointer-events: none; }
 .notify-ok { color: var(--green); }
 .notify-error { color: var(--red); }
 .notify-steps { margin: 0; padding-left: 18px; color: var(--text-2); line-height: 1.6; }
+
+/* Project settings → Budget */
+.budget-fields > .field:last-child { flex: 0 0 120px; }
+.budget-input { display: flex; align-items: center; gap: 6px; color: var(--text-2); font-size: 13px; }
+.budget-input input { flex: 1; min-width: 0; }
+.budget-unpriced { color: var(--amber, var(--text-2)); }

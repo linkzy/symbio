@@ -296,6 +296,9 @@ export interface Project {
   allowInstalls?: boolean;
   /** Which notifications the project sends: everything (unset), only what waits on the human, or none. */
   notify?: "all" | "important" | "off";
+  /** Spending limits, in USD of estimated cost. */
+  budget?: { total?: number; daily?: number; warnAt?: number };
+  budgetState?: { day: string; pausedFor?: "total" | "daily" };
   /** Every reported task gets a reviewer before core sees it. */
   requireReviewer?: boolean;
   subRepositories?: boolean;
@@ -497,6 +500,14 @@ export interface AppNotification {
   body: string;
   important: boolean;
   at: number;
+}
+
+export interface BudgetStatus {
+  budget: Project["budget"] | null;
+  /** Estimated cost in all, and today. */
+  spent: number;
+  today: number;
+  pausedFor: "total" | "daily" | null;
 }
 
 export type NotifyChannel = "browser" | "telegram" | "ntfy" | "webhook" | "email";
@@ -862,7 +873,7 @@ export const api = {
     id: string,
     patch: Partial<
       Pick<Project, "name" | "allowedModels" | "coordinatorModel" | "connections" | "allowedPatterns" | "messageLimit" | "renewSessions" | "helperWorkspace" | "rulesRegister" | "subRepositories" | "coreMode" | "reviewBy" | "aiCoauthors" | "coreSkills" | "requireReviewer" | "autonomy" | "questionStyle" | "standingPermissions" | "allowInstalls" | "notify">
-    > & { checks?: (Omit<Check, "id"> & { id?: string })[]; modelEfforts?: Record<string, string | null>; helperSkills?: string[] | null },
+    > & { budget?: { total: number | null; daily: number | null; warnAt: number } | null; checks?: (Omit<Check, "id"> & { id?: string })[]; modelEfforts?: Record<string, string | null>; helperSkills?: string[] | null },
   ) =>
     call<Project>("PATCH", `/projects/${id}`, patch),
   connections: () => call<ConnectionView[]>("GET", "/connections"),
@@ -886,6 +897,7 @@ export const api = {
   checkUpdate: () => call<UpdateState>("POST", "/update/check"),
   setUpdateMode: (mode: UpdateMode) => call<UpdateState>("PUT", "/update/settings", { mode }),
   applyUpdate: () => call<{ message: string }>("POST", "/update/apply", { force: true }),
+  budget: (projectId: string) => call<BudgetStatus>("GET", `/projects/${projectId}/budget`),
   notifications: () => call<NotificationSettings>("GET", "/notifications"),
   updateNotifications: (patch: Record<string, unknown>) => call<NotificationSettings>("PUT", "/notifications", patch),
   testNotification: (channel: NotifyChannel) => call<{ ok: true }>("POST", `/notifications/test/${channel}`),

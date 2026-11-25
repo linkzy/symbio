@@ -9,6 +9,7 @@ import { PROCESS_RULES } from "./guard.js";
 import { listRepositories, projectRepositoriesSync } from "./repos.js";
 import { runtimeOf, type RuntimeKind } from "./runtime/types.js";
 import { modelsFor, type Agent, type CoreMode, type Project } from "./store.js";
+import { money } from "./team/budget.js";
 
 // Seen live: a coordinator read eight 2–4 MB images, its conversation reached 25 MB and the
 // provider gave up receiving it ("Timed out reading request body"), whatever the model.
@@ -246,11 +247,24 @@ function planApproval(project: Project): string {
     : "Propose the plan with \`submit_plan\`. The human reviews it in Symbio's Plan tab (a kanban); wait for their approval before assigning work.";
 }
 
+/** The project's spending limits, for every agent's brief (team/budget.ts enforces them). */
+function budgetLine(project: Project): string {
+  const b = project.budget;
+  if (!b?.total && !b?.daily) return "";
+  const limits = [b.total ? `${money(b.total)} for the whole project` : "", b.daily ? `${money(b.daily)} a day` : ""].filter(Boolean).join(" and ");
+  return (
+    `**Budget:** ${limits}, in the estimated cost of the models' use. Symbio warns you near a limit and pauses the team when ` +
+    "it's reached. Spend where it matters: no helpers or expensive models for work that doesn't need them."
+  );
+}
+
 /** Every agent's brief: what the team may do without asking (Project.standingPermissions, allowInstalls). */
 function standingSection(project: Project): string {
   const lines: string[] = [];
   if (project.standingPermissions?.trim()) lines.push(project.standingPermissions.trim());
   if (project.allowInstalls) lines.push("Installing the software the work needs (packages, tools) is fine without asking.");
+  const budget = budgetLine(project);
+  if (budget) lines.push(budget);
   if (!lines.length) return "";
   return `## What the team may do without asking
 

@@ -112,6 +112,10 @@
   chat (core can set it for its helpers).
 - **Costs in view.** Tokens and estimated cost per agent and model, with prices you can set (and
   GitHub Copilot's own prices, in AI credits).
+- **Budgets.** A spending limit per project, for the whole project and per day. Near a limit you
+  and core are told (core then spends carefully); at the limit Symbio pauses the team. A daily pause
+  ends by itself the next day, raising the limit resumes the team, and resuming it past the limit
+  means you want it to go on.
 - **Kind to small computers.** Agents' programs run at low priority, so the computer stays usable and
   reachable; the machine view in the top bar lists what they started and which project and agent
   started each (filter by project; Stop works from a phone too),

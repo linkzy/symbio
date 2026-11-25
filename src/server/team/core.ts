@@ -44,6 +44,8 @@ export interface TeamCore {
   forms(agent: Agent): Promise<any[]>;
   /** Messages from other agents still on their way to this agent (queued in its runtime). */
   hasQueuedMessages(agent: Agent): boolean;
+  /** Spending limits: checked when usage changes. */
+  readonly budgets: { check(project: Project): Promise<void> };
   /** Agents with an open interactive question (agentId → tool call id). */
   readonly pendingQuestion: Map<string, string>;
 }

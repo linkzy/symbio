@@ -123,6 +123,16 @@ being merged (unless core forces the merge).
   `start_briefing`). `standingPermissions` (the human's words) and `allowInstalls` go into every
   agent's brief ("What the team may do without asking"); `allowInstalls` also drops the install asks
   from the session rules (`withoutInstallAsks` in `guard.ts`).
+- **Budget** (Project settings → Budget; `Project.budget`, `team/budget.ts`): limits in USD of
+  estimated cost, for the whole project and per day (the computer's day: each model's tokens since
+  the day's first check, at its price now, so a price set later doesn't count past use as today's). Every agent's brief states them ("What the team may do without
+  asking"). At `warnAt` (80% unless set) the human gets a `budget` message and core a note (no turn);
+  at a limit the team is paused (`Team.pause`), the human told, and core gets a message held until
+  the team runs again. A daily pause ends at the next day's first check (every minute); a limit
+  raised above what's spent resumes the team (unless the other limit holds it: the project's limit
+  outlasts a day's); resuming past a limit marks it overridden (`budgetState.overridden`) so it
+  doesn't pause again. Models without a price don't count; until
+  the runtimes' prices are read after a restart, nothing is judged.
 - **Briefings** (`start_briefing`, core only; `.symbio/briefings.json`): the questions about one
   feature or request, asked together before work on it starts (2 to 15, blocking unless said),
   numbered like other questions and tagged with the briefing (`B1`). Needs you groups them under

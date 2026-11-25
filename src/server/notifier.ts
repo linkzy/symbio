@@ -9,6 +9,7 @@ import { bus, type UiEvent } from "./bus.js";
 import type { Notification } from "./notifications.js";
 import type { Plan } from "./plan.js";
 import type { Question } from "./questions.js";
+import { BUDGET_PAUSED } from "./team/budget.js";
 import { newId, type LoggedMessage, type NotifyLevel, type Project } from "./store.js";
 
 export interface NotifierHost {
@@ -159,6 +160,10 @@ export class Notifier {
         return { key, title: "Work to review", body: plain(m.text), important: true };
       case "alert":
         return { key, title: "Symbio needs you", body: plain(m.text), important: true };
+      case "budget": {
+        const paused = m.text.startsWith(BUDGET_PAUSED);
+        return { key, title: paused ? "Budget reached: team paused" : "Budget", body: plain(paused ? m.text.slice(BUDGET_PAUSED.length) : m.text), important: paused };
+      }
       case "file":
         return { key, title: `${who} shared a file`, body: plain(m.text), important: false };
       default:

@@ -25,7 +25,7 @@ import { addAttachment, attachmentNote, getAttachments, listAttachments, markSen
 import { fileResponse, listDir, listShared, resolveFile, type ResolvedFile } from "./files.js";
 import type { Team } from "./team.js";
 import type { Connections } from "./connections.js";
-import { averageDailyUsage, PriceBook, projectUsage, resolvePrices, type Price } from "./costs.js";
+import { averageDailyUsage, modelsUsed, projectUsage, type Price } from "./costs.js";
 import { defaultModel, globalDir, modelsFor } from "./store.js";
 
 // Debug routes pass OpenCode responses through, which can contain provider keys.
@@ -41,28 +41,12 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
   });
 
   // ---- usage and prices (estimated cost = tokens × the price per model)
-  const priceBook = PriceBook.at(globalDir);
-  const priceBookLoaded = priceBook.load();
-  let catalog: { at: number; kinds: string; models: any[] } | null = null;
-  const catalogModels = async () => {
-    const running = [...team.runtimes.values()].filter((r) => r.state === "running");
-    if (!running.length) return catalog?.models ?? [];
-    if (!catalog || catalog.kinds !== running.map((r) => r.kind).join() || Date.now() - catalog.at > 10 * 60_000) {
-      const lists = await Promise.all(running.map((r) => r.listModels().catch(() => [])));
-      catalog = { at: Date.now(), kinds: running.map((r) => r.kind).join(), models: lists.flat().map((m) => m.raw) };
-    }
-    return catalog.models;
-  };
-  const pricesFor = async (refs: string[]) => {
-    await priceBookLoaded;
-    return resolvePrices([...new Set(refs)], priceBook.prices, await catalogModels().catch(() => []));
-  };
-  const modelsUsed = (projects: Project[]) =>
-    projects.flatMap((p) => [...p.allowedModels, ...p.agents.flatMap((a) => [a.model, ...Object.keys(a.usageByModel ?? {})])]);
+  const pricesFor = (refs: string[]) => team.pricing.pricesFor(refs);
 
   api.get("/prices", async (c) => {
-    await priceBookLoaded;
-    return c.json(await pricesFor([...modelsUsed(store.list()), ...Object.keys(priceBook.prices)]));
+    const refs = modelsUsed(store.list());
+    await pricesFor([]); // the price book is loaded
+    return c.json(await pricesFor([...refs, ...Object.keys(team.pricing.book.prices)]));
   });
 
   api.put("/prices", async (c) => {
@@ -72,14 +56,21 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     if (p && ![p.input, p.output, p.cacheRead, p.cacheWrite].every((v) => typeof v === "number" && v >= 0 && v < 10_000)) {
       return c.json({ error: "Prices must be numbers (USD per million tokens)." }, 400);
     }
-    await priceBookLoaded;
-    await priceBook.set(body.model, p ?? null);
+    await team.pricing.setPrice(body.model, p ?? null);
     bus.publish({ type: "prices.updated" });
+    // A new price changes what the budgets count.
+    for (const project of store.list()) void team.budgets.check(project).catch(() => {});
     return c.json({ ok: true });
   });
 
   // Average tokens per day across projects, by kind (the price simulator in Settings).
   api.get("/usage/average", (c) => c.json(averageDailyUsage(store.list())));
+
+  // Spending against the project's limits (team/budget.ts).
+  api.get("/projects/:id/budget", async (c) => {
+    const project = withProject(c.req.param("id"));
+    return c.json(await team.budgets.status(project));
+  });
 
   api.get("/projects/:id/usage", async (c) => {
     const project = withProject(c.req.param("id"));
@@ -693,6 +684,7 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       standingPermissions?: string;
       allowInstalls?: boolean;
       notify?: NotifyLevel;
+      budget?: { total?: number | null; daily?: number | null; warnAt?: number | null } | null;
     }>();
     if (body.autonomy !== undefined || body.questionStyle !== undefined || body.standingPermissions !== undefined || body.allowInstalls !== undefined) {
       if (body.autonomy !== undefined && body.autonomy !== "ask" && body.autonomy !== "decide") return c.json({ error: 'autonomy is "ask" or "decide".' }, 400);
@@ -748,6 +740,21 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     if (coauthorsChanged) {
       if (body.aiCoauthors) project.aiCoauthors = true;
       else delete project.aiCoauthors;
+    }
+    if (body.budget !== undefined) {
+      const b = body.budget;
+      try {
+        await team.setBudget(
+          project,
+          b && {
+            ...(b.total != null ? { total: Number(b.total) } : {}),
+            ...(b.daily != null ? { daily: Number(b.daily) } : {}),
+            ...(b.warnAt != null ? { warnAt: Number(b.warnAt) } : {}),
+          },
+        );
+      } catch (err) {
+        return c.json({ error: (err as Error).message }, 400);
+      }
     }
     if (body.notify !== undefined) {
       if (body.notify !== "all" && body.notify !== "important" && body.notify !== "off") return c.json({ error: 'notify is "all", "important" or "off".' }, 400);

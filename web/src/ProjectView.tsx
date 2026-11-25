@@ -314,9 +314,11 @@ export function ProjectView({ projectId }: { projectId: string }) {
         <div className="banner blue">
           <Pause size={15} />
           <div className="grow">
-            <strong>{t("project.paused.banner.title")}</strong>{" "}
+            <strong>{project.budgetState?.pausedFor ? t(`project.paused.banner.budget.${project.budgetState.pausedFor}`) : t("project.paused.banner.title")}</strong>{" "}
             <span className="muted">
-              {project.heldMessages?.length
+              {project.budgetState?.pausedFor
+                ? t(`project.paused.banner.budget.${project.budgetState.pausedFor}.hint`)
+                : project.heldMessages?.length
                 ? t("project.paused.banner.held", { n: project.heldMessages.length })
                 : t("project.paused.banner.idle")}
             </span>

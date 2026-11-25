@@ -14,6 +14,7 @@ const KIND: Record<string, { label: string; tone?: string }> = {
   question: { label: "Question for you", tone: "amber" },
   form: { label: "Question for you", tone: "amber" },
   alert: { label: "Needs your action", tone: "red" },
+  budget: { label: "Budget", tone: "amber" },
   approval: { label: "Approval requested", tone: "amber" },
   permission: { label: "Permission request", tone: "amber" },
   remote: { label: "Connection action", tone: "blue" },

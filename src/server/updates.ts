@@ -352,6 +352,13 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "may do without asking, and whether it may install software; it's in your instructions. They may also choose grilling instead " +
       "of briefings: then you have the grilling skill.",
   },
+  {
+    id: "2026-11-26-budgets",
+    text:
+      "Budgets: the human can set a spending limit per project (for the whole project and per day), in the estimated cost of the " +
+      "models' use. When one is set, your brief says it. Near a limit Symbio tells you (a note); at the limit it pauses the team, and " +
+      "a daily pause ends by itself the next day. Spend where it matters: no extra helpers or expensive models for work that doesn't need them.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */

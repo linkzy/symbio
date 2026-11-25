@@ -40,53 +40,50 @@ it's reviewed; a retro that turns review comments into rules and checks.
 The issues are also grouped into [milestones](https://github.com/linkzy/symbio/milestones):
 *Core as lead* (above), *Smarter teams*, *Never miss a thing*, *Everyday comfort* and *Show it to the world*.
 
-In this order: first what lets a team run unattended (a spending limit and recurring
-work; being told when it needs you is in), then the pieces that open up small issues for anyone (settings in groups,
+In this order: first what lets a team run unattended (recurring work; being told when
+it needs you and spending limits are in), then the pieces that open up small issues for anyone (settings in groups,
 the remaining translations), then reaching more people (Linux and macOS, other runtimes, a clear
 first run), then features.
 
-1. **Budgets per project.** ([#7](https://github.com/linkzy/symbio/issues/7)) A spending limit per project (and optionally per day), with a warning
-   at a threshold and the team paused when it's reached, using the cost tracking Symbio already
-   has.
-2. **Scheduled work.** ([#8](https://github.com/linkzy/symbio/issues/8)) Ask core for recurring jobs ("refresh the data every night", "check the site
+1. **Scheduled work.** ([#8](https://github.com/linkzy/symbio/issues/8)) Ask core for recurring jobs ("refresh the data every night", "check the site
    every Monday"): Symbio wakes core at the set time with the job, and the human sees the runs and
    their results.
-3. **Settings you can find your way in.** ([#62](https://github.com/linkzy/symbio/issues/62)) The sections grouped
+2. **Settings you can find your way in.** ([#62](https://github.com/linkzy/symbio/issues/62)) The sections grouped
    (agents, connections, usage and costs, this computer, help) as tabs or a side menu, each with its own address
    (which also covers #35, links into Settings opening the right section).
-4. **Translations.** ([#13](https://github.com/linkzy/symbio/issues/13)) The UI in other languages. The structure
+3. **Translations.** ([#13](https://github.com/linkzy/symbio/issues/13)) The UI in other languages. The structure
    and Portuguese (Brazil) are in (0.23.0, the main screens); next, the remaining screens, then an issue per language.
-5. **Linux and macOS.** ([#9](https://github.com/linkzy/symbio/issues/9)) Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
+4. **Linux and macOS.** ([#9](https://github.com/linkzy/symbio/issues/9)) Test on both. The secret vault uses the OS keyring (Secret Service on Linux,
    Keychain on macOS); headless Linux (a server or container) has no keyring, so it needs a
    fallback, such as a key file readable only by the user.
-6. **Runtimes already on the computer, for every runtime.** ([#59](https://github.com/linkzy/symbio/issues/59)) What
+5. **Runtimes already on the computer, for every runtime.** ([#59](https://github.com/linkzy/symbio/issues/59)) What
    #36 did for OpenCode (use the one on the PATH instead of Symbio's copy), for GitHub Copilot CLI and the runtimes
    that come later.
-7. **A clear first run.** ([#58](https://github.com/linkzy/symbio/issues/58)) With no agent runtime yet, Symbio says
+6. **A clear first run.** ([#58](https://github.com/linkzy/symbio/issues/58)) With no agent runtime yet, Symbio says
    what one is and lets the human install one for Symbio (a separate copy that doesn't touch anything already on the
    computer) or use the one they already have.
-8. **Task priorities.** ([#4](https://github.com/linkzy/symbio/issues/4)) A priority on each task in the plan (e.g. urgent, high, normal, low), shown
+7. **Task priorities.** ([#4](https://github.com/linkzy/symbio/issues/4)) A priority on each task in the plan (e.g. urgent, high, normal, low), shown
    on the Kanban cards and used to sort columns. core sets it when it plans or adds tasks and can
    change it (its plan tools take it), the human can change it on the board, and core is told when
    the human does, so it picks up urgent work first. Helpers see it with their task.
-9. **Model fallback that fits the conversation.** ([#38](https://github.com/linkzy/symbio/issues/38)) Retry the same model on network errors
+8. **Model fallback that fits the conversation.** ([#38](https://github.com/linkzy/symbio/issues/38)) Retry the same model on network errors
    before switching; prefer models whose context holds the conversation; when none does, ask the human
    (continue in a fresh session from a handoff note, go back to the original model, or pick another).
-10. **Which skills were used.** ([#63](https://github.com/linkzy/symbio/issues/63)) Loading a skill shows as a step in
-    the chat, and each agent's skills chip says which it used, so you can see whether skills pay off.
-11. **Create a project from a git repository.** ([#11](https://github.com/linkzy/symbio/issues/11)) In the New project dialog, an option to clone a
+9. **Which skills were used.** ([#63](https://github.com/linkzy/symbio/issues/63)) Loading a skill shows as a step in
+   the chat, and each agent's skills chip says which it used, so you can see whether skills pay off.
+10. **Create a project from a git repository.** ([#11](https://github.com/linkzy/symbio/issues/11)) In the New project dialog, an option to clone a
     repository (GitHub, Azure DevOps or any git URL, using the matching connection when it's private)
     into a folder and open it as a project, e.g. to continue on another computer. Tucked under an
     advanced option, so it doesn't get in the way of people who don't use git.
-12. **Rules register on import.** ([#12](https://github.com/linkzy/symbio/issues/12)) When importing an existing project, offer to build the register
+11. **Rules register on import.** ([#12](https://github.com/linkzy/symbio/issues/12)) When importing an existing project, offer to build the register
     from the project and from sources the human points to (e-mails, meeting notes, manuals), marking
     rules found only in the work as unsourced.
-13. **Make it showable.** ([#10](https://github.com/linkzy/symbio/issues/10)) Before inviting others: a sample project to try in five minutes, a
+12. **Make it showable.** ([#10](https://github.com/linkzy/symbio/issues/10)) Before inviting others: a sample project to try in five minutes, a
     two-minute video of core running a team on a non-coding project, and a short GitHub Pages site
     with screenshots ([#19](https://github.com/linkzy/symbio/issues/19)). First audience: the
     OpenCode and GitHub Copilot CLI communities. Done: the README's animation of a real session, and
     a social preview image.
-14. **Talk to Symbio.** ([#6](https://github.com/linkzy/symbio/issues/6)) A spoken conversation with core, hands-free: e.g. from a phone connected to
+13. **Talk to Symbio.** ([#6](https://github.com/linkzy/symbio/issues/6)) A spoken conversation with core, hands-free: e.g. from a phone connected to
     the car over Bluetooth, with Symbio working on the computer at home (remote access). Not just
     dictation into the chat box:
     - Only what core says to the human is read aloud: never tool calls, command output, messages
@@ -101,9 +98,9 @@ first run), then features.
     Builds on the phone layout and on telling apart, in core's replies, what's for the human from
     the team's work. To check first: the browsers' own speech recognition and voices (quality,
     languages, whether they keep working with the screen off) against a speech service.
-15. **A public demo.** ([#14](https://github.com/linkzy/symbio/issues/14)) A container on a VPS with a light model, connections and other sensitive
+14. **A public demo.** ([#14](https://github.com/linkzy/symbio/issues/14)) A container on a VPS with a light model, connections and other sensitive
     options disabled, and visitors' data reset every few minutes (needs Linux headless support).
-16. **Filters for a project's skills.** ([#60](https://github.com/linkzy/symbio/issues/60)) Project settings → Skills
+15. **Filters for a project's skills.** ([#60](https://github.com/linkzy/symbio/issues/60)) Project settings → Skills
     gets the library's search and categories, and Select all / Clear for the skills shown.
 
 **Small improvements**, also open to anyone, each with an issue and where to start: the browser tab showing what needs you (#24), unread markers on agents (#25), opening a
@@ -178,6 +175,7 @@ Collected, not sorted or promised yet.
 
 Newest first; details per version in [CHANGELOG.md](../CHANGELOG.md).
 
+- **Next release** — Budgets per project (#7): a limit for the whole project and per day, a warning near it, the team paused at it.
 - **0.33.0** — Notifications (#5): what waits on you and what got done, grouped per project, in the browser and through Telegram, ntfy, a webhook or e-mail; each project chooses what it sends. Also the remote link and code copied and shared together, by @TariQMah (#61).
 - **0.32.0** — Runs on its own or asks, per project (decisions to keep or change, plans approved as made, what the team may do without asking, briefing or grilling), and a skill library by category with popular third-party skills, credited.
 - **0.31.0** — Evidence: shared files tagged by kind and task, filtered in the Files tab, listed on their task and given to reviewers. *Core as lead* phases 0–5 are done.

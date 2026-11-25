@@ -16,8 +16,9 @@ import { PlanStore, type Task, type TaskInput, type TaskStatus } from "./plan.js
 import type { RemoteOps } from "./remote.js";
 import { coordinatorBrief, kickoffMessage, modeNote, reviewerBrief, workerBrief } from "./prompts.js";
 import { git } from "./git.js";
-import { defaultModel, globalDir, modelsFor, newId, type Agent, type Autonomy, type CoreMode, type HelperWorkspace, type ReviewBy, type LoggedMessage, type MessageKind, type Project, type Store } from "./store.js";
-import { accountUsage, emptyUsage } from "./costs.js";
+import { defaultModel, globalDir, modelsFor, newId, type Agent, type Autonomy, type Budget, type CoreMode, type HelperWorkspace, type ReviewBy, type LoggedMessage, type MessageKind, type Project, type Store } from "./store.js";
+import { accountUsage, emptyUsage, Pricing } from "./costs.js";
+import { Budgets } from "./team/budget.js";
 import { AGENT_UPDATES, unseenUpdates, updatesNote } from "./updates.js";
 import { coordinatorTools, workerTools, type ToolContext } from "./tools.js";
 import { SharedAssets } from "./team/asset-protocol.js";
@@ -114,6 +115,20 @@ export class Team implements TeamCore {
   readonly questions = new Questions(this);
   readonly watchdog = new Watchdog(this, () => this.permissions.size);
   private loopGuard = new LoopGuard(this);
+  /** Model prices, for usage reports and budgets. */
+  readonly pricing = new Pricing(globalDir, () => [...this.runtimes.values()]);
+  readonly budgets = new Budgets({
+    projects: () => this.store.list(),
+    spent: (project) => this.pricing.spending(project),
+    pause: (project) => this.pause(project),
+    resume: (project) => this.resume(project),
+    tellHuman: (project, text) => this.log(project, { from: "symbio", to: "human", kind: "budget", text }),
+    tellCore: async (project, text, wake) => {
+      const core = this.coordinator(project);
+      if (core && active(core)) await this.system(project, core, text, wake).catch(() => {});
+    },
+    save: (project) => this.store.update(project),
+  });
 
   /** The agent runtimes, by kind. The first one given is the default (OpenCode). */
   readonly runtimes = new Map<RuntimeKind, AgentRuntime>();
@@ -156,6 +171,7 @@ export class Team implements TeamCore {
   /** Starts the background checks: the watchdog (hangs, memory) and the hourly housekeeping. */
   startWatchdog() {
     this.watchdog.start();
+    this.budgets.start();
     this.housekeeper.start();
     this.fallback.resumeWaits();
   }
@@ -187,6 +203,7 @@ export class Team implements TeamCore {
 
   stopWatchdog() {
     this.watchdog.stop();
+    this.budgets.stop();
   }
 
   // ---------------------------------------------------------------- lookups
@@ -320,6 +337,28 @@ export class Team implements TeamCore {
     await this.store.update(project);
     bus.publish({ type: "project.updated", projectId: project.id });
     for (const agent of project.agents.filter(active)) await this.refreshInstructions(project, agent).catch(() => {});
+  }
+
+  /** The project's spending limits (team/budget.ts); every agent's brief says them. */
+  async setBudget(project: Project, budget: Budget | null): Promise<void> {
+    if (budget) {
+      for (const k of ["total", "daily"] as const) {
+        const v = budget[k];
+        if (v !== undefined && !(typeof v === "number" && v > 0 && v < 1e7)) throw new Error(`The ${k === "total" ? "project's" : "daily"} limit is an amount in dollars above 0.`);
+      }
+      if (budget.warnAt !== undefined && !(Number.isInteger(budget.warnAt) && budget.warnAt >= 1 && budget.warnAt <= 99)) throw new Error("The warning is a percentage from 1 to 99.");
+    }
+    const clean: Budget = {
+      ...(budget?.total ? { total: budget.total } : {}),
+      ...(budget?.daily ? { daily: budget.daily } : {}),
+      ...(budget?.warnAt && budget.warnAt !== 80 ? { warnAt: budget.warnAt } : {}),
+    };
+    if (clean.total || clean.daily) project.budget = clean;
+    else delete project.budget;
+    await this.store.update(project);
+    bus.publish({ type: "project.updated", projectId: project.id });
+    for (const agent of project.agents.filter(active)) await this.refreshInstructions(project, agent).catch(() => {});
+    await this.budgets.check(project);
   }
 
 /** Who reviews the team's work (team/review.ts). Briefs change with it. */
@@ -1190,6 +1229,7 @@ export class Team implements TeamCore {
   /** Delivers held messages and tells interrupted agents to continue. */
   async resume(project: Project): Promise<void> {
     if (!project.paused) return;
+    this.budgets.resumed(project);
     project.paused = false;
     const held = project.heldMessages ?? [];
     const interrupted = project.pausedAgents ?? [];

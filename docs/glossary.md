@@ -73,4 +73,6 @@ and align the rest.
 | **approval** | The human allowing an action: a remote action on a connection that asks, or a permission request | aprovação | `remote.ts`, `permissions.ts` |
 | **connection** | A GitHub account, Azure DevOps organization, server or FTP account agents use through Symbio, never seeing its credentials. *Ask me* or *Allowed* | conexão | `Connections`, `policy` (`"ask"` / `"allow"`) |
 | **pause** | Stopping a team (or every team) from starting new turns until resumed | pausar | `paused` |
+| **budget** | A project's spending limit, for the whole project and per day, in estimated cost; at the limit the team is paused | orçamento | `Project.budget`, `team/budget.ts` |
+| **notification** | A message about what waits on the human or got done, sent where they are (browser, Telegram, ntfy, a webhook, e-mail) | notificação | `notifier.ts`, `notifications.ts` |
 | **This computer** | The machine view in the top bar: load, and the programs agents started | Este computador | `machine.ts`, `Machine.tsx` |

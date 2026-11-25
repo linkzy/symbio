@@ -92,6 +92,7 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 | `team/permissions.ts` | The runtimes' permission requests: answered from known rules, or held for the human |
 | `team/housekeeper.ts` | The hourly and daily housekeeping run (see `housekeeping.ts`) and its reports |
 | `team/usage.ts`, `team/processes.ts`, `team/loop-guard.ts` | Token usage per agent; agents' background processes; the message limit between two agents |
+| `team/budget.ts` | Spending limits per project: warnings near a limit, the team paused at it, a daily pause ended by a new day, a raised limit resuming the team |
 | `tools.ts` | The MCP tools agents call (worker and coordinator sets) |
 | `mcp.ts` | Minimal MCP server (Streamable HTTP, JSON responses) |
 | `prompts.ts` | The briefs given to core and helpers |
@@ -101,7 +102,7 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 | `plan.ts` | The plan and its tasks (`plan.json`) |
 | `checks.ts` | Project checks: validating the human's, running them in a folder (shell, low priority, time limit, process tree stopped past it), what a helper is told when they fail |
 | `questions.ts` | The team's questions for the human and their answers (`questions.json`), and briefings (`briefings.json`) |
-| `costs.ts` | Token usage per agent and model, model prices (`~/.symbio/prices.json`) and estimated cost |
+| `costs.ts` | Token usage per agent and model, model prices (`~/.symbio/prices.json`, and the runtimes' catalogs: `Pricing`) and estimated cost |
 | `assets.ts` | Shared-asset register: holders, queues, history, merge-time checks (`assets.json`) |
 | `workspaces.ts` | Where helpers work: git worktrees (create, merge, sync, remove, restore) or the shared project folder |
 | `repos.ts` | Folders of several git repositories: finding them, which one a helper or a push works in, and a repository created on top of others (which a project can switch away from: `subRepositories`) |

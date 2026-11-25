@@ -181,6 +181,10 @@ export interface Project {
   allowInstalls?: boolean;
   /** Which notifications the project sends (notifier.ts): everything (unset), only what waits on the human, or none. */
   notify?: NotifyLevel;
+  /** Spending limits (team/budget.ts), in USD of estimated cost. Unset: no limit. */
+  budget?: Budget;
+  /** Where the project stands against its budget: today's start, the warnings given, the limits the human went past. */
+  budgetState?: BudgetState;
   /** Commands Symbio runs itself when a helper reports a task and before its work is merged (checks.ts). */
   checks?: Check[];
   /**
@@ -207,6 +211,31 @@ export type ReviewBy = "core" | "every" | "marked";
 export type Autonomy = "ask" | "decide";
 
 export type NotifyLevel = "all" | "important" | "off";
+
+export interface Budget {
+  /** For the whole project. */
+  total?: number;
+  /** Per day (the computer's local day). */
+  daily?: number;
+  /** Warn (the human and core) at this share of a limit, in percent. Unset: 80. */
+  warnAt?: number;
+}
+
+export interface BudgetState {
+  /**
+   * The local day ("2026-11-25"), and the tokens used per model when it began: today's spending is
+   * the tokens since, at today's prices (a price set later doesn't turn past use into today's).
+   */
+  day: string;
+  dayTokens: Record<string, { input: number; output: number; reasoning: number; cacheRead: number; cacheWrite: number; cost: number }>;
+  /** Limits already warned about or reached ("total:10", "daily:2026-11-25:5"): each is said once. */
+  warned: string[];
+  reached: string[];
+  /** Limits the human resumed past: they don't pause the team again. */
+  overridden: string[];
+  /** The team is paused because of this limit (resumed by the human, or by a new day). */
+  pausedFor?: "total" | "daily";
+}
 
 export interface ProjectConnection {
   id: string;
@@ -260,6 +289,7 @@ export type MessageKind =
   | "alert" // Symbio needs the human to act (e.g. no working model left)
   | "approval" // an agent wants to use a connection (deploy, push…) and waits for the human
   | "remote" // a connection action that ran (audit trail)
+  | "budget" // a project's spending: a warning, or the team paused at a limit (team/budget.ts)
   | "permission"; // an agent asks to do something its rules require approval for (e.g. install software)
 
 export interface LoggedMessage {

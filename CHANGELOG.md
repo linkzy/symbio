@@ -5,6 +5,15 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Budgets per project** (#7), in the project's settings: a spending limit for the whole project and per day, in the
+  estimated cost Symbio already shows in Usage.
+  - Near a limit (80%, or the share you set) you're told, and core gets a note to spend carefully.
+  - At the limit the team is paused, and the banner says why. A daily pause ends by itself the next day; raising the
+    limit resumes the team; resuming it past the limit means you want it to go on, and that limit doesn't pause it again.
+  - Every agent's brief states the limits. The messages reach you as notifications too (a pause as something that needs
+    you).
+  - Models without a price don't count (the settings say which), as in the usage report.
+
 ## [0.33.0]
 
 - **Notifications** (#5): Symbio tells you when something waits on you and what got done, where you are.
