@@ -9,6 +9,7 @@ import { AgentForms } from "./FormCard";
 import { ReviewActions, ReviewGuide, TaskChanges, waitingForReview } from "./Review";
 import { Avatar, Drawer, timeAgo, waitsForPinnedModel } from "./ui";
 import { JobApproval, useJobs } from "./Jobs";
+import { showProjectSettings } from "./SettingsTabs";
 import type { Job } from "./api";
 import { CalendarClock } from "lucide-react";
 
@@ -96,7 +97,13 @@ export function InboxDrawer({
             </div>
             <div className="inbox-reason">{stuck[0].problem}</div>
             <div className="inbox-actions">
-              <button className="btn primary sm" onClick={() => onOpenTab("settings")}>
+              <button
+                className="btn primary sm"
+                onClick={() => {
+                  showProjectSettings(project.id, "team");
+                  onOpenTab("settings");
+                }}
+              >
                 Add a model
               </button>
               <button className="btn sm" onClick={() => api.retryModels(project.id).catch((e) => alert(e.message))}>

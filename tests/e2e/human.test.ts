@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { after, before, test } from "node:test";
-import { closeBrowser, history, idle, openPage, projectWithCore, startSymbio, until, type Symbio } from "./harness.js";
+import { closeBrowser, history, idle, openPage, projectWithCore, startSymbio, until, type Symbio, openProjectSettings } from "./harness.js";
 
 let symbio: Symbio;
 before(async () => {
@@ -101,17 +101,17 @@ test("costs and token counts are hidden until the human turns them on", async ()
   await page.locator(".side .agent-row").first().waitFor();
   // Hidden by default: no usage line under the team, numbers masked in the project's settings.
   assert.equal(await page.locator(".usage-line").count(), 0);
-  await page.locator("button.tab", { hasText: "Settings" }).click();
+  await openProjectSettings(page, "usage");
   const usage = page.locator("#usage");
   await usage.locator("p", { hasText: "Hidden" }).waitFor();
   assert.ok((await usage.locator(".usage-table tfoot").innerText()).includes("•••"));
   assert.equal(await usage.locator(".usage-total .subtle").innerText(), "••• tokens");
 
   // Turned on in Settings: the line shows, the numbers too.
-  await page.goto(`${symbio.base}/#/settings`);
+  await page.goto(`${symbio.base}/#/settings/usage`);
   await page.locator(".section", { hasText: "Costs and tokens" }).locator("input[type=checkbox]").check();
   await page.goto(`${symbio.base}/#/p/${project.id}`);
   await page.locator(".usage-line", { hasText: "tokens" }).waitFor();
-  await page.locator("button.tab", { hasText: "Settings" }).click();
+  await openProjectSettings(page, "usage");
   assert.ok(!(await page.locator("#usage .usage-table tfoot").innerText()).includes("•••"));
 });

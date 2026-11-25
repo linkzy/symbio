@@ -49,7 +49,7 @@ export function ConnectionsPicker({
   if (all.length === 0) {
     return (
       <div className="subtle small">
-        No connections yet — add GitHub, Azure DevOps or servers in <a className="link" href="#/settings">Settings</a>.
+        No connections yet — add GitHub, Azure DevOps or servers in <a className="link" href="#/settings/connections">Settings</a>.
       </div>
     );
   }

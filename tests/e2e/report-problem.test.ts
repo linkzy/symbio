@@ -16,7 +16,7 @@ after(async () => {
 test("Report a problem opens a new bug report with Symbio's version and the OS, and no project details", async () => {
   await projectWithCore(symbio, "Secret project name");
   const { page } = await openPage(symbio);
-  await page.goto(`${symbio.base}/#/settings`);
+  await page.goto(`${symbio.base}/#/settings/help`);
   const current = (await symbio.call("GET", "/update")).current as string;
   const top = page.locator(".topbar-actions a", { hasText: "Report a problem" });
   const inSettings = page.locator(".section a", { hasText: "Report a problem" });

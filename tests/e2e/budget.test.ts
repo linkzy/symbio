@@ -2,7 +2,7 @@
 // (a banner says why), core is told; raising the limit resumes the team.
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { closeBrowser, history, idle, MODEL, openPage, projectWithCore, startSymbio, until, type Symbio } from "./harness.js";
+import { closeBrowser, history, idle, MODEL, openPage, projectWithCore, startSymbio, until, type Symbio, openProjectSettings } from "./harness.js";
 
 let symbio: Symbio;
 before(async () => {
@@ -23,7 +23,7 @@ test("a budget warns near its limit, pauses the team at it, and raising it lets 
 
   const { page } = await openPage(symbio);
   await page.goto(`${symbio.base}/#/p/${project.id}`);
-  await page.locator("button.tab", { hasText: "Settings" }).click();
+  await openProjectSettings(page, "usage");
   const section = page.locator("#budget");
   await section.getByLabel("For the whole project").fill(String(limit));
   // Warned halfway: a turn costs a few steps, so the warning comes well before the pause.

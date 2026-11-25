@@ -15,7 +15,7 @@ after(async () => {
 
 test("the interface language switches at once, survives a reload, and English comes back from the top bar", async () => {
   const { page } = await openPage(symbio);
-  await page.goto(`${symbio.base}/#/settings`);
+  await page.goto(`${symbio.base}/#/settings/computer`);
   const lang = () => page.evaluate(() => document.documentElement.lang);
   const settingsLink = page.locator(".topbar a[href='#/settings']");
   assert.equal(await lang(), "en");

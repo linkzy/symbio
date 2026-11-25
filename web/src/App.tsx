@@ -20,7 +20,8 @@ function useHashRoute() {
     const onChange = (e: HashChangeEvent) => {
       // Remember where we came from, for "Back" buttons.
       const from = new URL(e.oldURL).hash || "#/";
-      if (from !== location.hash) sessionStorage.setItem("symbio:previous-page", from);
+      // Moving between groups of Settings keeps where Back goes.
+      if (from !== location.hash && !(from.startsWith("#/settings") && location.hash.startsWith("#/settings"))) sessionStorage.setItem("symbio:previous-page", from);
       setHash(location.hash);
     };
     addEventListener("hashchange", onChange);

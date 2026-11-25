@@ -3,7 +3,7 @@
 // the project's models carried over; the earlier conversations stay readable; core is told.
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { closeBrowser, history, idle, MODEL, openPage, projectWithCore, RUNTIME, startSymbio, until, type Symbio } from "./harness.js";
+import { closeBrowser, history, idle, MODEL, openPage, projectWithCore, RUNTIME, startSymbio, until, type Symbio, openProjectSettings } from "./harness.js";
 
 const OTHER = RUNTIME === "copilot" ? "opencode" : "copilot";
 const OTHER_MODEL = `${OTHER === "copilot" ? "copilot" : "fake"}/scripted`;
@@ -33,7 +33,7 @@ test("a project moves to the other runtime from its settings, with its team, han
 
   const { page } = await openPage(symbio);
   await page.goto(`${symbio.base}/#/p/${project.id}`);
-  await page.locator("button.tab", { hasText: "Settings" }).click();
+  await openProjectSettings(page, "team");
   const section = page.locator("#agent-runtime");
   await section.locator("strong", { hasText: LABEL[RUNTIME] }).waitFor();
   await section.locator("button", { hasText: "Switch runtime" }).click();

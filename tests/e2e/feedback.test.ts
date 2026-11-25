@@ -14,7 +14,7 @@ after(async () => {
 
 test("Settings has a Give feedback link to Discussions (Ideas) and one for questions (Q&A)", async () => {
   const { page } = await openPage(symbio);
-  await page.goto(`${symbio.base}/#/settings`);
+  await page.goto(`${symbio.base}/#/settings/help`);
   const feedback = page.locator("a", { hasText: "Give feedback" });
   await feedback.waitFor();
   assert.equal(await feedback.getAttribute("href"), "https://github.com/linkzy/symbio/discussions/new?category=ideas");

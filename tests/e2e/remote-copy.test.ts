@@ -21,7 +21,7 @@ test("remote access: copy the link and code together, and share them", async () 
   await page.route("**/api/remote", (route) =>
     route.fulfill({ json: { active: true, url: "https://try-abc123.symbio.link", code: "12345678", startedAt: Date.now(), sessions: 0 } }),
   );
-  await page.goto(`${symbio.base}/#/settings`);
+  await page.goto(`${symbio.base}/#/settings/computer`);
   const shareText = "Symbio: https://try-abc123.symbio.link\nAccess code: 1234-5678";
   await page.locator("a", { hasText: "https://try-abc123.symbio.link" }).waitFor();
   const clipboard = () => clipboardText(page);

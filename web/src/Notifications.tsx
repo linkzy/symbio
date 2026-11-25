@@ -345,7 +345,7 @@ export function ProjectNotifyChoice({ project, onChanged }: { project: Project; 
         ))}
       </div>
       <span className="hint">
-        {t(`notify.project.hint.${level}`)} <a href="#/settings">{t("notify.project.where")}</a>
+        {t(`notify.project.hint.${level}`)} <a href="#/settings/notifications">{t("notify.project.where")}</a>
       </span>
     </div>
   );

@@ -1,7 +1,8 @@
 import { SkillsSection } from "./Skills";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence } from "motion/react";
-import { ArrowLeft, Check, Pencil, Plug, Plus, ShieldCheck, Trash2, X } from "lucide-react";
+import { ArrowLeft, Bell, Bot, Check, Coins, LifeBuoy, Monitor, Pencil, Plug, Plus, ShieldCheck, Trash2, X } from "lucide-react";
+import { SettingsTabs, settingsHref, useSettingsGroup, type SettingsGroupId } from "./SettingsTabs";
 import { api, type ConnectionView, type FtpSecurity } from "./api";
 import { ConnIcon } from "./ConnectionsPicker";
 import { ProvidersSection } from "./Providers";
@@ -47,6 +48,15 @@ export function Settings() {
   const [error, setError] = useState<string | null>(null);
   const backLabel = useBackLabel();
   const openCodeInstalled = !!useRuntimes().runtimes?.find((r) => r.kind === "opencode")?.installed;
+  const group = useSettingsGroup();
+  const groups: { id: SettingsGroupId; label: string; icon: ReactNode }[] = [
+    { id: "agents", label: t("settings.group.agents"), icon: <Bot size={14} /> },
+    { id: "notifications", label: t("settings.group.notifications"), icon: <Bell size={14} /> },
+    { id: "connections", label: t("settings.group.connections"), icon: <Plug size={14} /> },
+    { id: "usage", label: t("settings.group.usage"), icon: <Coins size={14} /> },
+    { id: "computer", label: t("settings.group.computer"), icon: <Monitor size={14} /> },
+    { id: "help", label: t("settings.group.help"), icon: <LifeBuoy size={14} /> },
+  ];
 
   // Escape leaves Settings, unless it's closing a dialog or the cursor is in a field.
   useEffect(() => {
@@ -98,107 +108,121 @@ export function Settings() {
             <p>{t("settings.subtitle")}</p>
           </div>
         </div>
+        <SettingsTabs groups={groups} current={group} href={settingsHref} />
       </div>
 
-      <RuntimesSection />
+      {group === "agents" && (
+        <>
+          <RuntimesSection />
+          {/* Model providers are OpenCode's: shown once it's installed. */}
+          {openCodeInstalled && <ProvidersSection />}
+          <SkillsSection />
+        </>
+      )}
 
-      <SkillsSection />
+      {group === "notifications" && <NotificationsSection />}
 
-      <NotificationsSection />
-
-      <section className="section">
-        <div className="section-head">
-          <div>
-            <h2>{t("settings.connections.title")}</h2>
-            <p>{t("settings.connections.desc")}</p>
+      {group === "connections" && (
+        <section className="section">
+          <div className="section-head">
+            <div>
+              <h2>{t("settings.connections.title")}</h2>
+              <p>{t("settings.connections.desc")}</p>
+            </div>
+            <div className="row">
+              <button className="btn sm" onClick={() => setEditing("new-github")}>
+                <Plus size={13} />
+                GitHub
+              </button>
+              <button className="btn sm" onClick={() => setEditing("new-azure")}>
+                <Plus size={13} />
+                Azure DevOps
+              </button>
+              <button className="btn sm" onClick={() => setEditing("new-server")}>
+                <Plus size={13} />
+                Server
+              </button>
+              <button className="btn sm" onClick={() => setEditing("new-ftp")}>
+                <Plus size={13} />
+                FTP
+              </button>
+            </div>
           </div>
-          <div className="row">
-            <button className="btn sm" onClick={() => setEditing("new-github")}>
-              <Plus size={13} />
-              GitHub
-            </button>
-            <button className="btn sm" onClick={() => setEditing("new-azure")}>
-              <Plus size={13} />
-              Azure DevOps
-            </button>
-            <button className="btn sm" onClick={() => setEditing("new-server")}>
-              <Plus size={13} />
-              Server
-            </button>
-            <button className="btn sm" onClick={() => setEditing("new-ftp")}>
-              <Plus size={13} />
-              FTP
-            </button>
-          </div>
-        </div>
 
-        {error && (
-          <div style={{ padding: 12 }}>
-            <div className="error">{error}</div>
-          </div>
-        )}
-        {connections?.length === 0 && (
-          <EmptyState icon={<Plug size={20} />} title={t("settings.connections.none.title")}>
-            {t("settings.connections.none.body")}
-          </EmptyState>
-        )}
+          {error && (
+            <div style={{ padding: 12 }}>
+              <div className="error">{error}</div>
+            </div>
+          )}
+          {connections?.length === 0 && (
+            <EmptyState icon={<Plug size={20} />} title={t("settings.connections.none.title")}>
+              {t("settings.connections.none.body")}
+            </EmptyState>
+          )}
 
-        {connections && connections.length > 0 && (
-          <div className="section-body">
-            {connections.map((c) => (
-              <div key={c.id} className="list-row">
-                <ConnIcon type={c.type} />
-                <div className="grow">
-                  <div className="list-title">{c.name}</div>
-                  <div className="list-sub ellipsis">
-                    {c.type === "github"
-                      ? c.account
-                        ? `${t("settings.connections.github.label")} · ${c.account}`
-                        : `${t("settings.connections.github.label")} · ${t("settings.connections.notTested")}`
-                      : c.type === "azure"
-                        ? `${t("settings.connections.azure.label")} · ${c.organization}${c.account ? ` · ${c.account}` : ` · ${t("settings.connections.notTested")}`}`
-                        : c.type === "ftp"
-                          ? `${t("settings.connections.ftp.label")} · ${c.username}@${c.host}${c.port !== 21 ? `:${c.port}` : ""} · ${c.security === "none" ? t("settings.connections.ftp.unencrypted") : c.security === "implicit" ? t("settings.connections.ftp.implicit") : t("settings.connections.ftp.ftps")}`
-                          : `${c.username}@${c.host}${c.port !== 22 ? `:${c.port}` : ""} · ${c.auth === "password" ? t("settings.connections.auth.password") : c.keyPath ? t("settings.connections.auth.keyFile", { path: c.keyPath }) : t("settings.connections.auth.storedKey")}`}
-                  </div>
-                  {c.lastTest && (
-                    <div className={`conn-test ${c.lastTest.ok ? "ok" : "bad"}`}>
-                      {c.lastTest.ok ? <Check size={12} /> : <X size={12} />}
-                      {c.lastTest.message}
+          {connections && connections.length > 0 && (
+            <div className="section-body">
+              {connections.map((c) => (
+                <div key={c.id} className="list-row">
+                  <ConnIcon type={c.type} />
+                  <div className="grow">
+                    <div className="list-title">{c.name}</div>
+                    <div className="list-sub ellipsis">
+                      {c.type === "github"
+                        ? c.account
+                          ? `${t("settings.connections.github.label")} · ${c.account}`
+                          : `${t("settings.connections.github.label")} · ${t("settings.connections.notTested")}`
+                        : c.type === "azure"
+                          ? `${t("settings.connections.azure.label")} · ${c.organization}${c.account ? ` · ${c.account}` : ` · ${t("settings.connections.notTested")}`}`
+                          : c.type === "ftp"
+                            ? `${t("settings.connections.ftp.label")} · ${c.username}@${c.host}${c.port !== 21 ? `:${c.port}` : ""} · ${c.security === "none" ? t("settings.connections.ftp.unencrypted") : c.security === "implicit" ? t("settings.connections.ftp.implicit") : t("settings.connections.ftp.ftps")}`
+                            : `${c.username}@${c.host}${c.port !== 22 ? `:${c.port}` : ""} · ${c.auth === "password" ? t("settings.connections.auth.password") : c.keyPath ? t("settings.connections.auth.keyFile", { path: c.keyPath }) : t("settings.connections.auth.storedKey")}`}
                     </div>
-                  )}
+                    {c.lastTest && (
+                      <div className={`conn-test ${c.lastTest.ok ? "ok" : "bad"}`}>
+                        {c.lastTest.ok ? <Check size={12} /> : <X size={12} />}
+                        {c.lastTest.message}
+                      </div>
+                    )}
+                  </div>
+                  <button className="btn sm" onClick={() => test(c.id)} disabled={testing === c.id}>
+                    <ShieldCheck size={13} />
+                    {testing === c.id ? t("common.testing") : t("common.test")}
+                  </button>
+                  <button className="btn ghost icon sm" onClick={() => setEditing(c)} title={t("settings.connections.edit")}>
+                    <Pencil size={13} />
+                  </button>
+                  <button className="btn ghost icon sm" onClick={() => remove(c)} title={t("settings.connections.delete")}>
+                    <Trash2 size={13} />
+                  </button>
                 </div>
-                <button className="btn sm" onClick={() => test(c.id)} disabled={testing === c.id}>
-                  <ShieldCheck size={13} />
-                  {testing === c.id ? t("common.testing") : t("common.test")}
-                </button>
-                <button className="btn ghost icon sm" onClick={() => setEditing(c)} title={t("settings.connections.edit")}>
-                  <Pencil size={13} />
-                </button>
-                <button className="btn ghost icon sm" onClick={() => remove(c)} title={t("settings.connections.delete")}>
-                  <Trash2 size={13} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
-      {/* Model providers are OpenCode's: shown once it's installed. */}
-      {openCodeInstalled && <ProvidersSection />}
+      {group === "usage" && (
+        <>
+          <CostsSection />
+          <PricesSection />
+        </>
+      )}
 
-      <AppearanceSection />
+      {group === "computer" && (
+        <>
+          <RemoteSection />
+          <UpdatesSection />
+          <AppearanceSection />
+        </>
+      )}
 
-      <CostsSection />
-
-      <PricesSection />
-
-      <RemoteSection />
-
-      <UpdatesSection />
-
-      <FeedbackSection />
-      <ReportProblemSection />
+      {group === "help" && (
+        <>
+          <FeedbackSection />
+          <ReportProblemSection />
+        </>
+      )}
 
       <AnimatePresence>
         {editing && (

@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import { after, before, test } from "node:test";
 import ssh2 from "ssh2";
-import { closeBrowser, history, idle, openPage, projectWithCore, startSymbio, until, type Symbio } from "./harness.js";
+import { closeBrowser, history, idle, openPage, projectWithCore, startSymbio, until, type Symbio, openProjectSettings } from "./harness.js";
 
 let symbio: Symbio;
 // ssh2 sometimes generates an ed25519 key it can't parse back (about 1 in 200): try again.
@@ -81,7 +81,7 @@ test("approve once, always for commands like it, for a while, or all at once", a
   await exec("uptime");
   await until("uptime to run without asking", () => ran.includes("uptime"));
   await page.keyboard.press("Escape");
-  await page.locator(".tab", { hasText: "Settings" }).click();
+  await openProjectSettings(page, "connections");
   const grant = page.locator(".pick-grant", { hasText: "core acts without asking until" });
   await grant.waitFor();
   assert.ok(await page.locator(".pick-command code", { hasText: "systemctl status *" }).isVisible(), "the always-allowed command is listed");

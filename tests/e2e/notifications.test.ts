@@ -51,7 +51,7 @@ test("a webhook set up in Settings gets a test, then what waits on the human; th
   await page.evaluate(BACKGROUND_TAB);
   const url = `http://127.0.0.1:${(hooks.address() as { port: number }).port}/hook`;
 
-  await page.goto(`${symbio.base}/#/settings`);
+  await page.goto(`${symbio.base}/#/settings/notifications`);
   const section = page.locator("#notifications");
   const webhook = section.locator('[data-channel="webhook"]');
   await webhook.locator(".choice").click();

@@ -41,6 +41,39 @@ test("Settings: Back names the project, and Back, Settings again or Escape retur
   await onPlan();
 });
 
+test("Settings in groups: one click to each, the address keeps the group through a reload, and Back still returns to the project", async () => {
+  const { project } = await projectWithCore(symbio, "Groups check");
+  const { page } = await openPage(symbio);
+  await page.goto(`${symbio.base}/#/p/${project.id}`);
+  await page.locator(".topbar-actions a", { hasText: "Settings" }).click();
+  // Agents first: runtimes and skills, not connections.
+  await page.locator(".settings-tab.on", { hasText: "Agents" }).waitFor();
+  await page.locator("#skills").waitFor();
+  assert.equal(await page.locator(".section", { hasText: "Model prices" }).count(), 0);
+
+  await page.locator(".settings-tab", { hasText: "Usage and costs" }).click();
+  await until("the group in the address", () => hash(page.url()) === "#/settings/usage");
+  await page.locator(".section", { hasText: "Model prices" }).waitFor();
+  assert.equal(await page.locator("#skills").count(), 0);
+  await page.reload();
+  await page.locator(".settings-tab.on", { hasText: "Usage and costs" }).waitFor();
+  await page.locator(".settings-tab", { hasText: "Help" }).click();
+  await page.locator(".section a", { hasText: "Report a problem" }).waitFor();
+  // Moving between groups doesn't change where Back goes.
+  await page.locator(".settings-back").click();
+  await until("the project page", () => hash(page.url()) === `#/p/${project.id}`);
+
+  // A link into Settings opens its group; a project's settings have groups too.
+  await page.goto(`${symbio.base}/#/settings/connections`);
+  await page.locator(".settings-tab.on", { hasText: "Connections" }).waitFor();
+  await page.goto(`${symbio.base}/#/p/${project.id}`);
+  await page.locator("button.tab", { hasText: "Settings" }).click();
+  await page.locator(".settings-tab.on", { hasText: "General" }).waitFor();
+  await page.locator(".settings-tab", { hasText: "Maintenance" }).click();
+  await page.locator(".danger-zone").waitFor();
+  assert.deepEqual((page as any).errors, []);
+});
+
 test("the project switcher: other projects, all projects, a new project", async () => {
   const a = (await symbio.call("GET", "/projects")).find((p: any) => p.name === "Nav check") ?? (await projectWithCore(symbio, "Nav check")).project;
   const { project: b } = await projectWithCore(symbio, "Second project");
@@ -72,7 +105,7 @@ test("phone layout: nothing wider than the screen; the team opens as a drawer", 
   const overflowing = () =>
     page.evaluate(() =>
       [...document.querySelectorAll("body *")]
-        .filter((e) => e.getBoundingClientRect().right > innerWidth + 1 && !e.closest(".tabs, .columns, .side, pre, .md table"))
+        .filter((e) => e.getBoundingClientRect().right > innerWidth + 1 && !e.closest(".tabs, .settings-tabs, .columns, .side, pre, .md table"))
         .map((e) => (e as HTMLElement).className || e.tagName)
         .slice(0, 5),
     );

@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { after, before, test } from "node:test";
-import { closeBrowser, idle, MODEL, openPage, projectWithCore, RUNTIME, startSymbio, until, type Symbio } from "./harness.js";
+import { closeBrowser, idle, MODEL, openPage, projectWithCore, RUNTIME, startSymbio, until, type Symbio, openProjectSettings } from "./harness.js";
 
 // A model from a second provider, with a model reference of more than two parts on OpenCode; on
 // Copilot, one from the user's own providers (providers.json, as in runtimes.test.ts).
@@ -52,10 +52,10 @@ test("usage can be grouped by provider and model, and narrowed to one provider",
   );
 
   const { page } = await openPage(symbio);
-  await page.goto(`${symbio.base}/#/settings`);
+  await page.goto(`${symbio.base}/#/settings/usage`);
   await page.locator(".section", { hasText: "Costs and tokens" }).locator("input[type=checkbox]").check();
   await page.goto(`${symbio.base}/#/p/${project.id}`);
-  await page.locator("button.tab", { hasText: "Settings" }).click();
+  await openProjectSettings(page, "usage");
   const section = page.locator("#usage");
   const rows = section.locator(".usage-table tbody tr");
   await section.locator(".usage-table").waitFor();

@@ -1206,3 +1206,14 @@ body.resizing iframe { pointer-events: none; }
 .job-instructions { color: var(--text-2); white-space: pre-wrap; max-height: 6.5em; overflow: auto; }
 .job-run { display: flex; flex-direction: column; gap: 4px; padding-top: 6px; border-top: 1px dashed var(--border); }
 .job-run-note { color: var(--text-2); }
+
+/* Settings and project settings: the groups as tabs (scrolling sideways on a phone) */
+.settings-tabs { display: flex; gap: 2px; margin-top: 14px; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+.settings-tabs::-webkit-scrollbar { display: none; }
+.settings-tab { position: relative; display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; white-space: nowrap; background: none; border: none; color: var(--text-2); font: inherit; font-size: 13px; font-weight: 500; text-decoration: none; cursor: pointer; }
+.settings-tab:hover { color: var(--text); }
+.settings-tab svg { color: var(--text-3); }
+.settings-tab.on { color: var(--text); }
+.settings-tab.on::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--text); }
+.settings-inner > .settings-tabs { margin-top: 0; margin-bottom: 4px; }
+.settings-tabs { position: relative; }

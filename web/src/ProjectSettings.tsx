@@ -2,7 +2,8 @@ import { ProjectSkillsSection } from "./Skills";
 import { ChecksSection } from "./Checks";
 import { useEffect, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { Trash2, X } from "lucide-react";
+import { Bot, Coins, Plug, ShieldCheck, SlidersHorizontal, Trash2, Wrench, X } from "lucide-react";
+import { SettingsTabs, useProjectSettingsGroup, type ProjectSettingsGroupId } from "./SettingsTabs";
 import { api, RUNTIME_LABEL, type Project, type ProjectConnection } from "./api";
 import { ConnectionsPicker } from "./ConnectionsPicker";
 import { ModelPicker, choiceBody, choiceOf } from "./ModelPicker";
@@ -19,34 +20,64 @@ import { BudgetSection } from "./Budget";
 export function ProjectSettings({ project, onChanged }: { project: Project; onChanged: (p: Project) => void }) {
   const { t } = useI18n();
   const [removing, setRemoving] = useState(false);
+  const [group, setGroup] = useProjectSettingsGroup(project.id);
+  const groups: { id: ProjectSettingsGroupId; label: string; icon: React.ReactNode }[] = [
+    { id: "general", label: t("projectSettings.group.general"), icon: <SlidersHorizontal size={14} /> },
+    { id: "team", label: t("projectSettings.group.team"), icon: <Bot size={14} /> },
+    { id: "quality", label: t("projectSettings.group.quality"), icon: <ShieldCheck size={14} /> },
+    { id: "connections", label: t("projectSettings.group.connections"), icon: <Plug size={14} /> },
+    { id: "usage", label: t("projectSettings.group.usage"), icon: <Coins size={14} /> },
+    { id: "maintenance", label: t("projectSettings.group.maintenance"), icon: <Wrench size={14} /> },
+  ];
   return (
     <div className="settings-scroll">
       <div className="settings-inner">
-        <General project={project} onChanged={onChanged} />
-        <Lead project={project} onChanged={onChanged} />
-        <Connections project={project} onChanged={onChanged} />
-        <RuntimeSection project={project} />
-        <Models project={project} onChanged={onChanged} />
-      <EffortSection project={project} onChanged={onChanged} />
-        <Team project={project} onChanged={onChanged} />
-        <ChecksSection project={project} onChanged={onChanged} />
-        <ProjectSkillsSection project={project} onChanged={onChanged} />
-        <BudgetSection project={project} onChanged={onChanged} />
-        <UsageSection project={project} />
-        <HousekeepingSection project={project} />
-        <AlwaysAllowed project={project} onChanged={onChanged} />
-        <section className="section danger-zone">
-          <div className="section-head">
-            <div>
-              <h2>{t("projectSettings.remove.title")}</h2>
-              <p>{t("projectSettings.remove.desc")}</p>
-            </div>
-            <button className="btn danger" onClick={() => setRemoving(true)}>
-              <Trash2 size={14} />
-              {t("common.remove")}…
-            </button>
-          </div>
-        </section>
+        <SettingsTabs groups={groups} current={group} onPick={setGroup} />
+        {group === "general" && (
+          <>
+            <General project={project} onChanged={onChanged} />
+            <Lead project={project} onChanged={onChanged} />
+          </>
+        )}
+        {group === "team" && (
+          <>
+            <Team project={project} onChanged={onChanged} />
+            <Models project={project} onChanged={onChanged} />
+            <EffortSection project={project} onChanged={onChanged} />
+            <ProjectSkillsSection project={project} onChanged={onChanged} />
+            <RuntimeSection project={project} />
+          </>
+        )}
+        {group === "quality" && <ChecksSection project={project} onChanged={onChanged} />}
+        {group === "connections" && (
+          <>
+            <Connections project={project} onChanged={onChanged} />
+            <AlwaysAllowed project={project} onChanged={onChanged} />
+          </>
+        )}
+        {group === "usage" && (
+          <>
+            <BudgetSection project={project} onChanged={onChanged} />
+            <UsageSection project={project} />
+          </>
+        )}
+        {group === "maintenance" && (
+          <>
+            <HousekeepingSection project={project} />
+            <section className="section danger-zone">
+              <div className="section-head">
+                <div>
+                  <h2>{t("projectSettings.remove.title")}</h2>
+                  <p>{t("projectSettings.remove.desc")}</p>
+                </div>
+                <button className="btn danger" onClick={() => setRemoving(true)}>
+                  <Trash2 size={14} />
+                  {t("common.remove")}…
+                </button>
+              </div>
+            </section>
+          </>
+        )}
       </div>
       <AnimatePresence>
         {removing && <RemoveDialog project={project} onClose={() => setRemoving(false)} onRemoved={() => (location.hash = "#/")} />}

@@ -236,6 +236,12 @@ export async function ownClipboard(context: BrowserContext) {
 /** What the page last copied (with `ownClipboard`), with Windows line ends as \n. */
 export const clipboardText = (page: Page) => page.evaluate("navigator.clipboard.readText()").then((t) => String(t).replace(/\r\n/g, "\n"));
 
+/** A project's settings (its Settings tab), at one group of them. */
+export async function openProjectSettings(page: Page, group: "general" | "team" | "quality" | "connections" | "usage" | "maintenance") {
+  await page.locator("button.tab", { hasText: "Settings" }).click();
+  await page.locator(`.settings-tab[data-group="${group}"]`).click();
+}
+
 export async function closeBrowser() {
   await browser?.close();
   browser = null;

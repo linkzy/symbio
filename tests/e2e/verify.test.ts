@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { after, before, test } from "node:test";
-import { closeBrowser, gitRepo, history, idle, openPage, projectWithCore, refused, startSymbio, until, type Symbio } from "./harness.js";
+import { closeBrowser, gitRepo, history, idle, openPage, projectWithCore, refused, startSymbio, until, type Symbio, openProjectSettings } from "./harness.js";
 
 let symbio: Symbio;
 before(async () => {
@@ -37,7 +37,7 @@ test("checks: core proposes one, the human approves it; a failure goes back to t
   // The human approves it in the project's settings.
   const { page } = await openPage(symbio);
   await page.goto(`${symbio.base}/#/p/${project.id}`);
-  await page.locator("button.tab", { hasText: "Settings" }).click();
+  await openProjectSettings(page, "quality");
   const section = page.locator("#checks");
   const row = section.locator(".check-row", { hasText: "done file" });
   await row.locator(".tag", { hasText: "Proposed by core" }).waitFor();
@@ -101,7 +101,7 @@ test("a reviewer on every task: it can't change the work, its findings go back t
   // The human turns it on in the project's settings.
   const { page } = await openPage(symbio);
   await page.goto(`${symbio.base}/#/p/${project.id}`);
-  await page.locator("button.tab", { hasText: "Settings" }).click();
+  await openProjectSettings(page, "quality");
   await page.locator("#checks .seg button", { hasText: "Every task" }).click();
   await until("reviewers to be required", async () => (await symbio.call("GET", `/projects/${project.id}`)).requireReviewer === true);
   // With a check too: it runs first, then the reviewer.

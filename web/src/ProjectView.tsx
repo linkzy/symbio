@@ -33,6 +33,7 @@ import { FilesView } from "./Attachments";
 import { InboxDrawer, useInbox } from "./Inbox";
 import { Kanban } from "./Kanban";
 import { ScheduledJobs } from "./Jobs";
+import { showProjectSettings } from "./SettingsTabs";
 import { NewHelperDialog } from "./NewHelper";
 import { Messages, useProjectLog } from "./Messages";
 import { ProjectMenu } from "./ProjectMenu";
@@ -279,6 +280,7 @@ export function ProjectView({ projectId }: { projectId: string }) {
         <UsageLine
           project={project}
           onOpen={() => {
+            showProjectSettings(project.id, "usage");
             openTab("settings");
             setTimeout(() => document.getElementById("usage")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
           }}
@@ -339,7 +341,13 @@ export function ProjectView({ projectId }: { projectId: string }) {
           <button className="btn sm" onClick={() => api.retryModels(project.id).catch((e) => alert(e.message))}>
             {t("common.retryNow")}
           </button>
-          <button className="btn primary sm" onClick={() => openTab("settings")}>
+          <button
+            className="btn primary sm"
+            onClick={() => {
+              showProjectSettings(project.id, "team");
+              openTab("settings");
+            }}
+          >
             {t("project.addModel")}
           </button>
         </div>

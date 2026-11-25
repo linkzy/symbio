@@ -16,7 +16,7 @@ after(async () => {
 
 test("a theme chosen in Settings applies at once and survives a reload", async () => {
   const { page } = await openPage(symbio);
-  await page.goto(`${symbio.base}/#/settings`);
+  await page.goto(`${symbio.base}/#/settings/computer`);
   const background = () => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--bg").trim());
   const theme = () => page.evaluate(() => document.documentElement.dataset.theme ?? null);
   const original = await background();
@@ -40,7 +40,7 @@ test("a theme chosen in Settings applies at once and survives a reload", async (
 
 test("a VS Code color theme file can be imported, survives a reload and can be removed", async () => {
   const { page } = await openPage(symbio);
-  await page.goto(`${symbio.base}/#/settings`);
+  await page.goto(`${symbio.base}/#/settings/computer`);
   const token = (name: string) => page.evaluate((n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), name);
   const fixture = fileURLToPath(new URL("./fixtures/night-harbor-color-theme.json", import.meta.url));
 

@@ -137,7 +137,7 @@ live session (with `steps.ts` labelling the team's steps in plain words, and `fi
 into links, showing shared files as cards and the viewer page that opens them), `Machine.tsx` the computer's load and agents' programs (top bar), `Effort.tsx` reasoning effort (in a chat header and project settings), `Kanban.tsx` the plan, `Explorer.tsx` the project's folders and files (read-only), `Messages.tsx` the message log, `Attachments.tsx` attachments in the chat and the Files tab, `Docs.tsx` the Docs tab and
 `Rules.tsx` the rules register in it, `Skills.tsx` skills (the library in Settings, a project's in its settings, an agent's in its chat), `Inbox.tsx` the *Needs you* drawer (with `Questions.tsx` the team's questions, briefings and decisions, and `Review.tsx` work waiting for the human's review), `Checks.tsx` checks and reviewers (project settings, and their results on a task), `ProjectSettings.tsx` a project's settings, `Usage.tsx` tokens and
 costs, `Housekeeping.tsx` the daily check, `Remote.tsx` remote access, and
-`Settings.tsx`/`Providers.tsx` the global settings. `styles.css` holds the design tokens (colors,
+`Settings.tsx`/`Providers.tsx` the global settings (in groups, `SettingsTabs.tsx`: `#/settings/<group>` keeps the group in the address; a project's settings have their own groups, remembered for the session). `styles.css` holds the design tokens (colors,
 radii, fonts) and every rule uses them; `themes.css` overrides them per theme under
 `html[data-theme="…"]`, and `i18n.ts` holds the interface's text per language (English, Portuguese (Brazil); English fills in
 what's missing) and the language kept in the browser. `theme.ts`/`Appearance.tsx` pick a theme and keep it in the browser (`vscodeTheme.ts` reads an imported VS

@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { after, before, test } from "node:test";
-import { closeBrowser, history, idle, MODEL, MODEL_2, openPage, projectWithCore, startSymbio, until, type Symbio } from "./harness.js";
+import { closeBrowser, history, idle, MODEL, MODEL_2, openPage, projectWithCore, startSymbio, until, type Symbio, openProjectSettings } from "./harness.js";
 
 let symbio: Symbio;
 before(async () => {
@@ -23,7 +23,7 @@ test("a model locked to core isn't given to helpers; select all and none", async
   const { project, core } = await projectWithCore(symbio, "Roles", { models: MODELS });
   const { page } = await openPage(symbio);
   await page.goto(`${symbio.base}/#/p/${project.id}`);
-  await page.locator("button.tab", { hasText: "Settings" }).click();
+  await openProjectSettings(page, "team");
   const picker = page.locator(".model-picker");
   await picker.locator(".model-summary", { hasText: "2 selected, for everyone" }).waitFor();
 
@@ -103,7 +103,7 @@ test("the in-page folder browser (remote access) creates folders", async () => {
 
 test("the price simulator gives the cost per day, week and month", async () => {
   const { page } = await openPage(symbio);
-  await page.goto(`${symbio.base}/#/settings`);
+  await page.goto(`${symbio.base}/#/settings/usage`);
   const section = page.locator(".section", { hasText: "Model prices" });
   await section.locator(".seg button", { hasText: "Simulate" }).click();
   // "$Input" is a price (first block), "Fresh input" a token amount (second); labels matched from their start.

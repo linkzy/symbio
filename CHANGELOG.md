@@ -5,6 +5,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Settings in groups** (#62): tabs across the top (Agents, Notifications, Connections, Usage and costs, This computer,
+  Help), each with its own address (`#/settings/usage`), so a reload stays there and links into Settings open the right
+  group (the update badge opens This computer, "add a price" opens Usage and costs: #35). A project's settings are grouped
+  too (General, Team, Quality, Connections, Budget and usage, Maintenance); "Add a model" opens Team. On a phone the tabs
+  scroll sideways.
+
 - **Scheduled work** (#8): ask core for recurring (or one-off) jobs, "refresh the data every night", "check the site every
   Monday". core sets one up with its instructions and when (every few hours, every day, some weekdays, a day of the
   month, or once, in the computer's time); when it's due, Symbio wakes core with it, and core reports how it went.

@@ -3,7 +3,7 @@
 // lines in commits: left out unless the project allows them.
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { closeBrowser, history, idle, MODEL, MODEL_2, openPage, projectWithCore, startSymbio, until, type Symbio } from "./harness.js";
+import { closeBrowser, history, idle, MODEL, MODEL_2, openPage, projectWithCore, startSymbio, until, type Symbio, openProjectSettings } from "./harness.js";
 
 let symbio: Symbio;
 before(async () => {
@@ -37,7 +37,7 @@ test("reasoning effort: per model in the project, per agent in its chat, and cor
   // Project settings → Reasoning effort: only models with levels are listed.
   const { page } = await openPage(symbio);
   await page.goto(`${symbio.base}/#/p/${project.id}`);
-  await page.locator(".tab", { hasText: "Settings" }).click();
+  await openProjectSettings(page, "team");
   const section = page.locator("#effort");
   await section.waitFor();
   assert.equal(await section.locator("select").count(), 1, "only the model that has levels");
@@ -88,7 +88,7 @@ test("AI co-author lines in commits are left out unless the project allows them"
 
   const { page } = await openPage(symbio);
   await page.goto(`${symbio.base}/#/p/${project.id}`);
-  await page.locator(".tab", { hasText: "Settings" }).click();
+  await openProjectSettings(page, "team");
   // Done when the save answers: the project shows the setting at once, the agents' instructions a moment later.
   const saved = page.waitForResponse((r) => r.request().method() === "PATCH" && r.url().endsWith(`/api/projects/${project.id}`));
   await page.locator(".field", { hasText: "AI co-authors in commits" }).getByRole("button", { name: "Allow them" }).click();

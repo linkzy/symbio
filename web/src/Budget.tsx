@@ -126,7 +126,7 @@ export function BudgetSection({ project, onChanged }: { project: Project; onChan
         <span className="small subtle">{t("budget.how")}</span>
         {usage && usage.unpriced.length > 0 && (
           <div className="small budget-unpriced">
-            {t("budget.unpriced", { models: usage.unpriced.join(", ") })} <a href="#/settings">{t("budget.unpriced.where")}</a>
+            {t("budget.unpriced", { models: usage.unpriced.join(", ") })} <a href="#/settings/usage">{t("budget.unpriced.where")}</a>
           </div>
         )}
       </div>

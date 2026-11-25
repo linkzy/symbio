@@ -20,7 +20,7 @@ after(async () => {
 
 test("add an FTP connection in Settings, test it, and publish a folder with remote_upload", async () => {
   const { page } = await openPage(symbio);
-  await page.goto(`${symbio.base}/#/settings`);
+  await page.goto(`${symbio.base}/#/settings/connections`);
   await page.locator("button", { hasText: "FTP" }).click();
   const field = (label: string) => page.locator("label.field").filter({ has: page.locator("span", { hasText: new RegExp(`^${label}$`) }) }).locator("input");
   await field("Name").fill("Site hosting");

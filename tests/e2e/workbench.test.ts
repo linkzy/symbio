@@ -22,7 +22,7 @@ test("the Workbench layout keeps the chat on the right while the middle shows th
   await idle(symbio, project.id);
 
   const { page } = await openPage(symbio);
-  await page.goto(`${symbio.base}/#/settings`);
+  await page.goto(`${symbio.base}/#/settings/computer`);
   await page.locator('[data-layout-id="workbench"]').click();
   assert.equal(await page.locator('[data-layout-id="workbench"]').getAttribute("aria-checked"), "true");
 
@@ -72,7 +72,7 @@ test("the Workbench layout keeps the chat on the right while the middle shows th
   await page.locator(".workbench").waitFor();
 
   // Back to Classic from Settings.
-  await page.goto(`${symbio.base}/#/settings`);
+  await page.goto(`${symbio.base}/#/settings/computer`);
   await page.locator('[data-layout-id="classic"]').click();
   await page.goto(`${symbio.base}/#/p/${project.id}`);
   await page.locator(".project-view").waitFor();

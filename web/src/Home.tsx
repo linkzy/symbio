@@ -83,7 +83,7 @@ export function Home({ runtime, create }: { runtime: RuntimeInfo | null; create?
       {noProviders && (
         <div className="notice row" style={{ justifyContent: "space-between", gap: 12 }}>
           <span>{t("home.noProviders")}</span>
-          <a className="btn sm" href="#/settings">
+          <a className="btn sm" href="#/settings/agents">
             {t("home.connectProvider")}
           </a>
         </div>
