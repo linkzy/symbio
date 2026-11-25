@@ -206,6 +206,11 @@ Running several files at once makes a slow machine slower, so tests must not dep
   been working for half a second.
 - **Never `page.waitForFunction` with a promise** (like `navigator.clipboard.readText()`): it doesn't
   wait for the promise, so it passes at once. Read the value in `until(…)`.
+- **Copying**: give the page its own clipboard with `ownClipboard(context)` and read it with
+  `clipboardText(page)`. The computer's clipboard is shared by every test running at the same time
+  (and by whoever runs them).
+- **Code run in the page** (`page.evaluate`, `addInitScript`): pass a string, or a function with
+  no named inner functions. tsx adds a `__name` helper to those, which doesn't exist in the page.
 - **Text that loads**: a label can show a placeholder until its data arrives (the project's name in
   Settings' Back); wait for the final text.
 - The limits (`until` 30 s, `idle` 40 s) only matter when something is wrong; don't lower them, and

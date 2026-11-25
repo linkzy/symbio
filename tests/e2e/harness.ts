@@ -214,6 +214,28 @@ export async function openPage(symbio: Symbio, opts: { phone?: boolean } = {}): 
   return { page, context };
 }
 
+/**
+ * Gives a test's pages a clipboard of their own: test files run in parallel, and the system
+ * clipboard is shared by the whole machine (copy tests overwrote each other, and the clipboard of
+ * whoever ran them). Read it with `clipboardText(page)`.
+ */
+export async function ownClipboard(context: BrowserContext) {
+  // A string, not a function: tsx's helpers (__name) don't exist in the page.
+  const script = `(() => {
+    let text = "";
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async (t) => { text = String(t); }, readText: async () => text },
+    });
+  })();`;
+  await context.addInitScript(script);
+  // Pages already open (moving to another #/… route doesn't load the page again).
+  for (const page of context.pages()) await page.evaluate(script);
+}
+
+/** What the page last copied (with `ownClipboard`), with Windows line ends as \n. */
+export const clipboardText = (page: Page) => page.evaluate("navigator.clipboard.readText()").then((t) => String(t).replace(/\r\n/g, "\n"));
+
 export async function closeBrowser() {
   await browser?.close();
   browser = null;

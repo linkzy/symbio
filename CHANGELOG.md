@@ -5,6 +5,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Remote access: copy and share the link and code together** (#61), by @TariQMah (#64). The copy button next to the
+  link copies the link and the access code, ready to paste into a message; a Share button opens the system share sheet
+  with them (or copies them where the browser has none), and the code has its own copy button.
+- The end-to-end tests' copy checks use a clipboard of their own instead of the computer's: tests running side by side
+  overwrote each other's copies (and the clipboard of whoever ran them).
+
 ## [0.32.0]
 
 - **Runs on its own, or asks: a project setting** (Project settings → How core runs the project).

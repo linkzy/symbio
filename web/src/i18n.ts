@@ -63,6 +63,11 @@ const en: Dict = {
   "common.showAll": "Show all",
   "common.showLess": "Show less",
   "common.copy": "Copy",
+  "remote.copyBoth": "Copy link and code",
+  "remote.copiedBoth": "Link and code copied",
+  "remote.copyCode": "Copy access code",
+  "remote.copiedCode": "Access code copied",
+  "remote.share": "Share",
   "common.copied": "Copied",
   "common.copyFailed": "Couldn't copy",
 
@@ -596,6 +601,11 @@ const ptBR: Dict = {
   "common.showAll": "Mostrar tudo",
   "common.showLess": "Mostrar menos",
   "common.copy": "Copiar",
+  "remote.copyBoth": "Copiar link e código",
+  "remote.copiedBoth": "Link e código copiados",
+  "remote.copyCode": "Copiar código de acesso",
+  "remote.copiedCode": "Código de acesso copiado",
+  "remote.share": "Compartilhar",
   "common.copied": "Copiado",
   "common.copyFailed": "Não foi possível copiar",
 

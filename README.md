@@ -238,6 +238,7 @@ Thanks to everyone who has contributed to Symbio:
 - [Wesley Pereira (@wesleyhjpr)](https://github.com/wesleyhjpr): using an OpenCode already on your
   computer (#36) and the interface in Portuguese (Brazil) (#37).
 - [Veeramanikandan R (@Veeramanikandanr48)](https://github.com/Veeramanikandanr48): copy buttons in the chat (#42).
+- [TariQMah (@TariQMah)](https://github.com/TariQMah): copying and sharing the remote access link and code together (#64).
 
 Symbio ships a few skills by other authors, each credited in Settings → Skills with its license:
 [Matt Pocock](https://github.com/mattpocock/skills), [Jesse Vincent](https://github.com/obra/superpowers),

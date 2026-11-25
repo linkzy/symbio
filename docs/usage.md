@@ -35,7 +35,8 @@ something, `sym update --to <version>` goes back to the one before.
 
 **From another device.** `sym remote` opens a temporary Cloudflare link to your Symbio and prints it
 with an access code. Open the link anywhere (phone, another computer), enter the code, and you're
-in. A banner shows it's on, with a button to turn it off; after 10 wrong codes it turns off by
+in. In Settings → Remote access, one button copies the link and code together and another shares them
+(to e-mail them to yourself, say). A banner shows it's on, with a button to turn it off; after 10 wrong codes it turns off by
 itself. Whoever gets in controls your agents, so keep the link and code to yourself. Details in
 [docs/security.md](security.md#remote-access-optional).
 

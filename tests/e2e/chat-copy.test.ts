@@ -1,6 +1,6 @@
 // The chat's copy buttons: a whole answer (its text as written), a code block, and the human's own message.
 import { after, before, test } from "node:test";
-import { closeBrowser, idle, openPage, projectWithCore, startSymbio, until, type Symbio } from "./harness.js";
+import { clipboardText, closeBrowser, idle, openPage, ownClipboard, projectWithCore, startSymbio, until, type Symbio } from "./harness.js";
 
 let symbio: Symbio;
 before(async () => { symbio = await startSymbio(); });
@@ -11,7 +11,7 @@ const step = (agent: string, kind: string, rest: string | object = "") => `@${ag
 test("chat: copy buttons copy a code block and a whole message", async () => {
   const { project } = await projectWithCore(symbio, "Copy check");
   const { page, context } = await openPage(symbio);
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await ownClipboard(context);
   await page.goto(`${symbio.base}/#/p/${project.id}`);
 
   const message = ["Here is code:", "```ts", "const n: number = 1", "```", "After."].join("\\n");
@@ -24,7 +24,7 @@ test("chat: copy buttons copy a code block and a whole message", async () => {
   const assistant = page.locator(".msg-assistant", { hasText: "After." }).first();
   await assistant.waitFor();
   // The buttons show on hover; clicked directly here. waitForFunction doesn't wait for a promise, so the clipboard is polled.
-  const clipboard = () => page.evaluate(() => navigator.clipboard.readText().then((t) => t.replace(/\r\n/g, "\n")));
+  const clipboard = () => clipboardText(page);
   await assistant.locator(".msg-copy").first().evaluate((el) => (el as HTMLButtonElement).click());
   await until("the answer to be copied", async () => (await clipboard()) === ["Here is code:", "```ts", "const n: number = 1", "```", "After."].join("\n"));
   await assistant.locator(".msg-copy[title=Copied]").waitFor();

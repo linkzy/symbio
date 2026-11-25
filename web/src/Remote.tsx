@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Check, Globe, Power, Share2 } from "lucide-react";
 import { CopyButton, copyToClipboard } from "./ui";
 import { api, subscribe, type RemoteStatus } from "./api";
+import { useI18n } from "./i18n";
 
 /** Remote access status, kept current. */
 export function useRemote(): [RemoteStatus | null, () => void] {
@@ -26,13 +27,15 @@ function remoteShareText(status: RemoteStatus): string {
 
 /** Shares the remote link and code: the system share sheet where the browser has one, otherwise a copy of the same text. */
 function ShareButton({ text }: { text: string }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
+  const title = copied ? t("remote.copiedBoth") : t("remote.share");
   return (
     <button
       type="button"
       className={`btn ghost icon xs ${copied ? "copied" : ""}`}
-      title={copied ? "Link and code copied" : "Share"}
-      aria-label={copied ? "Link and code copied" : "Share"}
+      title={title}
+      aria-label={title}
       onClick={async (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -106,9 +109,11 @@ export function RemoteBanner() {
 /** Global settings: turn remote access on or off from this computer. */
 export function RemoteSection() {
   const [status, reload] = useRemote();
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const local = status?.code !== undefined;
+
   async function toggle() {
     setBusy(true);
     setError(null);
@@ -122,6 +127,7 @@ export function RemoteSection() {
       setBusy(false);
     }
   }
+
   return (
     <section className="section">
       <div className="section-head">
@@ -150,7 +156,7 @@ export function RemoteSection() {
                 <a href={status.url!} target="_blank" rel="noreferrer" className="mono small">
                   {status.url}
                 </a>
-                <CopyButton text={remoteShareText(status)} label="Copy link and code" copiedLabel="Link and code copied" />
+                <CopyButton text={remoteShareText(status)} label={t("remote.copyBoth")} copiedLabel={t("remote.copiedBoth")} />
                 <ShareButton text={remoteShareText(status)} />
               </div>
             </div>
@@ -159,7 +165,7 @@ export function RemoteSection() {
                 <span>Access code</span>
                 <div className="row" style={{ gap: 8 }}>
                   <code className="remote-code big">{formatCode(status.code)}</code>
-                  <CopyButton text={formatCode(status.code)} label="Copy access code" copiedLabel="Access code copied" />
+                  <CopyButton text={formatCode(status.code)} label={t("remote.copyCode")} copiedLabel={t("remote.copiedCode")} />
                 </div>
               </div>
             )}
