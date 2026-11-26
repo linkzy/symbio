@@ -168,8 +168,15 @@ project the connections it needs.
 - **Attachments** are stored in the project's `.symbio/attachments` (git-ignored), up to 50 MB each,
   with names made safe for every OS. The browser opens them through the API with its key; only
   images, PDFs and plain text are shown inline, everything else downloads.
-- **Updates** come from the npm registry (`symbio@latest`), installed by npm like any global
-  package; releases are built and published by GitHub Actions with provenance. Applying an update
+- **Updates** come from the npm registry, installed by npm like any global package; releases are
+  built and published by GitHub Actions with provenance. Which version to update to comes from
+  Symbio's update endpoint, `https://symbio.linkzy.dev/update` (at start and every hour): it answers
+  npm's latest version (the maintainers can hold a release back) and the Node.js it needs. The
+  request carries nothing about the projects or the computer and no id, only Symbio's version in
+  its user agent; the endpoint counts the checks, which is how many copies of Symbio are in use is
+  estimated, and keeps no addresses. Only installed copies use it (development folders, the tests
+  and CI ask npm), npm is asked when it doesn't answer, and `SYMBIO_UPDATE_URL=off` turns it off.
+  Its answer is only a version number, checked before it's used. Applying an update
   restarts Symbio, so it's never possible through remote access.
 - **Agent runtimes** (OpenCode, the Copilot SDK) also come from the npm registry, by npm, at the
   exact versions Symbio is tested with, into `~/.symbio/runtimes`, when the human asks for one in

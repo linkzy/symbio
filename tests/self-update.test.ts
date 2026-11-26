@@ -155,3 +155,18 @@ test("going back to an earlier version (sym update --to): installed, and automat
     globalThis.fetch = realFetch;
   }
 });
+
+test("installed copies ask Symbio's update endpoint; development folders, tests and CI ask npm", async () => {
+  const { usesUpdateEndpoint, parseEndpointRelease } = await import("../src/server/self-update.js");
+  const npm = { kind: "npm" as const, root: "x", prefix: "y" };
+  assert.equal(usesUpdateEndpoint(npm, {}), true);
+  assert.equal(usesUpdateEndpoint({ kind: "dev", root: "x", prefix: null }, {}), false);
+  assert.equal(usesUpdateEndpoint(npm, { SYMBIO_UPDATE_REGISTRY: "http://127.0.0.1:1" }), false, "a test's own registry");
+  assert.equal(usesUpdateEndpoint(npm, { SYMBIO_UPDATE_URL: "off" }), false);
+  assert.deepEqual(parseEndpointRelease({ version: "0.34.0", node: ">=22" }), { version: "0.34.0", node: ">=22" });
+  assert.deepEqual(parseEndpointRelease({ version: "0.35.0-beta.1" }), { version: "0.35.0-beta.1", node: null });
+  // Anything else falls back to npm.
+  assert.equal(parseEndpointRelease({ version: "latest" }), null);
+  assert.equal(parseEndpointRelease({ version: "0.34.0; rm -rf /" }), null);
+  assert.equal(parseEndpointRelease(null), null);
+});

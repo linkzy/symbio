@@ -48,8 +48,9 @@ the same GitHub account. To keep the two from colliding:
    Settings → Trusted Publisher (GitHub Actions, user `linkzy`, repo `symbio`, workflow
    `release.yml`).
 
-**Updates reach users by themselves.** Installed copies check npm and update automatically (see
-`self-update.ts`), so a release goes out to everyone within hours: keep `CHANGELOG.md` current (its
+**Updates reach users by themselves.** Installed copies ask Symbio's update endpoint
+(`symbio.linkzy.dev/update`, which answers npm's latest version unless a release is held back there)
+and update automatically (see `self-update.ts`), so a release goes out to everyone within hours: keep `CHANGELOG.md` current (its
 section for the version is shown in Settings → Updates). A copy running from a clone (`npm link`)
 never updates itself. To test updates without npm, install a packed version into a temporary
 prefix and point it at a stand-in registry: `SYMBIO_UPDATE_REGISTRY` (serves `/symbio/latest`),

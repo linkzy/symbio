@@ -4,7 +4,7 @@
 // running on Windows), installs, puts the old version back if that fails, and starts Symbio again.
 
 import { spawn } from "node:child_process";
-import { existsSync, promises as fs, realpathSync } from "node:fs";
+import { existsSync, promises as fs, readFileSync, realpathSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -80,9 +80,57 @@ export function compareVersions(a: string, b: string): number {
 // Overridable for tests (a local registry and package file); never set in normal use.
 const REGISTRY = (process.env.SYMBIO_UPDATE_REGISTRY ?? "https://registry.npmjs.org").replace(/\/+$/, "");
 
-/** The version npm installs as `symbio@latest`, and the Node.js it needs. */
-export async function latestRelease(): Promise<{ version: string; node: string | null }> {
+/**
+ * Symbio's update endpoint: the version to update to (npm's latest, which the maintainers can hold
+ * back while a release is checked) and the Node.js it needs. It counts the checks it gets, which is
+ * how many copies of Symbio are in use is estimated; it receives no project data, no id and no
+ * address it keeps (docs/security.md). Only installed copies use it: development folders, the tests
+ * and CI ask npm directly, so they aren't counted. "off" turns it off (npm only).
+ */
+const UPDATE_URL = process.env.SYMBIO_UPDATE_URL ?? "https://symbio.linkzy.dev/update";
+
+/** Whether this copy asks Symbio's update endpoint (else npm directly). */
+export function usesUpdateEndpoint(install = installInfo(), env = process.env): boolean {
+  return install.kind === "npm" && !env.SYMBIO_UPDATE_REGISTRY && env.SYMBIO_UPDATE_URL !== "off";
+}
+
+/** The endpoint's answer, checked: `{ "version": "0.33.0", "node": ">=22" }`. */
+export function parseEndpointRelease(data: unknown): { version: string; node: string | null } | null {
+  const d = data as { version?: unknown; node?: unknown } | null;
+  if (!d || typeof d.version !== "string" || !/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(d.version)) return null;
+  return { version: d.version, node: typeof d.node === "string" && d.node.trim() ? d.node.trim() : null };
+}
+
+async function endpointRelease(version: string): Promise<{ version: string; node: string | null } | null> {
+  try {
+    const res = await fetch(UPDATE_URL, {
+      signal: AbortSignal.timeout(10_000),
+      headers: { accept: "application/json", "user-agent": `symbio/${version}` },
+    });
+    return res.ok ? parseEndpointRelease(await res.json()) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The version to update to, and the Node.js it needs: from Symbio's update endpoint for installed
+ * copies, with npm (`symbio@latest`) when it doesn't answer, and for everything else.
+ */
+export async function latestRelease(current = installedVersion()): Promise<{ version: string; node: string | null }> {
+  if (usesUpdateEndpoint()) {
+    const answer = await endpointRelease(current);
+    if (answer) return answer;
+  }
   return release("latest");
+}
+
+function installedVersion(): string {
+  try {
+    return JSON.parse(readFileSync(path.join(packageRoot, "package.json"), "utf8")).version ?? "unknown";
+  } catch {
+    return "unknown";
+  }
 }
 
 /** A published version ("0.9.0", or a tag like "latest") and the Node.js it needs. */

@@ -204,7 +204,9 @@ Agents can run commands as your user, like any coding agent. Symbio adds rules o
 a sandbox. Start with a test folder and read what's allowed.
 
 **Does Symbio send my data anywhere?**
-Symbio itself only contacts npm and GitHub to check for updates and read release notes. Your
+Symbio itself only contacts its update endpoint (`symbio.linkzy.dev/update`, which says the latest version
+and counts the checks: no project data, no id) or npm when that doesn't answer, and GitHub to read
+release notes. Your
 conversations go to the model provider you chose, through the agent runtime. Remote access goes
 through Cloudflare only while you have it on. Notifications go only to the channels you turn on
 (Telegram, ntfy, a webhook, your e-mail server), and can say only "a project needs you". There are

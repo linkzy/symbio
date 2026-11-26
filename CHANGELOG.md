@@ -5,6 +5,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.34.0]
+
+- **Update checks go to Symbio's update endpoint** (`symbio.linkzy.dev/update`) instead of npm, which still answers when
+  the endpoint doesn't. It says which version to update to (npm's latest, unless a release is held back) and counts the
+  checks, so we can see how many copies of Symbio are in use; it gets no project data and no id, only Symbio's version.
+  Development folders, the tests and CI keep asking npm. `SYMBIO_UPDATE_URL=off` turns it off.
+
 - **The whole interface in Portuguese (Brazil)** (#13): every screen now goes through translations (about 1,350 texts),
   and Symbio starts in the browser's language (English when it doesn't have it); the choice in the top bar still wins.
   The texts live in one file per language (`web/src/i18n/`), keys are typed, `npm run i18n:check` lists what a language

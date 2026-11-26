@@ -1,6 +1,6 @@
 {
   "name": "symbio",
-  "version": "0.33.0",
+  "version": "0.34.0",
   "description": "Run a team of AI agents on a project from your browser, on OpenCode or GitHub Copilot CLI",
   "license": "MIT",
   "author": "LinKzy",
