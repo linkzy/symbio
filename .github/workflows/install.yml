@@ -21,7 +21,7 @@ jobs:
       run:
         shell: ${{ matrix.shell }}
     env:
-      SYMBIO_HOME: ${{ runner.temp }}\symbio-home
+      SYMBIO_HOME: ${{ github.workspace }}\.symbio-test # (the runner context isn't available here)
       SYMBIO_PORT: "4399"
       SYMBIO_NO_OPEN: "1"
     steps:
@@ -65,7 +65,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     env:
-      SYMBIO_HOME: ${{ runner.temp }}/symbio-home
+      SYMBIO_HOME: ${{ github.workspace }}/.symbio-test
       SYMBIO_PORT: "4399"
       SYMBIO_NO_OPEN: "1"
     steps:
