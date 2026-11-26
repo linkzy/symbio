@@ -51,31 +51,35 @@ first run), then features.
 2. **Runtimes already on the computer, for every runtime.** ([#59](https://github.com/linkzy/symbio/issues/59)) What
    #36 did for OpenCode (use the one on the PATH instead of Symbio's copy), for GitHub Copilot CLI and the runtimes
    that come later.
-3. **A clear first run.** ([#58](https://github.com/linkzy/symbio/issues/58)) With no agent runtime yet, Symbio says
+3. **Install with one line, no Node.js needed.** ([#71](https://github.com/linkzy/symbio/issues/71)) `irm …/install.ps1 | iex`
+   on Windows, `curl -fsSL …/install | bash` elsewhere, served by the website: a private copy of Node.js, Symbio
+   installed with it, `sym` and a shortcut, and what's missing said at the end. Today Symbio reaches only people who
+   already have Node.js 22; macOS and Linux follow #9.
+4. **A clear first run.** ([#58](https://github.com/linkzy/symbio/issues/58)) With no agent runtime yet, Symbio says
    what one is and lets the human install one for Symbio (a separate copy that doesn't touch anything already on the
-   computer) or use the one they already have.
-4. **Task priorities.** ([#4](https://github.com/linkzy/symbio/issues/4)) A priority on each task in the plan (e.g. urgent, high, normal, low), shown
+   computer) or use the one they already have, and says what else is missing and what it means (no model provider,
+   no git).
+5. **Task priorities.** ([#4](https://github.com/linkzy/symbio/issues/4)) A priority on each task in the plan (e.g. urgent, high, normal, low), shown
    on the Kanban cards and used to sort columns. core sets it when it plans or adds tasks and can
    change it (its plan tools take it), the human can change it on the board, and core is told when
    the human does, so it picks up urgent work first. Helpers see it with their task.
-5. **Model fallback that fits the conversation.** ([#38](https://github.com/linkzy/symbio/issues/38)) Retry the same model on network errors
+6. **Model fallback that fits the conversation.** ([#38](https://github.com/linkzy/symbio/issues/38)) Retry the same model on network errors
    before switching; prefer models whose context holds the conversation; when none does, ask the human
    (continue in a fresh session from a handoff note, go back to the original model, or pick another).
-6. **Which skills were used.** ([#63](https://github.com/linkzy/symbio/issues/63)) Loading a skill shows as a step in
+7. **Which skills were used.** ([#63](https://github.com/linkzy/symbio/issues/63)) Loading a skill shows as a step in
    the chat, and each agent's skills chip says which it used, so you can see whether skills pay off.
-7. **Create a project from a git repository.** ([#11](https://github.com/linkzy/symbio/issues/11)) In the New project dialog, an option to clone a
+8. **Create a project from a git repository.** ([#11](https://github.com/linkzy/symbio/issues/11)) In the New project dialog, an option to clone a
    repository (GitHub, Azure DevOps or any git URL, using the matching connection when it's private)
    into a folder and open it as a project, e.g. to continue on another computer. Tucked under an
    advanced option, so it doesn't get in the way of people who don't use git.
-8. **Rules register on import.** ([#12](https://github.com/linkzy/symbio/issues/12)) When importing an existing project, offer to build the register
+9. **Rules register on import.** ([#12](https://github.com/linkzy/symbio/issues/12)) When importing an existing project, offer to build the register
    from the project and from sources the human points to (e-mails, meeting notes, manuals), marking
    rules found only in the work as unsourced.
-9. **Make it showable.** ([#10](https://github.com/linkzy/symbio/issues/10)) Before inviting others: a sample project to try in five minutes, a
-   two-minute video of core running a team on a non-coding project, and a short GitHub Pages site
-   with screenshots ([#19](https://github.com/linkzy/symbio/issues/19)). First audience: the
-   OpenCode and GitHub Copilot CLI communities. Done: the README's animation of a real session, and
-   a social preview image.
-10. **Talk to Symbio.** ([#6](https://github.com/linkzy/symbio/issues/6)) A spoken conversation with core, hands-free: e.g. from a phone connected to
+10. **Make it showable.** ([#10](https://github.com/linkzy/symbio/issues/10)) Before inviting others: a sample project to try in five minutes, and a
+    two-minute video of core running a team on a non-coding project. First audience: the OpenCode and
+    GitHub Copilot CLI communities. Done: the website ([symbio.linkzy.dev](https://symbio.linkzy.dev), instead of a
+    GitHub Pages site, #19), the README's animation of a real session, and a social preview image.
+11. **Talk to Symbio.** ([#6](https://github.com/linkzy/symbio/issues/6)) A spoken conversation with core, hands-free: e.g. from a phone connected to
     the car over Bluetooth, with Symbio working on the computer at home (remote access). Not just
     dictation into the chat box:
     - Only what core says to the human is read aloud: never tool calls, command output, messages
@@ -90,9 +94,9 @@ first run), then features.
     Builds on the phone layout and on telling apart, in core's replies, what's for the human from
     the team's work. To check first: the browsers' own speech recognition and voices (quality,
     languages, whether they keep working with the screen off) against a speech service.
-11. **A public demo.** ([#14](https://github.com/linkzy/symbio/issues/14)) A container on a VPS with a light model, connections and other sensitive
+12. **A public demo.** ([#14](https://github.com/linkzy/symbio/issues/14)) A container on a VPS with a light model, connections and other sensitive
     options disabled, and visitors' data reset every few minutes (needs Linux headless support).
-12. **Filters for a project's skills.** ([#60](https://github.com/linkzy/symbio/issues/60)) Project settings → Skills
+13. **Filters for a project's skills.** ([#60](https://github.com/linkzy/symbio/issues/60)) Project settings → Skills
     gets the library's search and categories, and Select all / Clear for the skills shown.
 
 **Small improvements**, also open to anyone, each with an issue and where to start: the browser tab showing what needs you (#24), unread markers on agents (#25), opening a
@@ -142,23 +146,7 @@ Collected, not sorted or promised yet.
 - **Eyes for agents.** Screenshots of what they build, routed to vision-capable models (agents can
   already look at images with `view_image`).
 - **Per-task model routing.** Cheap models for simple tasks, strong ones for hard ones.
-- **Installing without Node.js** *(important before inviting people who aren't developers)*. Today
-  Symbio needs Node 22+ and `npm install -g symbio`, so it only reaches people who have both. An
-  install script per system family, run with one line in a terminal (`irm …/install.ps1 | iex` in
-  PowerShell, `curl -fsSL …/install | bash` elsewhere), the way OpenCode and Claude Code install:
-  - It downloads a private copy of Node (the official zip from nodejs.org) into `~/.symbio/runtime`:
-    nothing installed system-wide, no admin rights, invisible to other programs, removed with
-    Symbio. Then it installs Symbio with that copy's npm (OpenCode comes along, as today) and adds
-    the `sym` command and a desktop / Start-menu shortcut, so the terminal is needed only once.
-  - It's still the npm package underneath, so automatic updates, *Check now*, `sym update --to` and
-    the release gate keep working; Symbio updates the private Node too when needed.
-  - No executable to build per platform and no code-signing certificate: SmartScreen warns about
-    files downloaded in a browser, not what a PowerShell script downloads (to confirm on a clean
-    machine), and Node's and OpenCode's binaries are signed by their makers.
-  - Hosted from the GitHub repository at first; on Symbio's own domain if the project grows
-    (e.g. `curl -fsSL https://<domain>/install | bash`).
-  - Node, not Bun: Symbio is built and tested on Node, and SSH, the keyring module and child
-    processes are where Bun's compatibility gaps show.
+
 - **Jira and Trello connections** *(low priority)*. Connect a board, like GitHub or Azure DevOps
   today, so core can read the work from it (issues, cards, their details) and turn it into the
   local plan for helpers, then mark items done on the board as their tasks finish.

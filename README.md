@@ -6,7 +6,7 @@
 [![good first issues](https://img.shields.io/github/issues/linkzy/symbio/good%20first%20issue?label=good%20first%20issues)](https://github.com/linkzy/symbio/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
 [![Discussions](https://img.shields.io/github/discussions/linkzy/symbio?label=discussions)](https://github.com/linkzy/symbio/discussions)
 
-**Run a team of AI agents on your project, from your browser.**
+**Run a team of AI agents on your project, from your browser.** · [symbio.linkzy.dev](https://symbio.linkzy.dev)
 
 Symbio is a local web app that coordinates several AI agents working on the same folder. You talk
 to one lead agent, **core**. It works out the scope with you, proposes a plan, and hands the work

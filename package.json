@@ -4,7 +4,7 @@
   "description": "Run a team of AI agents on a project from your browser, on OpenCode or GitHub Copilot CLI",
   "license": "MIT",
   "author": "LinKzy",
-  "homepage": "https://github.com/linkzy/symbio#readme",
+  "homepage": "https://symbio.linkzy.dev",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/linkzy/symbio.git"
