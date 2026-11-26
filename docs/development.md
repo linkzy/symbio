@@ -161,6 +161,8 @@ browser's. To add a language:
   install, `sym`, start, a second run, uninstall. To try one on your machine without touching your
   own install, use a temporary `SYMBIO_HOME`, another `SYMBIO_PORT`, and `SYMBIO_NO_PATH=1`,
   `SYMBIO_NO_SHORTCUT=1`, `SYMBIO_NO_GIT=1` (the installer otherwise edits your PATH and shortcuts).
+  Also `SYMBIO_UPDATE_URL=off` before starting what it installed: an installed copy asks the update
+  endpoint, which would count it as a user.
   The website serves them from `main`, so a change reaches people when it's pushed there.
 - Files matching `scripts/_*` are git-ignored, which is handy for throwaway scripts.
 

@@ -24,6 +24,7 @@ jobs:
       SYMBIO_HOME: ${{ github.workspace }}\.symbio-test # (the runner context isn't available here)
       SYMBIO_PORT: "4399"
       SYMBIO_NO_OPEN: "1"
+      SYMBIO_UPDATE_URL: "off" # an installed copy would ask (and be counted by) the update endpoint
     steps:
       - uses: actions/checkout@v4
       - name: Install (as `irm … | iex` runs it)
@@ -68,6 +69,7 @@ jobs:
       SYMBIO_HOME: ${{ github.workspace }}/.symbio-test
       SYMBIO_PORT: "4399"
       SYMBIO_NO_OPEN: "1"
+      SYMBIO_UPDATE_URL: "off" # an installed copy would ask (and be counted by) the update endpoint
     steps:
       - uses: actions/checkout@v4
       - name: Install (as `curl … | sh` runs it)
