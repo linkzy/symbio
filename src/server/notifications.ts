@@ -58,6 +58,11 @@ const defaults = (): NotificationSettings => ({
 });
 
 const SEND_TIMEOUT_MS = 15_000;
+/** The bot's @username, so the human opens the right one (people often have several). */
+async function botName(token: string): Promise<string> {
+  const me = await telegram(token, "getMe", {}).catch(() => null);
+  return me?.result?.username ? `@${me.result.username}` : "The bot";
+}
 const str = (v: unknown, max = 500) => (typeof v === "string" ? v.trim().slice(0, max) : undefined);
 
 export class Notifications {
@@ -139,6 +144,8 @@ export class Notifications {
         if (value === null) await this.vault.deletePrefix(`notify:${channel}:${field}`);
         else if (typeof value === "string" && value.trim()) {
           if (channel === "webhook") checkWebhook(value.trim());
+          // Another bot: the chat found for the old one may never have talked to it, so it's found again.
+          if (channel === "telegram" && given.chatId === undefined && value.trim() !== (await this.vault.get("notify:telegram:token"))) next.telegram.chatId = "";
           await this.vault.set(`notify:${channel}:${field}`, value.trim());
         }
       }
@@ -177,7 +184,10 @@ export class Notifications {
     const res = await telegram(token, "getUpdates", { allowed_updates: ["message"] });
     const updates = (res.result ?? []) as { message?: { chat?: { id: number; first_name?: string; title?: string; username?: string } } }[];
     const chat = updates.map((u) => u.message?.chat).filter(Boolean).at(-1);
-    if (!chat) throw new Error("The bot hasn't received a message yet: open it in Telegram, send it /start, then try again.");
+    if (!chat) {
+      const bot = await botName(token);
+      throw new Error(`${bot} hasn't received a message yet: open ${bot} in Telegram, send it /start, then press Find my chat again.`);
+    }
     const name = chat.title ?? chat.first_name ?? chat.username ?? String(chat.id);
     await this.update({ telegram: { chatId: String(chat.id) } });
     return { chatId: String(chat.id), name };
@@ -207,7 +217,15 @@ export class Notifications {
         const token = await this.vault.get("notify:telegram:token");
         if (!token) throw new Error("No bot token.");
         if (!s.telegram.chatId) throw new Error("No chat yet: send the bot a message, then use Find my chat.");
-        await telegram(token, "sendMessage", { chat_id: s.telegram.chatId, text: text.slice(0, 4000), disable_web_page_preview: true });
+        try {
+          await telegram(token, "sendMessage", { chat_id: s.telegram.chatId, text: text.slice(0, 4000), disable_web_page_preview: true });
+        } catch (err) {
+          // The chat never wrote to this bot (another bot's chat, or a mistyped one), left it or blocked it:
+          // say which bot to open, instead of Telegram's "chat not found".
+          if (!/chat not found|can't initiate|blocked by the user|user is deactivated|kicked/i.test((err as Error).message)) throw err;
+          const bot = await botName(token);
+          throw new Error(`${bot} can't write to that chat yet: open ${bot} in Telegram, send it /start, then press Find my chat.`);
+        }
         return;
       }
       case "ntfy": {
@@ -279,7 +297,9 @@ async function post(url: string, init: { headers: Record<string, string>; body: 
 
 async function telegram(token: string, method: string, body: unknown): Promise<any> {
   if (!/^\d+:[\w-]+$/.test(token)) throw new Error("That doesn't look like a bot token (it reads like 123456:ABC…).");
-  const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+  // SYMBIO_TELEGRAM_API stands for Telegram in the tests.
+  const api = process.env.SYMBIO_TELEGRAM_API ?? "https://api.telegram.org";
+  const res = await fetch(`${api}/bot${token}/${method}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),

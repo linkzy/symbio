@@ -233,3 +233,42 @@ test("channels: the webhook and ntfy get what they read; secrets stay in the vau
     server.close();
   }
 });
+
+test("telegram: a chat the bot can't reach says which bot to open; another token finds the chat again", async () => {
+  // A stand-in for Telegram: @home_bot knows chat 42 only after the human writes to it.
+  let wrote = false;
+  const server = createServer((req, res) => {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      const method = req.url!.split("/").pop();
+      const reply = (status: number, data: unknown) => res.writeHead(status, { "content-type": "application/json" }).end(JSON.stringify(data));
+      if (method === "getMe") return reply(200, { ok: true, result: { username: "home_bot" } });
+      if (method === "getUpdates") return reply(200, { ok: true, result: wrote ? [{ message: { chat: { id: 42, first_name: "Danilo" } } }] : [] });
+      if (method === "sendMessage") {
+        return JSON.parse(body).chat_id === "42" && wrote ? reply(200, { ok: true, result: {} }) : reply(400, { ok: false, description: "Bad Request: chat not found" });
+      }
+      reply(404, { ok: false, description: "Not Found" });
+    });
+  });
+  await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+  process.env.SYMBIO_TELEGRAM_API = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  const notifications = new Notifications(mkdtempSync(path.join(os.tmpdir(), "symbio-notify-")), fakeVault() as any);
+  try {
+    await notifications.update({ telegram: { on: true, token: "111:old", chatId: "42" } });
+    await assert.rejects(notifications.test("telegram"), /@home_bot can't write to that chat yet: open @home_bot in Telegram, send it \/start/);
+    // A new bot: the old chat is dropped, to be found again with this one.
+    await notifications.update({ telegram: { token: "222:new" } });
+    assert.equal((await notifications.view()).telegram.chatId, "");
+    await assert.rejects(notifications.findTelegramChat(), /@home_bot hasn't received a message yet/);
+    wrote = true;
+    assert.deepEqual(await notifications.findTelegramChat(), { chatId: "42", name: "Danilo" });
+    await notifications.test("telegram");
+    // The same token again keeps the chat.
+    await notifications.update({ telegram: { token: "222:new" } });
+    assert.equal((await notifications.view()).telegram.chatId, "42");
+  } finally {
+    delete process.env.SYMBIO_TELEGRAM_API;
+    server.close();
+  }
+});

@@ -10,6 +10,11 @@ versions follow [Semantic Versioning](https://semver.org/).
   installs it for you (with winget; Windows may ask for permission), and there's **Download git** for its website.
   **Check again** also finds a git installed while Symbio was running, without restarting Symbio.
 
+- **Telegram: "chat not found" explained.** When the bot can't write to the chat (it was found for another bot, or the
+  chat never wrote to this one), the test and the notifications now say which bot to open (`@its_name`) and to send it
+  /start, instead of Telegram's "Bad Request: chat not found". Saving a different bot token clears the chat, so
+  **Find my chat** finds it again for the new bot.
+
 ## [0.35.0]
 
 - **Projects without git** (#72): creating a project no longer fails when git is there but doesn't work; the project is
