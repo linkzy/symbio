@@ -19,8 +19,8 @@ before(async () => {
     });
   });
   await new Promise<void>((r) => hooks.listen(0, "127.0.0.1", r));
-  // Gathered for a moment only, so the test doesn't wait 20 seconds.
-  symbio = await startSymbio({ SYMBIO_NOTIFY_GROUP_MS: "300" });
+  // Gathered for two seconds, not twenty: long enough for a slow machine (CI) to log both questions of one turn.
+  symbio = await startSymbio({ SYMBIO_NOTIFY_GROUP_MS: "2000" });
 });
 after(async () => {
   await closeBrowser();
@@ -83,7 +83,7 @@ test("a webhook set up in Settings gets a test, then what waits on the human; th
   const before = received.length;
   await symbio.call("POST", `/projects/${project.id}/agents/${core.id}/messages`, { text: tool("core", "ask_human", { question: "Which color?" }) });
   await idle(symbio, project.id);
-  await new Promise((r) => setTimeout(r, 1000));
+  await new Promise((r) => setTimeout(r, 3000)); // longer than the gathering: anything sent would be here
   assert.equal(received.length, before);
   assert.deepEqual((page as any).errors, []);
 });
