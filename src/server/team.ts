@@ -79,6 +79,11 @@ const STREAMED = new Set([
 // OpenCode's built-in interactive question tool (answered through session forms).
 const QUESTION_TOOLS = new Set(["question"]);
 
+/** Helpers counted against Project.maxHelpers: not stopped, and not one-off reviewers. */
+export function activeHelpers(project: Project): Agent[] {
+  return project.agents.filter((a) => a.role === "worker" && a.status !== "stopped" && !a.reviewer);
+}
+
 export class Team implements TeamCore {
   /** Last private-docs text sent to each agent, to avoid re-sending unchanged docs. */
   private docsSynced = new Map<string, string>();
@@ -566,6 +571,17 @@ export class Team implements TeamCore {
     },
   ): Promise<string> {
     if (!opts.byHuman && !opts.task && !opts.taskId) throw new Error("Give the helper a task: a plan task_id, or a task description.");
+    // The human's cap on helpers (to spend less): core reuses or stops one first. The human may go past it.
+    if (!opts.byHuman && project.maxHelpers) {
+      const helpers = activeHelpers(project);
+      if (helpers.length >= project.maxHelpers) {
+        throw new Error(
+          `This project allows at most ${project.maxHelpers} helper${project.maxHelpers === 1 ? "" : "s"} at a time (the human's setting), and it has ` +
+            `${helpers.length}: ${helpers.map((a) => a.name).join(", ")}. Give the task to one of them (assign_task), or stop one whose ` +
+            "area is finished for good (stop_agent) first.",
+        );
+      }
+    }
     if (opts.taskId) {
       // Validate before creating anything.
       const store = await this.plan(project);

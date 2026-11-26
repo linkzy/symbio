@@ -251,14 +251,26 @@ function Team({ project, onChanged }: { project: Project; onChanged: (p: Project
   const [workspace, setWorkspace] = useState(currentWorkspace);
   const currentReview = project.reviewBy ?? "core";
   const [review, setReview] = useState(currentReview);
+  const currentMax = project.maxHelpers ? String(project.maxHelpers) : "";
+  const [max, setMax] = useState(currentMax);
   const [saving, setSaving] = useState(false);
   const parsed = Number(value);
   const valid = value.trim() !== "" && Number.isInteger(parsed) && parsed >= 0 && parsed <= 1000;
-  const dirty = valid && (parsed !== current || renew !== currentRenew || workspace !== currentWorkspace || review !== currentReview);
+  const maxParsed = Number(max);
+  const maxValid = max.trim() === "" || (Number.isInteger(maxParsed) && maxParsed >= 1 && maxParsed <= 50);
+  const dirty = valid && maxValid && (parsed !== current || renew !== currentRenew || workspace !== currentWorkspace || review !== currentReview || max.trim() !== currentMax);
   async function save() {
     setSaving(true);
     try {
-      onChanged(await api.updateProject(project.id, { messageLimit: parsed, renewSessions: renew, helperWorkspace: workspace, reviewBy: review }));
+      onChanged(
+        await api.updateProject(project.id, {
+          messageLimit: parsed,
+          maxHelpers: max.trim() ? maxParsed : null,
+          renewSessions: renew,
+          helperWorkspace: workspace,
+          reviewBy: review,
+        }),
+      );
     } catch (e) {
       alert((e as Error).message);
     } finally {
@@ -275,6 +287,20 @@ function Team({ project, onChanged }: { project: Project; onChanged: (p: Project
         </div>
       </div>
       <div className="stack" style={{ padding: 16, gap: 14 }}>
+        <label className="field">
+          <span>{t("projectSettings.team.maxHelpers.title")}</span>
+          <input
+            type="number"
+            min={1}
+            max={50}
+            value={max}
+            placeholder={t("projectSettings.team.maxHelpers.none")}
+            onChange={(e) => setMax(e.target.value)}
+            style={{ maxWidth: 140 }}
+            data-testid="max-helpers"
+          />
+          <span className="hint">{t("projectSettings.team.maxHelpers.hint")}</span>
+        </label>
         <div className="field">
           <span>{t("projectSettings.team.workspace.title")}</span>
           <div className="seg">
@@ -342,6 +368,7 @@ function Team({ project, onChanged }: { project: Project; onChanged: (p: Project
           setRenew(currentRenew);
           setWorkspace(currentWorkspace);
           setReview(currentReview);
+          setMax(currentMax);
         }}
       />
     </section>

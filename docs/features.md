@@ -120,6 +120,9 @@
   and core are told (core then spends carefully); at the limit Symbio pauses the team. A daily pause
   ends by itself the next day, raising the limit resumes the team, and resuming it past the limit
   means you want it to go on.
+- **Helpers at a time.** A cap on how many helpers core may have at once (Project settings → Team),
+  to spend less: past it, core gives new work to the helpers it has or stops one first. You can
+  still add helpers yourself.
 - **Kind to small computers.** Agents' programs run at low priority, so the computer stays usable and
   reachable; the machine view in the top bar lists what they started and which project and agent
   started each (filter by project; Stop works from a phone too),

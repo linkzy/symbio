@@ -20,6 +20,9 @@ versions follow [Semantic Versioning](https://semver.org/).
     clears the old chat.
   - **ntfy** makes up a topic nobody guesses when it's turned on, and says what to do in the app.
   - **E-mail** says that most providers want an app password, with Gmail's settings.
+- **Helpers at a time** (Project settings → Team): a cap on how many helpers core may have at once, to spend less.
+  Past it, core is told to give the work to a helper it has or stop one first; one-off reviewers don't count, and you
+  can still add helpers yourself.
 - **core keeps independent work moving.** After each merge, core hears which tasks could start now (dependencies done,
   nothing held in their way) and which helpers are free, and its brief asks it to start independent work in parallel
   instead of queuing it behind the longest lane. Found in a long project where a whole part and the deployment waited

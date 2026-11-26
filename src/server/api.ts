@@ -695,6 +695,7 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       connections?: ProjectConnection[];
       allowedPatterns?: { action: string; pattern: string }[];
       messageLimit?: number;
+      maxHelpers?: number | null;
       renewSessions?: "manual" | "after-task";
       helperWorkspace?: HelperWorkspace;
       rulesRegister?: boolean;
@@ -809,6 +810,14 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       if (!Number.isInteger(limit) || limit < 0 || limit > 1000) return c.json({ error: "The message limit must be a whole number from 0 to 1000." }, 400);
       project.messageLimit = limit;
     }
+    if (body.maxHelpers !== undefined) {
+      if (body.maxHelpers === null || body.maxHelpers === 0) delete project.maxHelpers;
+      else {
+        const max = Number(body.maxHelpers);
+        if (!Number.isInteger(max) || max < 1 || max > 50) return c.json({ error: "The helper limit must be a whole number from 1 to 50, or empty for no limit." }, 400);
+        project.maxHelpers = max;
+      }
+    }
     // Only removals make sense from the UI ("always" answers add entries).
     if (body.allowedPatterns) {
       project.allowedPatterns = project.allowedPatterns.filter((a) =>
@@ -855,8 +864,8 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     }
     await store.update(project);
     bus.publish({ type: "project.updated", projectId: project.id });
-    if (body.allowedModels?.length || rolesChanged || body.name?.trim() || body.connections || coauthorsChanged) {
-      // Briefs mention the project name, allowed models and whether commits may name the AI.
+    if (body.allowedModels?.length || rolesChanged || body.name?.trim() || body.connections || coauthorsChanged || body.maxHelpers !== undefined) {
+      // Briefs mention the project name, allowed models, whether commits may name the AI and the helper limit.
       for (const agent of project.agents.filter((a) => a.status !== "stopped")) {
         await team.refreshInstructions(project, agent).catch(() => {});
       }

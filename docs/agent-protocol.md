@@ -133,6 +133,9 @@ being merged (unless core forces the merge).
   outlasts a day's); resuming past a limit marks it overridden (`budgetState.overridden`) so it
   doesn't pause again. Models without a price don't count; until
   the runtimes' prices are read after a restart, nothing is judged.
+- **Helpers at a time** (Project settings → Team; `Project.maxHelpers`): `spawn_agent` refuses a helper
+  past it (helpers not stopped count; one-off reviewers don't; the human can still create one past it),
+  saying to reuse one (`assign_task`) or stop one first. core's brief states it.
 - **Briefings** (`start_briefing`, core only; `.symbio/briefings.json`): the questions about one
   feature or request, asked together before work on it starts (2 to 15, blocking unless said),
   numbered like other questions and tagged with the briefing (`B1`). Needs you groups them under
@@ -254,7 +257,7 @@ core only:
 | `add_task` | Add a task to the plan, with its `done_when` (and `spec`) |
 | `start_briefing` | The questions about one feature together (feature, why, questions with context and options); answered, they become its spec |
 | `assign_task` | Give a task to an existing helper |
-| `spawn_agent` | Create a helper with a name, purpose, first task, and optionally a model (and `pin_model` to keep it on that model), where it works (`workspace`: own / shared) and, in a folder of several repositories, which one (`repo`); its `skills` |
+| `spawn_agent` | Create a helper with a name, purpose, first task, and optionally a model (and `pin_model` to keep it on that model), where it works (`workspace`: own / shared) and, in a folder of several repositories, which one (`repo`); its `skills`. Refused past the project's helpers-at-a-time limit |
 | `list_skills` | The skills core may give helpers, by category (name and what each is for), and its own |
 | `create_skill` | Write a skill (instructions only) into the library, with core as its author, to give helpers |
 | `set_skills` | Set a helper's skills (from the ones the project allows); not skills the human chose |

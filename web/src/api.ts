@@ -281,6 +281,7 @@ export interface Project {
   paused?: boolean;
   /** Conversational messages two agents may exchange in 30 minutes; 0 = no limit; unset = default (20). */
   messageLimit?: number;
+  maxHelpers?: number;
   renewSessions?: "manual" | "after-task";
   helperWorkspace?: "own" | "shared";
   rulesRegister?: boolean;
@@ -900,7 +901,7 @@ export const api = {
     id: string,
     patch: Partial<
       Pick<Project, "name" | "allowedModels" | "coordinatorModel" | "connections" | "allowedPatterns" | "messageLimit" | "renewSessions" | "helperWorkspace" | "rulesRegister" | "subRepositories" | "coreMode" | "reviewBy" | "aiCoauthors" | "coreSkills" | "requireReviewer" | "autonomy" | "questionStyle" | "standingPermissions" | "allowInstalls" | "notify">
-    > & { budget?: { total: number | null; daily: number | null; warnAt: number } | null; checks?: (Omit<Check, "id"> & { id?: string })[]; modelEfforts?: Record<string, string | null>; helperSkills?: string[] | null },
+    > & { maxHelpers?: number | null; budget?: { total: number | null; daily: number | null; warnAt: number } | null; checks?: (Omit<Check, "id"> & { id?: string })[]; modelEfforts?: Record<string, string | null>; helperSkills?: string[] | null },
   ) =>
     call<Project>("PATCH", `/projects/${id}`, patch),
   connections: () => call<ConnectionView[]>("GET", "/connections"),

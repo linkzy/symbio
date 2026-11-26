@@ -91,7 +91,7 @@ ${understandPoints(project)}
    could start): tasks whose dependencies are done and that touch other parts
    (another part of the work, publishing it, the documentation) start now, a free
    helper first, rather than queuing behind the longest lane. Hold back only when
-   the computer is overloaded or they would change the same files.
+   the computer is overloaded or they would change the same files.${maxHelpersNote(project)}
 6. **Reuse helpers.** Prefer giving a new task to an existing helper who already
    knows that part of the project (\`send_message\`) over spawning a new one. Don't
    stop helpers right after merging their work — an idle helper costs nothing.
@@ -367,6 +367,15 @@ export function modeNote(mode: CoreMode | undefined): string {
     );
   }
   return "";
+}
+
+/** The human's cap on helpers, in point 5 of core's brief. */
+function maxHelpersNote(project: Project): string {
+  const max = project.maxHelpers;
+  if (!max) return "";
+  return `\n   **The human allows at most ${max} helper${max === 1 ? "" : "s"} at a time** (to spend less;
+   one-off reviewers don't count): give new tasks to the ones you have, and stop
+   one whose area is finished for good before creating another.`;
 }
 
 /** Where helpers work, for the coordinator's tool list. */

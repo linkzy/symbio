@@ -194,6 +194,8 @@ export interface Project {
    * decides when one is worth it (request_review). See team/verify.ts.
    */
   requireReviewer?: boolean;
+  /** At most this many helpers at a time (not counting one-off reviewers); unset: no limit. The human sets it to spend less. */
+  maxHelpers?: number;
   /** Agent-facing Symbio updates (updates.ts) the coordinator has been told about. */
   updatesSeen?: string[];
   /** When the daily housekeeping check last ran (and told the human/coordinator). */

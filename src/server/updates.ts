@@ -378,6 +378,13 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "assets. stop_program says whether a program had already ended or isn't an agent's. When a helper works in the project folder, " +
       "commit only your own files (git add <paths>), never git add -A or git commit -a: it would sweep the helper's unfinished work into your commit.",
   },
+  {
+    id: "2026-11-26-max-helpers",
+    text:
+      "Helpers at a time: the human can cap how many helpers you may have at once (Project settings → Team), to spend less. When " +
+      "set, your brief says it, and spawn_agent refuses past it: give new tasks to the helpers you have, or stop one whose area is " +
+      "finished for good first. One-off reviewers don't count.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */
