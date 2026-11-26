@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.36.0]
+
 - **Fixed: a server connection that failed could stop Symbio.** When an SSH server didn't answer and then hung up,
   the second error had no listener and Symbio exited, stopping every team. Now the command fails with the reason, and
   a connection lost in the middle of a command or upload is reported instead of leaving it waiting.
