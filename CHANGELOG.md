@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- `sym update` checks with this copy's install id, like the running Symbio does; without it, it counted as an older copy.
+
 - **Install with one line, without Node.js** (#71): `irm https://symbio.linkzy.dev/install.ps1 | iex` on Windows, and
   `curl -fsSL https://symbio.linkzy.dev/install | sh` on macOS and Linux (still being tested there). It puts a private
   Node.js (checked against nodejs.org's checksums) and Symbio in `~/.symbio`, `sym` on your PATH and, on Windows, Symbio

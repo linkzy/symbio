@@ -166,9 +166,6 @@ export async function holdBack(home: string, left: string) {
   await fs.writeFile(file, JSON.stringify(settings, null, 2));
 }
 
-export async function latestVersion(): Promise<string> {
-  return (await latestRelease()).version;
-}
 
 /**
  * Whether this Node.js meets a release's requirement (">=22", ">=20.9.0"; anything fancier is

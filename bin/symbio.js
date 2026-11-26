@@ -238,7 +238,17 @@ async function update() {
   }
   let release;
   try {
-    release = wanted ? await self.release(wanted) : await self.latestRelease();
+    // With this copy's install id, as the running Symbio's checks have: without it, `sym update`
+    // was counted as an older copy (one without an id).
+    const installId = (() => {
+      try {
+        const id = JSON.parse(readFileSync(path.join(HOME, "updates.json"), "utf8")).installId;
+        return typeof id === "string" ? id : null;
+      } catch {
+        return null;
+      }
+    })();
+    release = wanted ? await self.release(wanted) : await self.latestRelease(pkg.version, installId);
   } catch (err) {
     console.error(wanted ? err.message : `Couldn't check for updates: ${err.message}`);
     process.exit(1);
