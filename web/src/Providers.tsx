@@ -3,9 +3,11 @@ import { AnimatePresence } from "motion/react";
 import { ArrowLeft, Bot, ExternalLink, Loader2, LogIn, Plus, Search, Trash2 } from "lucide-react";
 import { api, type ConnectedProvider, type OauthAttempt, type ProviderCatalogEntry, type ProviderFormField } from "./api";
 import { Dialog } from "./ui";
+import { t as translate, useI18n } from "./i18n";
 
 /** Settings section: the model providers OpenCode is connected to. */
 export function ProvidersSection() {
+  const { t } = useI18n();
   const [connected, setConnected] = useState<ConnectedProvider[] | null>(null);
   const [catalog, setCatalog] = useState<ProviderCatalogEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -29,15 +31,12 @@ export function ProvidersSection() {
     <section className="section">
       <div className="section-head">
         <div>
-          <h2>Model providers</h2>
-          <p>
-            The AI services OpenCode is signed in to. Every model you can pick for a project comes from one of these; remove the ones you don't
-            use to keep that list short. Keys are handed to OpenCode and not kept by Symbio.
-          </p>
+          <h2>{t("agents.providers.title")}</h2>
+          <p>{t("agents.providers.intro")}</p>
         </div>
         <button className="btn sm" onClick={() => setAdding(true)} disabled={!catalog.length}>
           <Plus size={13} />
-          Add provider
+          {t("agents.providers.add")}
         </button>
       </div>
 
@@ -46,7 +45,7 @@ export function ProvidersSection() {
           <div className="error">{error}</div>
         </div>
       )}
-      {!connected && !error && <div className="section-empty">Loading providers…</div>}
+      {!connected && !error && <div className="section-empty">{t("agents.providers.loading")}</div>}
 
       {connected && (
         <div className="section-body">
@@ -58,17 +57,17 @@ export function ProvidersSection() {
               <div className="grow">
                 <div className="list-title">{p.name}</div>
                 <div className="list-sub ellipsis">
-                  {p.models} model{p.models === 1 ? "" : "s"} · {sourceText(p)}
-                  {p.usedBy.length > 0 && ` · used by ${p.usedBy.join(", ")}`}
+                  {t(p.models === 1 ? "agents.providers.modelsOne" : "agents.providers.modelsMany", { n: p.models })} · {sourceText(p)}
+                  {p.usedBy.length > 0 && ` · ${t("agents.providers.usedBy", { list: p.usedBy.join(", ") })}`}
                 </div>
               </div>
               {p.logins.length > 0 ? (
-                <button className="btn ghost icon sm" onClick={() => setRemoving(p)} title="Remove">
+                <button className="btn ghost icon sm" onClick={() => setRemoving(p)} title={t("common.remove")}>
                   <Trash2 size={13} />
                 </button>
               ) : (
                 <span className="subtle small" title={removalHint(p)}>
-                  Can't remove here
+                  {t("agents.providers.cantRemove")}
                 </span>
               )}
             </div>
@@ -105,18 +104,19 @@ export function ProvidersSection() {
 
 function sourceText(p: ConnectedProvider) {
   if (p.source === "login") return p.logins.map((l) => l.label).join(", ");
-  if (p.source === "config") return "from your OpenCode config file";
-  if (p.source === "environment") return "from an environment variable";
-  return "built in";
+  if (p.source === "config") return translate("agents.providers.source.config");
+  if (p.source === "environment") return translate("agents.providers.source.environment");
+  return translate("agents.providers.source.builtIn");
 }
 
 function removalHint(p: ConnectedProvider) {
-  if (p.source === "config") return "Defined in OpenCode's config file (opencode.jsonc). Remove it there.";
-  if (p.source === "environment") return "Comes from an environment variable on this computer. Remove the variable to disconnect it.";
-  return "This provider is built into OpenCode.";
+  if (p.source === "config") return translate("agents.providers.hint.config");
+  if (p.source === "environment") return translate("agents.providers.hint.environment");
+  return translate("agents.providers.hint.builtIn");
 }
 
 function RemoveProviderDialog({ provider, onClose, onRemoved }: { provider: ConnectedProvider; onClose: () => void; onRemoved: () => void }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -133,29 +133,21 @@ function RemoveProviderDialog({ provider, onClose, onRemoved }: { provider: Conn
 
   return (
     <Dialog
-      title={`Remove ${provider.name}?`}
+      title={t("agents.providers.removeTitle", { name: provider.name })}
       onClose={onClose}
       footer={
         <>
           <button className="btn ghost" onClick={onClose}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button className="btn danger-solid" onClick={remove} disabled={busy}>
-            {busy ? "Removing…" : "Remove"}
+            {busy ? t("agents.providers.removing") : t("common.remove")}
           </button>
         </>
       }
     >
-      <p>
-        OpenCode signs out of {provider.name} and deletes its saved login ({provider.logins.map((l) => l.label).join(", ")}). Its{" "}
-        {provider.models} models leave the model list. To use it again, add it back with its key or sign-in.
-      </p>
-      {provider.usedBy.length > 0 && (
-        <div className="notice">
-          Selected in {provider.usedBy.join(", ")}. Agents there switch to the project's other models; if it has none left, they stop and ask
-          for one.
-        </div>
-      )}
+      <p>{t("agents.providers.removeBody", { name: provider.name, logins: provider.logins.map((l) => l.label).join(", "), n: provider.models })}</p>
+      {provider.usedBy.length > 0 && <div className="notice">{t("agents.providers.removeUsedBy", { list: provider.usedBy.join(", ") })}</div>}
       {error && <div className="error">{error}</div>}
     </Dialog>
   );
@@ -172,6 +164,7 @@ function AddProviderDialog({
   onClose: () => void;
   onAdded: () => void;
 }) {
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [chosen, setChosen] = useState<ProviderCatalogEntry | null>(null);
   const list = useMemo(() => {
@@ -182,21 +175,21 @@ function AddProviderDialog({
   if (chosen) return <ConnectDialog entry={chosen} onBack={() => setChosen(null)} onClose={onClose} onAdded={onAdded} />;
 
   return (
-    <Dialog title="Add a model provider" subtitle="Pick the service you have an account or API key for." onClose={onClose}>
+    <Dialog title={t("agents.providers.addTitle")} subtitle={t("agents.providers.addSubtitle")} onClose={onClose}>
       <div className="model-picker">
         <div className="model-picker-head">
           <Search size={14} className="subtle" />
-          <input autoFocus placeholder={`Search ${catalog.length} providers…`} value={query} onChange={(e) => setQuery(e.target.value)} />
+          <input autoFocus placeholder={t("agents.providers.searchPlaceholder", { n: catalog.length })} value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
         <div className="model-groups" style={{ maxHeight: 360 }}>
           {list.map((e) => (
             <div key={e.id} className="model-row" onClick={() => setChosen(e)}>
               <span className="model-name">{e.name}</span>
-              {connected.has(e.id) && <span className="tag green">Connected</span>}
-              <span className="subtle small">{e.methods.map((m) => (m.type === "key" ? "API key" : "Sign-in")).filter(unique).join(" · ")}</span>
+              {connected.has(e.id) && <span className="tag green">{t("agents.providers.connected")}</span>}
+              <span className="subtle small">{e.methods.map((m) => (m.type === "key" ? t("agents.providers.apiKey") : t("agents.providers.signInMethod"))).filter(unique).join(" · ")}</span>
             </div>
           ))}
-          {list.length === 0 && <div className="section-empty">No provider matches.</div>}
+          {list.length === 0 && <div className="section-empty">{t("agents.providers.noMatch")}</div>}
         </div>
       </div>
     </Dialog>
@@ -221,6 +214,7 @@ function ConnectDialog({
   onClose: () => void;
   onAdded: () => void;
 }) {
+  const { t } = useI18n();
   const [methodIndex, setMethodIndex] = useState(0);
   const method = entry.methods[methodIndex];
   const [answer, setAnswer] = useState<Record<string, string>>({});
@@ -252,7 +246,7 @@ function ConnectDialog({
       if (s.status === "complete") onAdded();
       else {
         setAttempt(null);
-        setError(s.status === "expired" ? "The sign-in expired. Try again." : s.message || "The sign-in failed.");
+        setError(s.status === "expired" ? t("agents.providers.expired") : s.message || t("agents.providers.failed"));
       }
     }, 2000);
     return () => clearInterval(timer);
@@ -295,17 +289,21 @@ function ConnectDialog({
   }
 
   const action =
-    method.type === "key" ? (busy ? "Connecting…" : "Connect") : attempt ? (busy ? "Finishing…" : "Finish") : busy ? "Starting…" : "Sign in";
+    method.type === "key"
+      ? t(busy ? "agents.providers.connecting" : "agents.providers.connect")
+      : attempt
+        ? t(busy ? "agents.providers.finishing" : "agents.providers.finish")
+        : t(busy ? "agents.providers.starting" : "agents.providers.signIn");
 
   return (
     <Dialog
-      title={`Connect ${entry.name}`}
+      title={t("agents.providers.connectTitle", { name: entry.name })}
       onClose={onClose}
       footer={
         <>
           <button className="btn ghost" onClick={onBack} disabled={busy}>
             <ArrowLeft size={14} />
-            Back
+            {t("common.back")}
           </button>
           {!(attempt && attempt.mode === "auto") && (
             <button className="btn primary" onClick={submit} disabled={busy || (attempt ? !code.trim() : missing || !!invalid)}>
@@ -318,7 +316,7 @@ function ConnectDialog({
       {attempt ? (
         <>
           <p>
-            Finish signing in to {entry.name} in your browser. If it didn't open, use this link:{" "}
+            {t("agents.providers.finishInBrowser", { name: entry.name })}{" "}
             <a href={attempt.url} target="_blank" rel="noopener noreferrer">
               {attempt.url} <ExternalLink size={12} />
             </a>
@@ -326,12 +324,12 @@ function ConnectDialog({
           {attempt.instructions && <div className="notice">{attempt.instructions}</div>}
           {attempt.mode === "code" ? (
             <label className="field">
-              <span>Code</span>
-              <input autoFocus value={code} onChange={(e) => setCode(e.target.value)} placeholder="Paste the code shown after signing in" />
+              <span>{t("agents.providers.code")}</span>
+              <input autoFocus value={code} onChange={(e) => setCode(e.target.value)} placeholder={t("agents.providers.codePlaceholder")} />
             </label>
           ) : (
             <div className="row subtle small">
-              <Loader2 size={13} className="spin" /> Waiting for the sign-in to finish…
+              <Loader2 size={13} className="spin" /> {t("agents.providers.waiting")}
             </div>
           )}
         </>
@@ -339,7 +337,7 @@ function ConnectDialog({
         <>
           {entry.methods.length > 1 && (
             <div className="field">
-              <span>How to connect</span>
+              <span>{t("agents.providers.howToConnect")}</span>
               <div className="seg">
                 {entry.methods.map((m, i) => (
                   <button key={i} className={i === methodIndex ? "on" : ""} onClick={() => setMethodIndex(i)}>
@@ -365,18 +363,18 @@ function ConnectDialog({
                 <input value={answer[f.key] ?? ""} onChange={(e) => setAnswer({ ...answer, [f.key]: e.target.value })} placeholder={f.placeholder} />
               )}
               {f.description && <span className="hint">{f.description}</span>}
-              {invalid === f && <span className="hint" style={{ color: "var(--red)" }}>This doesn't look right.</span>}
+              {invalid === f && <span className="hint" style={{ color: "var(--red)" }}>{t("agents.providers.invalid")}</span>}
             </label>
           ))}
           {method.type === "key" ? (
             <label className="field">
-              <span>API key</span>
+              <span>{t("agents.providers.apiKey")}</span>
               <input type="password" autoFocus={fields.length === 0} value={key} onChange={(e) => setKey(e.target.value)} />
             </label>
           ) : (
-            <p className="subtle">You'll sign in on {entry.name}'s website, then come back here.</p>
+            <p className="subtle">{t("agents.providers.signInOnSite", { name: entry.name })}</p>
           )}
-          {entry.other.length > 0 && <p className="subtle small">Also possible outside Symbio: {entry.other.join("; ")}.</p>}
+          {entry.other.length > 0 && <p className="subtle small">{t("agents.providers.alsoOutside", { list: entry.other.join("; ") })}</p>}
         </>
       )}
       {error && <div className="error">{error}</div>}

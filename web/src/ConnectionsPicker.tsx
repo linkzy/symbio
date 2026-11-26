@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Cloud, FolderUp, GitBranch, Server, Timer, X } from "lucide-react";
 import { api, type ConnectionGrant, type ConnectionView, type ProjectConnection } from "./api";
+import { useI18n } from "./i18n";
 
 export function ConnIcon({ type, small }: { type: ConnectionView["type"]; small?: boolean }) {
   const size = small ? 12 : 15;
@@ -37,6 +38,7 @@ export function ConnectionsPicker({
   agentName?: (id: string) => string;
   onStopGrant?: (g: ConnectionGrant) => void;
 }) {
+  const { t, locale } = useI18n();
   const [all, setAll] = useState<ConnectionView[] | null>(null);
   useEffect(() => {
     api
@@ -45,11 +47,11 @@ export function ConnectionsPicker({
       .catch(() => setAll([]));
   }, []);
 
-  if (!all) return <div className="subtle small">Loading connections…</div>;
+  if (!all) return <div className="subtle small">{t("connectionsPicker.loading")}</div>;
   if (all.length === 0) {
     return (
       <div className="subtle small">
-        No connections yet — add GitHub, Azure DevOps or servers in <a className="link" href="#/settings/connections">Settings</a>.
+        {t("connectionsPicker.none.before")}<a className="link" href="#/settings/connections">{t("app.settings")}</a>{t("connectionsPicker.none.after")}
       </div>
     );
   }
@@ -80,11 +82,11 @@ export function ConnectionsPicker({
             </label>
             {l && (
               <div className="seg">
-                <button className={l.policy === "ask" ? "on" : ""} onClick={() => setPolicy(c.id, "ask")} title="Every action waits for your approval">
-                  Ask me
+                <button className={l.policy === "ask" ? "on" : ""} onClick={() => setPolicy(c.id, "ask")} title={t("connectionsPicker.askTitle")}>
+                  {t("connectionsPicker.ask")}
                 </button>
-                <button className={l.policy === "allow" ? "on" : ""} onClick={() => setPolicy(c.id, "allow")} title="Agents act without asking">
-                  Allowed
+                <button className={l.policy === "allow" ? "on" : ""} onClick={() => setPolicy(c.id, "allow")} title={t("connectionsPicker.allowTitle")}>
+                  {t("connectionsPicker.allow")}
                 </button>
               </div>
             )}
@@ -95,23 +97,24 @@ export function ConnectionsPicker({
                 <div key={g.agentId} className="pick-grant">
                   <Timer size={12} />
                   <span className="grow">
-                    {agentName?.(g.agentId) ?? "An agent"} acts without asking{" "}
-                    {g.until ? `until ${new Date(g.until).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "until you stop it"}
+                    {g.until
+                      ? t("connectionsPicker.grantUntil", { agent: agentName?.(g.agentId) ?? t("connectionsPicker.anAgent"), time: new Date(g.until).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }) })
+                      : t("connectionsPicker.grantUntilStop", { agent: agentName?.(g.agentId) ?? t("connectionsPicker.anAgent") })}
                   </span>
                   {onStopGrant && (
                     <button className="btn ghost xs" onClick={() => onStopGrant(g)}>
-                      Stop
+                      {t("common.stop")}
                     </button>
                   )}
                 </div>
               ))}
               {commands.length > 0 && (
                 <div className="pick-commands">
-                  <span className="subtle small">Run without asking:</span>
+                  <span className="subtle small">{t("connectionsPicker.runWithoutAsking")}</span>
                   {commands.map((p) => (
                     <span key={p} className="pick-command">
                       <code>{p}</code>
-                      <button className="btn ghost icon xs" aria-label={`Ask again for ${p}`} title="Ask again for these" onClick={() => removeCommand(c.id, p)}>
+                      <button className="btn ghost icon xs" aria-label={t("connectionsPicker.askAgainFor", { pattern: p })} title={t("connectionsPicker.askAgain")} onClick={() => removeCommand(c.id, p)}>
                         <X size={11} />
                       </button>
                     </span>

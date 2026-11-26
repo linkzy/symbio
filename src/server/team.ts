@@ -1396,8 +1396,9 @@ export class Team implements TeamCore {
     const next = this.checkSkills(project, skills, by);
     agent.skills = next;
     agent.skillsBy = by;
-    await this.store.update(project);
+    // The runtime first: from here on the agent's skills read as the new ones, and its next turn must have them.
     await this.rt(agent).setSkills(agent.sessionId, next);
+    await this.store.update(project);
     bus.publish({ type: "project.updated", projectId: project.id });
     const list = next.length ? next.join(", ") : "none";
     await this.log(project, { from: "symbio", to: "human", kind: "system", text: `${agent.name}'s skills: ${list} (by ${by === "human" ? "the human" : "core"}).` });

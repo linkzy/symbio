@@ -3,6 +3,9 @@ import { AnimatePresence } from "motion/react";
 import { AlertTriangle, Bot, Gauge, Square } from "lucide-react";
 import { api, subscribe, type AgentProgram, type MachineLoad } from "./api";
 import { Drawer } from "./ui";
+import { useI18n } from "./i18n";
+
+type Translate = ReturnType<typeof useI18n>["t"];
 
 // This computer, in the top bar: its load, the programs agents started (stoppable, also from a
 // phone), and what happens when it's overloaded (server: machine.ts).
@@ -11,15 +14,16 @@ const gb = (bytes: number) => `${(bytes / 1024 ** 3).toFixed(1)} GB`;
 const mb = (bytes: number) => (bytes >= 1024 ** 3 ? gb(bytes) : `${Math.round(bytes / 1024 ** 2)} MB`);
 
 /** "overdrive · core", or the agents that were working when it started when Symbio can't tell which one. */
-function ownerText(p: AgentProgram): string {
-  if (!p.owners.length) return "Started by an agent Symbio can't tell";
+function ownerText(p: AgentProgram, t: Translate): string {
+  if (!p.owners.length) return t("usage.machine.unknownOwner");
   if (p.owners.length === 1) return `${p.owners[0].project} · ${p.owners[0].agent}`;
   const names = p.owners.map((o) => (new Set(p.owners.map((x) => x.projectId)).size > 1 ? `${o.project} · ${o.agent}` : o.agent));
-  const one = `${names.slice(0, -1).join(", ")} or ${names[names.length - 1]}`;
-  return new Set(p.owners.map((x) => x.projectId)).size > 1 ? `One of: ${one}` : `${p.owners[0].project} · ${one}`;
+  const one = t("usage.machine.ownersOr", { names: names.slice(0, -1).join(", "), last: names[names.length - 1] });
+  return new Set(p.owners.map((x) => x.projectId)).size > 1 ? t("usage.machine.oneOf", { names: one }) : `${p.owners[0].project} · ${one}`;
 }
 
 export function MachineBadge() {
+  const { t } = useI18n();
   const [load, setLoad] = useState<MachineLoad | null>(null);
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -35,10 +39,10 @@ export function MachineBadge() {
       <button
         className={`btn ghost sm machine-badge ${load.overloaded ? "overloaded" : ""}`}
         onClick={() => setOpen(true)}
-        title={`This computer: CPU ${load.cpu}%, memory ${gb(used)} of ${gb(load.memory.total)} used. Click for the programs agents started.`}
+        title={t("usage.machine.badgeTitle", { cpu: load.cpu, used: gb(used), total: gb(load.memory.total) })}
       >
         {load.overloaded ? <AlertTriangle size={14} /> : <Gauge size={14} />}
-        <span className="btn-label tnum">{load.overloaded ? "Overloaded" : `CPU ${load.cpu}%`}</span>
+        <span className="btn-label tnum">{load.overloaded ? t("usage.machine.overloaded") : `CPU ${load.cpu}%`}</span>
       </button>
       <AnimatePresence>{open && <MachineDrawer load={load} onLoad={setLoad} onClose={() => setOpen(false)} />}</AnimatePresence>
     </>
@@ -46,6 +50,7 @@ export function MachineBadge() {
 }
 
 function MachineDrawer({ load, onLoad, onClose }: { load: MachineLoad; onLoad: (l: MachineLoad) => void; onClose: () => void }) {
+  const { t } = useI18n();
   const [programs, setPrograms] = useState<AgentProgram[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [stopping, setStopping] = useState<number | null>(null);
@@ -67,7 +72,7 @@ function MachineDrawer({ load, onLoad, onClose }: { load: MachineLoad; onLoad: (
   }, []);
 
   async function stop(p: AgentProgram) {
-    if (!confirm(`Stop ${p.name} (pid ${p.pid}) and everything it started? The agent that runs it is told by its command failing.`)) return;
+    if (!confirm(t("usage.machine.stopConfirm", { name: p.name, pid: p.pid }))) return;
     setStopping(p.pid);
     try {
       await api.stopProgram(p.pid);
@@ -88,26 +93,26 @@ function MachineDrawer({ load, onLoad, onClose }: { load: MachineLoad; onLoad: (
   const projects = new Map<string, { name: string; count: number }>();
   for (const p of programs ?? []) {
     const id = projectOf(p);
-    const entry = projects.get(id) ?? { name: id === "?" ? "Not known" : p.owners[0].project, count: 0 };
+    const entry = projects.get(id) ?? { name: id === "?" ? t("usage.machine.notKnown") : p.owners[0].project, count: 0 };
     entry.count++;
     projects.set(id, entry);
   }
   const shown = programs?.filter((p) => !project || projectOf(p) === project);
   return (
-    <Drawer title="This computer" onClose={onClose}>
+    <Drawer title={t("settings.group.computer")} onClose={onClose}>
       <div className="machine">
         <div className="machine-load">
           <div>
-            <span className="subtle small">CPU ({load.cores} threads)</span>
+            <span className="subtle small">{t("usage.machine.cpuThreads", { n: load.cores })}</span>
             <strong className="tnum">{load.cpu}%</strong>
             <span className="machine-bar">
               <span style={{ width: `${Math.min(100, load.cpu)}%` }} className={load.cpu >= 90 ? "high" : ""} />
             </span>
           </div>
           <div>
-            <span className="subtle small">Memory</span>
+            <span className="subtle small">{t("usage.machine.memory")}</span>
             <strong className="tnum">
-              {gb(used)} <span className="subtle">of {gb(load.memory.total)}</span>
+              {gb(used)} <span className="subtle">{t("usage.machine.of", { total: gb(load.memory.total) })}</span>
             </strong>
             <span className="machine-bar">
               <span style={{ width: `${Math.min(100, (100 * used) / load.memory.total)}%` }} className={load.memory.free / load.memory.total < 0.12 ? "high" : ""} />
@@ -118,20 +123,22 @@ function MachineDrawer({ load, onLoad, onClose }: { load: MachineLoad; onLoad: (
           <div className="banner red">
             <AlertTriangle size={15} />
             <div className="grow">
-              <strong>Overloaded</strong>
-              {load.since ? ` since ${new Date(load.since).toLocaleTimeString()}` : ""}.{" "}
+              <strong>{t("usage.machine.overloaded")}</strong>
+              {load.since ? ` ${t("usage.machine.since", { time: new Date(load.since).toLocaleTimeString() })}` : ""}.{" "}
               <span className="muted">
-                core and you were told{load.holding ? "; messages between agents wait until it recovers" : ""}. Stop what isn't needed below.
+                {t("usage.machine.told")}
+                {load.holding ? t("usage.machine.holding") : ""}
+                {t("usage.machine.stopBelow")}
               </span>
             </div>
           </div>
         )}
 
         <div className="machine-section-title">
-          <span className="grow">Programs agents started</span>
+          <span className="grow">{t("usage.machine.programs")}</span>
           {programs && projects.size > 1 && (
-            <select className="machine-filter" value={project} onChange={(e) => setProject(e.target.value)} aria-label="Project">
-              <option value="">All projects ({programs.length})</option>
+            <select className="machine-filter" value={project} onChange={(e) => setProject(e.target.value)} aria-label={t("usage.machine.project")}>
+              <option value="">{t("usage.machine.allProjects", { n: programs.length })}</option>
               {[...projects]
                 .sort((a, b) => (a[0] === "?" ? 1 : b[0] === "?" ? -1 : a[1].name.localeCompare(b[1].name)))
                 .map(([id, e]) => (
@@ -143,8 +150,8 @@ function MachineDrawer({ load, onLoad, onClose }: { load: MachineLoad; onLoad: (
           )}
         </div>
         {error && <div className="error">{error}</div>}
-        {!programs && !error && <div className="subtle small">Looking…</div>}
-        {programs?.length === 0 && <div className="subtle small">None running.</div>}
+        {!programs && !error && <div className="subtle small">{t("usage.machine.looking")}</div>}
+        {programs?.length === 0 && <div className="subtle small">{t("usage.machine.none")}</div>}
         <div className="machine-programs">
           {shown?.map((p) => (
             <div key={p.pid} className="machine-program" data-pid={p.pid}>
@@ -154,20 +161,20 @@ function MachineDrawer({ load, onLoad, onClose }: { load: MachineLoad; onLoad: (
                   <span className="subtle small tnum">
                     pid {p.pid} · {p.cpu === null ? "CPU …" : `CPU ${p.cpu}%`} · {mb(p.memory)}
                     {p.runtime ? ` · ${p.runtime}` : ""}
-                    {p.started ? ` · since ${new Date(p.started).toLocaleTimeString()}` : ""}
+                    {p.started ? ` · ${t("usage.machine.since", { time: new Date(p.started).toLocaleTimeString() })}` : ""}
                   </span>
                 </div>
                 <div className="machine-owner small">
                   <Bot size={12} />
-                  {ownerText(p)}
+                  {ownerText(p, t)}
                 </div>
                 <code className="machine-command" title={p.command}>
                   {p.command}
                 </code>
               </div>
-              <button className="btn sm" disabled={stopping === p.pid} onClick={() => stop(p)} aria-label={`Stop ${p.name} (pid ${p.pid})`}>
+              <button className="btn sm" disabled={stopping === p.pid} onClick={() => stop(p)} aria-label={t("usage.machine.stopProgram", { name: p.name, pid: p.pid })}>
                 <Square size={12} />
-                Stop
+                {t("common.stop")}
               </button>
             </div>
           ))}
@@ -180,17 +187,11 @@ function MachineDrawer({ load, onLoad, onClose }: { load: MachineLoad; onLoad: (
             onChange={(e) => api.machineSettings({ holdTurns: e.target.checked }).then(onLoad, (err) => alert(err.message))}
           />
           <span>
-            When this computer is overloaded, also hold messages between agents until it recovers
-            <span className="hint">
-              Agents already working finish their step; new turns wait, so tokens aren't spent while the machine struggles. You can
-              still talk to them.
-            </span>
+            {t("usage.machine.hold")}
+            <span className="hint">{t("usage.machine.holdHint")}</span>
           </span>
         </label>
-        <p className="subtle small">
-          Programs agents start run at low priority, so the system, remote desktop tools and you come first. Stopping one here stops it
-          and what it started, by its process id; only programs agents started are listed.
-        </p>
+        <p className="subtle small">{t("usage.machine.footer")}</p>
       </div>
     </Drawer>
   );

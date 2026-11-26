@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowUp, Folder, FolderPlus, HardDrive, Home as HomeIcon } from "lucide-react";
 import { api } from "./api";
+import { useI18n } from "./i18n";
 
 type Listing = Awaited<ReturnType<typeof api.listDirs>>;
 
@@ -9,6 +10,7 @@ type Listing = Awaited<ReturnType<typeof api.listDirs>>;
  * where the native dialog would open on that computer's screen instead of yours.
  */
 export function FolderBrowser({ start, onPick, onCancel }: { start?: string; onPick: (path: string) => void; onCancel: () => void }) {
+  const { t } = useI18n();
   const [listing, setListing] = useState<Listing | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -48,22 +50,22 @@ export function FolderBrowser({ start, onPick, onCancel }: { start?: string; onP
   return (
     <div className="folder-browser">
       <div className="folder-browser-head">
-        <button className="btn ghost icon sm" title="Up one level" disabled={!listing?.parent || loading} onClick={() => open(listing!.parent!)}>
+        <button className="btn ghost icon sm" title={t("folderBrowser.up")} disabled={!listing?.parent || loading} onClick={() => open(listing!.parent!)}>
           <ArrowUp size={14} />
         </button>
         <code className="folder-browser-path ellipsis" title={listing?.path}>
           {listing?.path ?? "…"}
         </code>
-        <button className="btn ghost sm" title="Create a folder here" disabled={!listing || loading} onClick={() => setNewName(newName === null ? "" : null)}>
+        <button className="btn ghost sm" title={t("folderBrowser.createHere")} disabled={!listing || loading} onClick={() => setNewName(newName === null ? "" : null)}>
           <FolderPlus size={14} />
-          New folder
+          {t("folderBrowser.newFolder")}
         </button>
       </div>
       {newName !== null && (
         <div className="folder-browser-new">
           <input
             autoFocus
-            placeholder="Folder name"
+            placeholder={t("folderBrowser.folderName")}
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => {
@@ -72,10 +74,10 @@ export function FolderBrowser({ start, onPick, onCancel }: { start?: string; onP
             }}
           />
           <button className="btn primary sm" disabled={!newName.trim() || loading} onClick={() => void create()}>
-            Create
+            {t("common.create")}
           </button>
           <button className="btn ghost sm" onClick={() => setNewName(null)}>
-            Cancel
+            {t("common.cancel")}
           </button>
         </div>
       )}
@@ -83,7 +85,7 @@ export function FolderBrowser({ start, onPick, onCancel }: { start?: string; onP
         {listing && (
           <button className="btn ghost sm" onClick={() => open(listing.home)}>
             <HomeIcon size={13} />
-            Home
+            {t("folderBrowser.home")}
           </button>
         )}
         {listing?.roots.map((r) => (
@@ -95,7 +97,7 @@ export function FolderBrowser({ start, onPick, onCancel }: { start?: string; onP
       </div>
       <div className="folder-browser-list">
         {error && <div className="error">{error}</div>}
-        {listing?.dirs.length === 0 && !error && <div className="section-empty">No folders here.</div>}
+        {listing?.dirs.length === 0 && !error && <div className="section-empty">{t("folderBrowser.empty")}</div>}
         {listing?.dirs.map((d) => (
           <button key={d} className="folder-browser-item" disabled={loading} onClick={() => open(join(listing.path, d))}>
             <Folder size={14} />
@@ -104,13 +106,13 @@ export function FolderBrowser({ start, onPick, onCancel }: { start?: string; onP
         ))}
       </div>
       <div className="folder-browser-foot">
-        <span className="small subtle">Open a folder, then choose it. To start somewhere new, create a folder with New folder.</span>
+        <span className="small subtle">{t("folderBrowser.hint")}</span>
         <span className="spacer" />
         <button className="btn ghost sm" onClick={onCancel}>
-          Cancel
+          {t("common.cancel")}
         </button>
         <button className="btn primary sm" disabled={!listing} onClick={() => listing && onPick(listing.path)}>
-          Choose this folder
+          {t("folderBrowser.choose")}
         </button>
       </div>
     </div>

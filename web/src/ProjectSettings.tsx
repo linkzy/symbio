@@ -448,7 +448,7 @@ function Connections({ project, onChanged }: { project: Project; onChanged: (p: 
           value={value}
           onChange={setValue}
           grants={project.connectionGrants}
-          agentName={(id) => project.agents.find((a) => a.id === id)?.name ?? "An agent"}
+          agentName={(id) => project.agents.find((a) => a.id === id)?.name ?? t("connectionsPicker.anAgent")}
           onStopGrant={(g) => api.stopConnectionGrant(project.id, g.agentId, g.connectionId).then(onChanged, (e) => alert(e.message))}
         />
       </div>

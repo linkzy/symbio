@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { CheckCircle2, Circle, CircleDashed, ClipboardList, Eye, FileText, Link2, Paperclip, ListChecks, Lock, MessageSquare, OctagonAlert, Pencil } from "lucide-react";
 import { api, type Agent, type Plan, type Project, type Task, type TaskStatus } from "./api";
+import { useI18n, type MessageKey } from "./i18n";
 import { Md } from "./files";
 import { Avatar, Drawer, EmptyState, clock, timeAgo } from "./ui";
 import { ReviewActions, ReviewGuide, TaskChanges, waitingForReview } from "./Review";
@@ -9,22 +10,23 @@ import { TaskChecks, TaskReviews } from "./Checks";
 import { useSharedFiles } from "./Attachments";
 import { FileCard } from "./files";
 
-const COLUMNS: { status: TaskStatus; title: string; icon: React.ReactNode }[] = [
-  { status: "todo", title: "To do", icon: <Circle size={14} /> },
-  { status: "in-progress", title: "In progress", icon: <CircleDashed size={14} /> },
-  { status: "blocked", title: "Blocked", icon: <OctagonAlert size={14} /> },
-  { status: "review", title: "Review", icon: <Eye size={14} /> },
-  { status: "done", title: "Done", icon: <CheckCircle2 size={14} /> },
+const COLUMNS: { status: TaskStatus; title: MessageKey; icon: React.ReactNode }[] = [
+  { status: "todo", title: "work.kanban.col.todo", icon: <Circle size={14} /> },
+  { status: "in-progress", title: "work.kanban.col.inProgress", icon: <CircleDashed size={14} /> },
+  { status: "blocked", title: "work.kanban.col.blocked", icon: <OctagonAlert size={14} /> },
+  { status: "review", title: "work.kanban.col.review", icon: <Eye size={14} /> },
+  { status: "done", title: "work.kanban.col.done", icon: <CheckCircle2 size={14} /> },
 ];
 
 export function Kanban({ project, plan }: { project: Project; plan: Plan | null }) {
+  const { t } = useI18n();
   const [openTask, setOpenTask] = useState<string | null>(null);
 
   if (!plan) return null;
   if (plan.status === "none") {
     return (
-      <EmptyState icon={<ClipboardList size={20} />} title="No plan yet">
-        core proposes a plan once you've agreed on the scope. It shows up here for your approval, then turns into a live board.
+      <EmptyState icon={<ClipboardList size={20} />} title={t("work.kanban.noPlan.title")}>
+        {t("work.kanban.noPlan.body")}
       </EmptyState>
     );
   }
@@ -42,10 +44,10 @@ export function Kanban({ project, plan }: { project: Project; plan: Plan | null 
           <div className="kanban-goal-text">{plan.goal}</div>
           <div className="kanban-goal-meta">
             <PlanStatus status={plan.status} />
-            <span>Revision {plan.revision}</span>
+            <span>{t("work.kanban.revision", { n: plan.revision })}</span>
           </div>
         </div>
-        <div className="progress" title={`${done} of ${plan.tasks.length} tasks done`}>
+        <div className="progress" title={t("work.kanban.progress", { done, total: plan.tasks.length })}>
           <span className="tnum">
             {done}/{plan.tasks.length}
           </span>
@@ -59,7 +61,7 @@ export function Kanban({ project, plan }: { project: Project; plan: Plan | null 
       {plan.status === "changes-requested" && (
         <div className="plan-banner">
           <span className="small muted">
-            You asked for changes{plan.feedback ? `: “${plan.feedback}”` : ""}. Waiting for core's revised plan…
+            {plan.feedback ? t("work.kanban.changesAskedWith", { feedback: plan.feedback }) : t("work.kanban.changesAsked")}
           </span>
         </div>
       )}
@@ -72,7 +74,7 @@ export function Kanban({ project, plan }: { project: Project; plan: Plan | null 
               <div key={col.status} className={`column col-${col.status}`}>
                 <div className="column-head">
                   {col.icon}
-                  {col.title}
+                  {t(col.title)}
                   <span className="column-count">{tasks.length}</span>
                 </div>
                 <div className="column-body">
@@ -104,18 +106,20 @@ export function Kanban({ project, plan }: { project: Project; plan: Plan | null 
 }
 
 function PlanStatus({ status }: { status: Plan["status"] }) {
-  if (status === "proposed") return <span className="tag amber">Awaiting your approval</span>;
-  if (status === "changes-requested") return <span className="tag blue">Changes requested</span>;
-  if (status === "approved") return <span className="tag green">Approved</span>;
+  const { t } = useI18n();
+  if (status === "proposed") return <span className="tag amber">{t("work.plan.status.proposed")}</span>;
+  if (status === "changes-requested") return <span className="tag blue">{t("work.plan.status.changesRequested")}</span>;
+  if (status === "approved") return <span className="tag green">{t("work.plan.status.approved")}</span>;
   return null;
 }
 
-function TaskCard({ task: t, agent, waitingOn, onOpen, reviewMarked }: { task: Task; agent?: Agent; waitingOn: string[]; onOpen: () => void; reviewMarked?: boolean }) {
+function TaskCard({ task, agent, waitingOn, onOpen, reviewMarked }: { task: Task; agent?: Agent; waitingOn: string[]; onOpen: () => void; reviewMarked?: boolean }) {
+  const { t } = useI18n();
   return (
     <motion.button
       layout
-      layoutId={t.id}
-      className={`task-card ts-${t.status}`}
+      layoutId={task.id}
+      className={`task-card ts-${task.status}`}
       onClick={onOpen}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -123,21 +127,21 @@ function TaskCard({ task: t, agent, waitingOn, onOpen, reviewMarked }: { task: T
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
       <div className="task-top">
-        <span className="task-id">{t.id}</span>
-        {waitingForReview(t) && <span className="tag amber">Waiting for you</span>}
-        {reviewMarked && t.review && !waitingForReview(t) && t.status !== "done" && <span className="tag blue">You review</span>}
-        {waitingOn.length > 0 && t.status === "todo" && (
-          <span className="row" style={{ gap: 3 }} title="Waiting on these tasks">
+        <span className="task-id">{task.id}</span>
+        {waitingForReview(task) && <span className="tag amber">{t("work.task.waitingForYou")}</span>}
+        {reviewMarked && task.review && !waitingForReview(task) && task.status !== "done" && <span className="tag blue">{t("work.task.youReview")}</span>}
+        {waitingOn.length > 0 && task.status === "todo" && (
+          <span className="row" style={{ gap: 3 }} title={t("work.task.waitingOn")}>
             <Link2 size={11} />
-            after {waitingOn.join(", ")}
+            {t("work.task.after", { ids: waitingOn.join(", ") })}
           </span>
         )}
       </div>
-      <div className="task-title">{t.title}</div>
-      {t.assets.length > 0 && (
+      <div className="task-title">{task.title}</div>
+      {task.assets.length > 0 && (
         <div className="task-meta">
-          {t.assets.map((a) => (
-            <span key={a} className="tag" title="Shared asset">
+          {task.assets.map((a) => (
+            <span key={a} className="tag" title={t("work.task.sharedAsset")}>
               <Lock />
               {a}
             </span>
@@ -151,17 +155,17 @@ function TaskCard({ task: t, agent, waitingOn, onOpen, reviewMarked }: { task: T
             <span className="ellipsis">{agent.name}</span>
           </>
         ) : (
-          <span className="subtle">Unassigned</span>
+          <span className="subtle">{t("work.task.unassigned")}</span>
         )}
-        {t.doneWhen && (
-          <span className="subtle task-done-when" title={`Done when:\n${t.doneWhen}`}>
+        {task.doneWhen && (
+          <span className="subtle task-done-when" title={t("work.task.doneWhenTitle", { text: task.doneWhen })}>
             <ListChecks size={11} />
           </span>
         )}
-        {t.notes.length > 0 && (
-          <span className="subtle" title={t.notes[t.notes.length - 1].text}>
+        {task.notes.length > 0 && (
+          <span className="subtle" title={task.notes[task.notes.length - 1].text}>
             <MessageSquare size={11} />
-            {t.notes.length}
+            {task.notes.length}
           </span>
         )}
       </div>
@@ -169,19 +173,20 @@ function TaskCard({ task: t, agent, waitingOn, onOpen, reviewMarked }: { task: T
   );
 }
 
-function TaskDetail({ project, task: t, agent, onClose }: { project: Project; task: Task; agent?: Agent; onClose: () => void }) {
+function TaskDetail({ project, task, agent, onClose }: { project: Project; task: Task; agent?: Agent; onClose: () => void }) {
   const projectId = project.id;
-  const marking = project.reviewBy === "marked" && t.status !== "done" && !waitingForReview(t);
-  const column = COLUMNS.find((c) => c.status === t.status);
+  const marking = project.reviewBy === "marked" && task.status !== "done" && !waitingForReview(task);
+  const column = COLUMNS.find((c) => c.status === task.status);
+  const { t } = useI18n();
   return (
-    <Drawer title={`${t.id} · ${t.title}`} onClose={onClose}>
+    <Drawer title={`${task.id} · ${task.title}`} onClose={onClose}>
       <dl className="task-detail-meta">
-        <dt>Status</dt>
+        <dt>{t("work.task.status")}</dt>
         <dd>
           {column?.icon}
-          {column?.title}
+          {column && t(column.title)}
         </dd>
-        <dt>Assignee</dt>
+        <dt>{t("work.task.assignee")}</dt>
         <dd>
           {agent ? (
             <>
@@ -189,20 +194,20 @@ function TaskDetail({ project, task: t, agent, onClose }: { project: Project; ta
               {agent.name}
             </>
           ) : (
-            <span className="subtle">Unassigned</span>
+            <span className="subtle">{t("work.task.unassigned")}</span>
           )}
         </dd>
-        {t.dependsOn.length > 0 && (
+        {task.dependsOn.length > 0 && (
           <>
-            <dt>Depends on</dt>
-            <dd>{t.dependsOn.join(", ")}</dd>
+            <dt>{t("work.task.dependsOn")}</dt>
+            <dd>{task.dependsOn.join(", ")}</dd>
           </>
         )}
-        {t.assets.length > 0 && (
+        {task.assets.length > 0 && (
           <>
-            <dt>Shared assets</dt>
+            <dt>{t("work.task.sharedAssets")}</dt>
             <dd>
-              {t.assets.map((a) => (
+              {task.assets.map((a) => (
                 <span key={a} className="tag">
                   <Lock />
                   {a}
@@ -212,39 +217,39 @@ function TaskDetail({ project, task: t, agent, onClose }: { project: Project; ta
           </>
         )}
       </dl>
-      {waitingForReview(t) && (
+      {waitingForReview(task) && (
         <div className="review-box">
-          <div className="review-box-head">Waiting for your review</div>
-          <ReviewGuide guide={t.guide} projectId={projectId} agentId={t.assignee} />
-          <ReviewActions projectId={projectId} task={t} onDone={onClose} />
+          <div className="review-box-head">{t("work.task.waitingForReview")}</div>
+          <ReviewGuide guide={task.guide} projectId={projectId} agentId={task.assignee} />
+          <ReviewActions projectId={projectId} task={task} onDone={onClose} />
         </div>
       )}
-      {marking && <ReviewMark projectId={projectId} task={t} />}
+      {marking && <ReviewMark projectId={projectId} task={task} />}
       <div className="md">
-        <Md text={t.description || "_No description._"} projectId={projectId} agentId={t.assignee} className="" />
+        <Md text={task.description || t("work.task.noDescription")} projectId={projectId} agentId={task.assignee} className="" />
       </div>
-      {t.spec && (
+      {task.spec && (
         <div className="task-spec">
           <FileText size={14} />
-          <Md text={`Spec: ${t.spec}`} projectId={projectId} agentId={t.assignee} className="" />
+          <Md text={t("work.task.spec", { spec: task.spec })} projectId={projectId} agentId={task.assignee} className="" />
         </div>
       )}
-      <DoneWhen projectId={projectId} task={t} />
-      <TaskEvidence project={project} taskId={t.id} />
-      {t.checks && <TaskChecks run={t.checks} />}
-      <TaskReviews task={t} reviewerName={t.reviewer ? project.agents.find((a) => a.id === t.reviewer)?.name : undefined} />
-      {(t.status === "review" || t.status === "done" || t.guide) && <TaskChanges projectId={projectId} taskId={t.id} />}
-      {!waitingForReview(t) && t.guide && (
+      <DoneWhen projectId={projectId} task={task} />
+      <TaskEvidence project={project} taskId={task.id} />
+      {task.checks && <TaskChecks run={task.checks} />}
+      <TaskReviews task={task} reviewerName={task.reviewer ? project.agents.find((a) => a.id === task.reviewer)?.name : undefined} />
+      {(task.status === "review" || task.status === "done" || task.guide) && <TaskChanges projectId={projectId} taskId={task.id} />}
+      {!waitingForReview(task) && task.guide && (
         <>
-          <h3>How to check it</h3>
-          <ReviewGuide guide={t.guide} projectId={projectId} agentId={t.assignee} />
+          <h3>{t("work.review.howToCheck")}</h3>
+          <ReviewGuide guide={task.guide} projectId={projectId} agentId={task.assignee} />
         </>
       )}
-      {t.notes.length > 0 && (
+      {task.notes.length > 0 && (
         <>
-          <h3>History</h3>
+          <h3>{t("work.task.history")}</h3>
           <div className="history">
-            {t.notes.map((n, i) => (
+            {task.notes.map((n, i) => (
               <div key={i} className="history-item">
                 <span className="when">{clock(n.time)}</span>
                 <span className="what">
@@ -261,12 +266,13 @@ function TaskDetail({ project, task: t, agent, onClose }: { project: Project; ta
 
 /** A task's evidence: the files its helper shared as showing the work was done. */
 function TaskEvidence({ project, taskId }: { project: Project; taskId: string }) {
+  const { t } = useI18n();
   const files = useSharedFiles(project.id).filter((f) => f.taskId === taskId && f.tag === "evidence");
   if (!files.length) return null;
   return (
     <div className="task-evidence">
       <h3>
-        <Paperclip size={14} /> Evidence
+        <Paperclip size={14} /> {t("work.task.evidence")}
       </h3>
       <div className="shared-files">
         {files.map((f) => (
@@ -278,6 +284,7 @@ function TaskEvidence({ project, taskId }: { project: Project; taskId: string })
 }
 
 function ApprovalBar({ project, plan }: { project: Project; plan: Plan }) {
+  const { t } = useI18n();
   const [changing, setChanging] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [busy, setBusy] = useState(false);
@@ -299,27 +306,27 @@ function ApprovalBar({ project, plan }: { project: Project; plan: Plan }) {
       <div className="plan-banner-row">
         <ClipboardList size={16} style={{ color: "var(--amber)" }} />
         <div className="grow">
-          <strong>core proposed this plan ({plan.tasks.length} tasks).</strong> <span className="muted">Nothing starts until you approve it.</span>
+          <strong>{t("work.plan.proposed", { n: plan.tasks.length })}</strong> <span className="muted">{t("work.plan.nothingStarts")}</span>
         </div>
         {!changing && (
           <>
             <button className="btn sm" onClick={() => setChanging(true)} disabled={busy}>
-              Request changes
+              {t("work.plan.requestChanges")}
             </button>
             <button className="btn primary sm" onClick={() => decide(true)} disabled={busy}>
-              Approve plan
+              {t("work.plan.approve")}
             </button>
           </>
         )}
       </div>
       {changing && (
         <div className="plan-banner-row">
-          <textarea autoFocus rows={2} placeholder="What should change? e.g. “split T2 in two”, “use one helper only”…" value={feedback} onChange={(e) => setFeedback(e.target.value)} />
+          <textarea autoFocus rows={2} placeholder={t("work.plan.feedback.placeholder")} value={feedback} onChange={(e) => setFeedback(e.target.value)} />
           <button className="btn ghost sm" onClick={() => setChanging(false)} disabled={busy}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button className="btn primary sm" onClick={() => decide(false)} disabled={busy || !feedback.trim()}>
-            Send
+            {t("common.send")}
           </button>
         </div>
       )}
@@ -340,6 +347,7 @@ const checklist = (text: string) =>
 
 /** A task's Done when: how its work will be judged finished. The human can change it while the task isn't done. */
 function DoneWhen({ projectId, task }: { projectId: string; task: Task }) {
+  const { t } = useI18n();
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(task.doneWhen ?? "");
   const [busy, setBusy] = useState(false);
@@ -362,11 +370,11 @@ function DoneWhen({ projectId, task }: { projectId: string; task: Task }) {
     <div className="done-when">
       <div className="done-when-head">
         <h3>
-          <ListChecks size={14} /> Done when
+          <ListChecks size={14} /> {t("work.task.doneWhen")}
         </h3>
         {editable && !editing && (
           <button className="btn ghost sm" onClick={() => setEditing(true)}>
-            <Pencil size={12} /> {task.doneWhen ? "Edit" : "Add"}
+            <Pencil size={12} /> {task.doneWhen ? t("common.edit") : t("common.add")}
           </button>
         )}
       </div>
@@ -377,21 +385,21 @@ function DoneWhen({ projectId, task }: { projectId: string; task: Task }) {
             rows={4}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="How you'll know it's finished, one check per line: what must exist, what it must do or say, what must not break."
+            placeholder={t("work.task.doneWhen.placeholder")}
           />
           <div className="row" style={{ justifyContent: "flex-end", gap: 6, marginTop: 6 }}>
             <button className="btn ghost sm" onClick={() => setEditing(false)} disabled={busy}>
-              Cancel
+              {t("common.cancel")}
             </button>
             <button className="btn primary sm" onClick={save} disabled={busy}>
-              Save
+              {t("common.save")}
             </button>
           </div>
         </>
       ) : task.doneWhen ? (
         <Md text={checklist(task.doneWhen)} projectId={projectId} agentId={task.assignee} />
       ) : (
-        <p className="subtle small">Not set: core adds it when planning, or you can.</p>
+        <p className="subtle small">{t("work.task.doneWhen.notSet")}</p>
       )}
     </div>
   );
@@ -399,6 +407,7 @@ function DoneWhen({ projectId, task }: { projectId: string; task: Task }) {
 
 /** "I review this task" (Project.reviewBy "marked"): shows the new state at once, then the plan confirms it. */
 function ReviewMark({ projectId, task }: { projectId: string; task: Task }) {
+  const { t } = useI18n();
   const [checked, setChecked] = useState(!!task.review);
   useEffect(() => setChecked(!!task.review), [task.review]);
   return (
@@ -415,7 +424,7 @@ function ReviewMark({ projectId, task }: { projectId: string; task: Task }) {
           });
         }}
       />
-      I review this task before it's done
+      {t("work.task.reviewMark")}
     </label>
   );
 }

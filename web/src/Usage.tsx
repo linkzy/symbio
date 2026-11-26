@@ -3,6 +3,7 @@ import { MASK, setCostsShown, useCostsShown } from "./privacy";
 import { useEffect, useRef, useState } from "react";
 import { Coins } from "lucide-react";
 import { api, formatTokens, subscribe, type Price, type PriceInfo, type Project, type ProjectUsage, type Usage } from "./api";
+import { useI18n, type MessageKey } from "./i18n";
 
 const usd = (n: number) => (n >= 100 ? `$${Math.round(n)}` : `$${n.toFixed(2)}`);
 
@@ -32,6 +33,7 @@ export function useProjectUsage(projectId: string): ProjectUsage | null {
 
 /** Sidebar footer: everything the project's agents used, and what it probably cost. */
 export function UsageLine({ project, onOpen }: { project: Project; onOpen: () => void }) {
+  const { t } = useI18n();
   const usage = useProjectUsage(project.id);
   const shown = useCostsShown();
   if (!shown || !usage || usage.tokens === 0) return null;
@@ -40,9 +42,9 @@ export function UsageLine({ project, onOpen }: { project: Project; onOpen: () =>
     .map((a) => `${a.name}: ${formatTokens(a.tokens)}${a.cost > 0 ? ` · ≈ ${usd(a.cost)}` : ""}`)
     .join("\n");
   return (
-    <button className="usage-line" onClick={onOpen} title={`${detail}\n\nIncludes cache reads. Click for details.`}>
+    <button className="usage-line" onClick={onOpen} title={`${detail}\n\n${t("usage.line.title")}`}>
       <Coins size={13} />
-      <span className="tnum">{formatTokens(usage.tokens)} tokens</span>
+      <span className="tnum">{t("usage.tokens", { n: formatTokens(usage.tokens) })}</span>
       {usage.cost > 0 && <span className="subtle tnum">· ≈ {usd(usage.cost)}</span>}
     </button>
   );
@@ -68,6 +70,7 @@ interface UsageRow {
 
 /** Project settings: usage per agent and model, with the estimate. */
 export function UsageSection({ project }: { project: Project }) {
+  const { t } = useI18n();
   const usage = useProjectUsage(project.id);
   const shown = useCostsShown();
   const tokens = (n: number) => (shown ? formatTokens(n) : MASK);
@@ -87,7 +90,10 @@ export function UsageSection({ project }: { project: Project }) {
         mine.forEach((m, i) =>
           rows.push({
             key: `${a.id}-${m.model}`,
-            first: i === 0 ? `${a.name}${a.status === "stopped" ? " (stopped)" : ""}${a.sessions > 1 ? ` · ${a.sessions} sessions` : ""}` : "",
+            first:
+              i === 0
+                ? `${a.name}${a.status === "stopped" ? ` ${t("usage.usage.stopped")}` : ""}${a.sessions > 1 ? ` · ${t("usage.usage.sessions", { n: a.sessions })}` : ""}`
+                : "",
             second: m.model,
             usage: m.usage,
             cost: m.cost,
@@ -105,36 +111,35 @@ export function UsageSection({ project }: { project: Project }) {
     <section className="section" id="usage">
       <div className="section-head">
         <div>
-          <h2>Usage</h2>
+          <h2>{t("usage.usage.title")}</h2>
           <p>
-            Tokens used by every agent of this project, including stopped ones and earlier sessions. The cost is an estimate from the
-            prices in Settings → Model prices.
-            {!shown && " Hidden: turn on Show costs and token counts in Settings to see them."}
+            {t("usage.usage.intro")}
+            {!shown && ` ${t("usage.usage.hidden")}`}
           </p>
         </div>
         {usage && usage.tokens > 0 && (
           <div className="usage-total">
             <strong className="tnum">{usage.cost > 0 ? `≈ ${money(usage.cost)}` : "—"}</strong>
-            <span className="subtle small tnum">{tokens(usage.tokens)} tokens</span>
+            <span className="subtle small tnum">{t("usage.tokens", { n: tokens(usage.tokens) })}</span>
           </div>
         )}
       </div>
       {!usage ? (
-        <div className="section-empty">Loading…</div>
+        <div className="section-empty">{t("common.loading")}</div>
       ) : usage.tokens === 0 ? (
-        <div className="section-empty">No usage yet.</div>
+        <div className="section-empty">{t("usage.usage.empty")}</div>
       ) : (
         <div style={{ padding: "4px 12px 12px", overflowX: "auto" }}>
           <div className="row" style={{ gap: 10, padding: "6px 0 8px", flexWrap: "wrap", alignItems: "center" }}>
             <div className="seg">
               {(["agent", "provider", "model"] as const).map((v) => (
                 <button key={v} className={view === v ? "on" : ""} onClick={() => setView(v)}>
-                  By {v}
+                  {t(v === "agent" ? "usage.usage.byAgent" : v === "provider" ? "usage.usage.byProvider" : "usage.usage.byModel")}
                 </button>
               ))}
             </div>
-            <select value={provider} onChange={(e) => setProvider(e.target.value)} aria-label="Provider">
-              <option value="">All providers</option>
+            <select value={provider} onChange={(e) => setProvider(e.target.value)} aria-label={t("usage.usage.provider")}>
+              <option value="">{t("usage.usage.allProviders")}</option>
               {usage.byProvider.map((p) => (
                 <option key={p.provider} value={p.provider}>
                   {p.provider}
@@ -145,13 +150,13 @@ export function UsageSection({ project }: { project: Project }) {
           <table className="usage-table">
             <thead>
               <tr>
-                <th>{view === "provider" ? "Provider" : view === "model" ? "Model" : "Agent"}</th>
-                <th>{view === "provider" ? "" : view === "model" ? "Provider" : "Model"}</th>
-                <th className="num">Input</th>
-                <th className="num">Output</th>
-                <th className="num">Cache read</th>
-                <th className="num">Cache write</th>
-                <th className="num">≈ Cost</th>
+                <th>{t(view === "provider" ? "usage.usage.provider" : view === "model" ? "usage.usage.model" : "usage.usage.agent")}</th>
+                <th>{view === "provider" ? "" : t(view === "model" ? "usage.usage.provider" : "usage.usage.model")}</th>
+                <th className="num">{t("usage.field.input")}</th>
+                <th className="num">{t("usage.field.output")}</th>
+                <th className="num">{t("usage.field.cacheRead")}</th>
+                <th className="num">{t("usage.field.cacheWrite")}</th>
+                <th className="num">{t("usage.usage.cost")}</th>
               </tr>
             </thead>
             <tbody>
@@ -163,13 +168,13 @@ export function UsageSection({ project }: { project: Project }) {
                   <td className="num tnum">{tokens(r.usage.output + r.usage.reasoning)}</td>
                   <td className="num tnum">{tokens(r.usage.cacheRead)}</td>
                   <td className="num tnum">{tokens(r.usage.cacheWrite)}</td>
-                  <td className="num tnum">{r.cost === null ? "no price" : money(r.cost)}</td>
+                  <td className="num tnum">{r.cost === null ? t("usage.usage.noPrice") : money(r.cost)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={2}>{provider ? `Total for ${provider}` : "Total"}</td>
+                <td colSpan={2}>{provider ? t("usage.usage.totalFor", { provider }) : t("usage.usage.total")}</td>
                 <td className="num tnum">{tokens(selected.usage.input)}</td>
                 <td className="num tnum">{tokens(selected.usage.output + selected.usage.reasoning)}</td>
                 <td className="num tnum">{tokens(selected.usage.cacheRead)}</td>
@@ -180,7 +185,7 @@ export function UsageSection({ project }: { project: Project }) {
           </table>
           {usage.unpriced.length > 0 && (
             <div className="notice" style={{ marginTop: 10 }}>
-              No price for {usage.unpriced.join(", ")}, so their tokens aren't in the estimate. Add it in Settings → Model prices.
+              {t("usage.usage.unpriced", { models: usage.unpriced.join(", ") })}
             </div>
           )}
         </div>
@@ -189,15 +194,16 @@ export function UsageSection({ project }: { project: Project }) {
   );
 }
 
-const FIELDS: { key: keyof Price; label: string }[] = [
-  { key: "input", label: "Input" },
-  { key: "output", label: "Output" },
-  { key: "cacheRead", label: "Cache read" },
-  { key: "cacheWrite", label: "Cache write" },
+const FIELDS: { key: keyof Price; label: MessageKey }[] = [
+  { key: "input", label: "usage.field.input" },
+  { key: "output", label: "usage.field.output" },
+  { key: "cacheRead", label: "usage.field.cacheRead" },
+  { key: "cacheWrite", label: "usage.field.cacheWrite" },
 ];
 
 /** Global settings: the price of each model in use, USD per million tokens. */
 export function PricesSection() {
+  const { t } = useI18n();
   const [prices, setPrices] = useState<Record<string, PriceInfo> | null>(null);
   const [tab, setTab] = useState<"prices" | "simulate">("prices");
   const load = () => api.prices().then(setPrices).catch(() => {});
@@ -208,26 +214,22 @@ export function PricesSection() {
     <section className="section">
       <div className="section-head">
         <div>
-          <h2>Model prices</h2>
-          <p>
-            {tab === "prices"
-              ? "USD per million tokens, used to estimate what projects cost. Models whose provider doesn't publish prices (like a company Azure deployment) get a suggestion from the same model in OpenCode's catalog: check it against your contract and save."
-              : "What a model would cost at your usage: type its prices (USD per million tokens, as providers list them) and see the cost per day, week and month."}
-          </p>
+          <h2>{t("usage.prices.title")}</h2>
+          <p>{tab === "prices" ? t("usage.prices.intro") : t("usage.prices.simulateIntro")}</p>
         </div>
         <div className="seg">
           <button className={tab === "prices" ? "on" : ""} onClick={() => setTab("prices")}>
-            Prices
+            {t("usage.prices.tab")}
           </button>
           <button className={tab === "simulate" ? "on" : ""} onClick={() => setTab("simulate")}>
-            Simulate
+            {t("usage.prices.simulate")}
           </button>
         </div>
       </div>
       {tab === "simulate" ? (
         <Simulator prices={prices} />
       ) : !prices ? (
-        <div className="section-empty">Loading…</div>
+        <div className="section-empty">{t("common.loading")}</div>
       ) : (
         <div className="section-body">
           {Object.entries(prices)
@@ -242,6 +244,7 @@ export function PricesSection() {
 }
 
 function PriceRow({ model, info, onSaved }: { model: string; info: PriceInfo; onSaved: () => void }) {
+  const { t } = useI18n();
   const initial = () => Object.fromEntries(FIELDS.map((f) => [f.key, info.price ? String(info.price[f.key]) : ""])) as Record<keyof Price, string>;
   const [values, setValues] = useState(initial);
   const [saving, setSaving] = useState(false);
@@ -268,14 +271,14 @@ function PriceRow({ model, info, onSaved }: { model: string; info: PriceInfo; on
   }
   const sourceText =
     info.source === "yours"
-      ? "Your price"
+      ? t("usage.prices.yours")
       : info.source === "opencode"
         ? model.startsWith("copilot/")
-          ? "From GitHub Copilot"
-          : "From OpenCode"
+          ? t("usage.prices.fromCopilot")
+          : t("usage.prices.fromOpenCode")
         : info.source === "suggested"
-          ? `Suggested from ${info.from} — not saved yet`
-          : "No price";
+          ? t("usage.prices.suggested", { from: String(info.from) })
+          : t("usage.prices.none");
   return (
     <div className="list-row price-row">
       <div className="grow" style={{ minWidth: 0 }}>
@@ -284,16 +287,16 @@ function PriceRow({ model, info, onSaved }: { model: string; info: PriceInfo; on
       </div>
       {FIELDS.map((f) => (
         <label key={f.key} className="price-field">
-          <span>{f.label}</span>
+          <span>{t(f.label)}</span>
           <input type="number" min={0} step="any" value={values[f.key]} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} />
         </label>
       ))}
       <button className="btn sm" onClick={() => save(parsed)} disabled={!canSave || saving}>
-        {info.source === "suggested" && !changed ? "Accept" : "Save"}
+        {info.source === "suggested" && !changed ? t("usage.prices.accept") : t("common.save")}
       </button>
       {info.source === "yours" && (
-        <button className="btn ghost sm" onClick={() => save(null)} disabled={saving} title="Forget your price">
-          Reset
+        <button className="btn ghost sm" onClick={() => save(null)} disabled={saving} title={t("usage.prices.resetTitle")}>
+          {t("usage.prices.reset")}
         </button>
       )}
     </div>
@@ -303,22 +306,20 @@ function PriceRow({ model, info, onSaved }: { model: string; info: PriceInfo; on
 
 /** Settings: whether costs and token counts are shown at all (hidden by default, in this browser). */
 export function CostsSection() {
+  const { t } = useI18n();
   const shown = useCostsShown();
   return (
     <section className="section">
       <div className="section-head">
         <div>
-          <h2>Costs and tokens</h2>
-          <p>
-            What projects spend and how many tokens they use: hidden unless you turn it on, so people passing by don't see it. The
-            choice is kept in this browser, so other computers and phones start hidden too.
-          </p>
+          <h2>{t("usage.costs.title")}</h2>
+          <p>{t("usage.costs.intro")}</p>
         </div>
       </div>
       <div className="section-body" style={{ padding: "10px 16px 14px" }}>
         <label className="check">
           <input type="checkbox" checked={shown} onChange={(e) => setCostsShown(e.target.checked)} />
-          Show costs and token counts
+          {t("usage.costs.show")}
         </label>
       </div>
     </section>

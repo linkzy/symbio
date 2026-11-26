@@ -30,10 +30,11 @@ node bin/symbio.js run     # foreground, http://127.0.0.1:4310
 | `npm run test:contract` | The runtimes' APIs as Symbio uses them: a real `opencode serve`, and the real GitHub Copilot CLI when signed in (`tests/contract/`) |
 | `npm run test:e2e` | The whole app (run `npm run build` first: it tests the built app), driven in Edge/Chrome, once per runtime (both at once, several files in parallel): against a stand-in OpenCode and a stand-in Copilot (`tests/e2e/`, `scripts/e2e.mjs`) |
 | `npm run typecheck` | Type-checks the server and the UI |
+| `npm run i18n:check` | Lists the interface texts each language lacks (shown in English until translated) and texts whose `{placeholders}` differ from English's; `-- --strict` fails on them |
 | `prepublishOnly` | Runs typecheck, tests and build before `npm publish` |
 
-CI (`.github/workflows/ci.yml`) runs typecheck, unit tests, the OpenCode contract test, build and the
-end-to-end tests on every push and pull request.
+CI (`.github/workflows/ci.yml`) runs typecheck, the translations check (as a warning), unit tests, the
+contract tests, build and the end-to-end tests on every push and pull request.
 Releases (`.github/workflows/release.yml`) publish to npm when a `vX.Y.Z` tag is pushed (versions
 with a `-` go to the `next` tag); the tag must match `package.json`.
 
@@ -90,10 +91,11 @@ docs/                  This documentation
   every theme follows. To add a theme, give its token values in `web/src/themes.css` under
   `html[data-theme="<id>"]` and list it in `THEMES` in `web/src/theme.ts`. Which VS Code colors
   an imported theme's tokens come from is the `MAP` in `web/src/vscodeTheme.ts`.
-- **Interface text goes through `t()`** (`web/src/i18n.ts`, or `useI18n()` in components) with a key
-  in the English dictionary; add the Portuguese (Brazil) text too if you can. A key missing in a
-  language shows the English text. Some screens are still plain English strings: translating them
-  is welcome (#13).
+- **Interface text goes through `t()`** (`useI18n()` in components, `t` from `web/src/i18n.ts`
+  elsewhere) with a key in `web/src/i18n/en.ts`; keys are typed, so a key that doesn't exist is a
+  type error. Add the Portuguese (Brazil) text in `web/src/i18n/pt-BR.ts` too if you can; a text a
+  language lacks shows in English (`npm run i18n:check` lists them). Agents' briefs and Symbio's
+  messages to agents stay in English: they're instructions for models. See *Translations* below.
 - **Tell the agents about changes.** When a change affects how agents work (tools, rules, messages
   they receive, what Symbio does on their behalf), add an entry to `src/server/updates.ts`. On the
   next start, each project's coordinator gets the entries it hasn't seen as a note (without being
@@ -108,6 +110,21 @@ docs/                  This documentation
   adapted only by an "In Symbio" note on how it maps to Symbio. No skills that bundle servers,
   hooks, telemetry or many scripts. Frontmatter values with `: ` in them are quoted (Copilot skips
   a skill whose frontmatter isn't valid YAML); `tests/skills.test.ts` checks all of this.
+
+## Translations
+
+The interface's text is in `web/src/i18n/`: `en.ts` (the base, by screen) and one file per language
+(`pt-BR.ts`). The language is the one chosen in Settings → This computer → Appearance, or else the
+browser's. To add a language:
+
+1. Copy `web/src/i18n/pt-BR.ts` to `web/src/i18n/<code>.ts` (e.g. `es.ts`), rename its export, and
+   translate the texts from `en.ts` (keep the `{placeholders}`, and the words in
+   [glossary.md](glossary.md): add a column for the language there).
+2. Add it to `Locale`, `LOCALES` and `DICTS` in `web/src/i18n.ts`, and to `browserLocale` if its code
+   needs mapping.
+3. `npm run i18n:check` shows what's left; a text not translated yet shows in English.
+4. Look at the main screens in that language (`scripts/screenshot.mjs`, also at a phone width): longer
+   words can break a layout.
 
 ## Testing
 

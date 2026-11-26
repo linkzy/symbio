@@ -5,9 +5,11 @@ import { api, RUNTIME_LABEL, subscribe, type ModelInfo, type Project, type Runti
 import { ModelPicker, choiceOf, type ModelChoice } from "./ModelPicker";
 import { useRuntimes } from "./Runtimes";
 import { Dialog } from "./ui";
+import { useI18n } from "./i18n";
 
 /** Project settings: the runtime the project's agents run on, and moving them to another one. */
 export function RuntimeSection({ project }: { project: Project }) {
+  const { t } = useI18n();
   const current = project.runtime ?? "opencode";
   const { runtimes } = useRuntimes();
   const others = (runtimes ?? []).filter((r) => r.installed && r.kind !== current);
@@ -29,16 +31,17 @@ export function RuntimeSection({ project }: { project: Project }) {
     <section className="section" id="agent-runtime">
       <div className="section-head">
         <div>
-          <h2>Agent runtime</h2>
+          <h2>{t("agents.switch.title")}</h2>
           <p>
-            This project's agents run on <strong>{RUNTIME_LABEL[current]}</strong>. Moving them to another runtime keeps the team, plan, tasks,
-            folders and branches; each agent continues in a fresh session there, from a handoff note.
+            {t("agents.switch.intro.before")}
+            <strong>{RUNTIME_LABEL[current]}</strong>
+            {t("agents.switch.intro.after")}
           </p>
         </div>
         {!running && others.length > 0 && (
           <button className="btn sm" onClick={() => setChoosing(true)}>
             <ArrowRightLeft size={13} />
-            Switch runtime…
+            {t("agents.switch.switch")}
           </button>
         )}
       </div>
@@ -48,7 +51,7 @@ export function RuntimeSection({ project }: { project: Project }) {
             <SwitchStatus progress={progress} />
           ) : (
             <p className="subtle small" style={{ margin: 0 }}>
-              To move it, install another runtime in Settings → Agent runtimes.
+              {t("agents.switch.installAnother")}
             </p>
           )}
         </div>
@@ -61,6 +64,7 @@ export function RuntimeSection({ project }: { project: Project }) {
 }
 
 function SwitchStatus({ progress: p }: { progress: SwitchProgress }) {
+  const { t, locale } = useI18n();
   const pct = p.total ? Math.round((p.done / p.total) * 100) : 0;
   const route = `${RUNTIME_LABEL[p.from]} → ${RUNTIME_LABEL[p.to]}`;
   if (p.status === "running") {
@@ -68,9 +72,7 @@ function SwitchStatus({ progress: p }: { progress: SwitchProgress }) {
       <div className="switch-status">
         <div className="row" style={{ gap: 8 }}>
           <Loader2 size={13} className="spin" />
-          <span>
-            Moving to {RUNTIME_LABEL[p.to]}: {p.step}…
-          </span>
+          <span>{t("agents.switch.moving", { name: RUNTIME_LABEL[p.to], step: p.step })}</span>
         </div>
         <div className="switch-track">
           <div className="switch-fill" style={{ width: `${pct}%` }} />
@@ -78,14 +80,14 @@ function SwitchStatus({ progress: p }: { progress: SwitchProgress }) {
       </div>
     );
   }
-  if (p.status === "failed") return <div className="error">Moving {route} failed, and nothing changed: {p.error}</div>;
+  if (p.status === "failed") return <div className="error">{t("agents.switch.failed", { route, error: p.error ?? "" })}</div>;
   return (
     <div className="switch-status done">
       <div className="row" style={{ gap: 8 }}>
         <Check size={13} />
         <span>
-          Moved {route} {new Date(p.finishedAt ?? p.startedAt).toLocaleString()}.
-          {p.withoutHandoff.length > 0 && ` Without their own handoff (Symbio's note only): ${p.withoutHandoff.join(", ")}.`}
+          {t("agents.switch.moved", { route, when: new Date(p.finishedAt ?? p.startedAt).toLocaleString(locale) })}
+          {p.withoutHandoff.length > 0 && ` ${t("agents.switch.withoutHandoff", { list: p.withoutHandoff.join(", ") })}`}
         </span>
       </div>
     </div>
@@ -117,6 +119,7 @@ function SwitchDialog({
   onClose: () => void;
   onStarted: (p: SwitchProgress) => void;
 }) {
+  const { t } = useI18n();
   const from = project.runtime ?? "opencode";
   const [to, setTo] = useState<RuntimeKind>(targets[0].kind);
   const [choice, setChoice] = useState<ModelChoice | null>(null);
@@ -164,31 +167,30 @@ function SwitchDialog({
 
   return (
     <Dialog
-      title={`Move ${project.name} to another runtime`}
-      subtitle={`From ${RUNTIME_LABEL[from]}`}
+      title={t("agents.switch.dialogTitle", { name: project.name })}
+      subtitle={t("agents.switch.from", { name: RUNTIME_LABEL[from] })}
       wide
       onClose={onClose}
       footer={
         <>
           <button className="btn ghost" onClick={onClose}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button className="btn primary" onClick={start} disabled={!ready || busy}>
-            {busy ? "Starting…" : `Move to ${RUNTIME_LABEL[to]}`}
+            {busy ? t("agents.switch.starting") : t("agents.switch.moveTo", { name: RUNTIME_LABEL[to] })}
           </button>
         </>
       }
     >
       <div className="notice switch-warning">
-        <strong>Best done when the team is idle,</strong> with nothing waiting on you and the work that's ready merged. The team is paused while it
-        moves{working.length ? `: ${working.join(", ")} will be interrupted` : ""}. Each agent continues in a fresh session from a handoff note: its
-        earlier conversation stays readable in its chat but doesn't carry over, and agents will behave differently on another runtime. Expect to
-        steer them for a while. Stopped helpers move when you restart them.
+        <strong>{t("agents.switch.warning.strong")}</strong> {t("agents.switch.warning.before")}
+        {working.length ? t("agents.switch.warning.working", { list: working.join(", ") }) : ""}
+        {t("agents.switch.warning.after")}
       </div>
 
       {targets.length > 1 && (
         <div className="field">
-          <span>Move to</span>
+          <span>{t("agents.switch.moveToField")}</span>
           <div className="runtime-choice">
             {targets.map((r) => (
               <label className="choice" key={r.kind}>
@@ -205,18 +207,18 @@ function SwitchDialog({
       <label className="choice">
         <input type="checkbox" checked={askHandoffs && fromInstalled} disabled={!fromInstalled} onChange={(e) => setAskHandoffs(e.target.checked)} />
         <span className="choice-body">
-          <span className="choice-title">Ask each agent for its own handoff first</span>
+          <span className="choice-title">{t("agents.switch.askHandoffs")}</span>
           <span className="choice-desc">
             {fromInstalled
-              ? `One last turn for each of the ${active} active agent(s) on ${RUNTIME_LABEL[from]}, to write down what's in its head. Otherwise Symbio's note (plan, tasks, latest messages) is all they get.`
-              : `${RUNTIME_LABEL[from]} isn't installed, so Symbio's note (plan, tasks, latest messages) is what they get.`}
+              ? t("agents.switch.askHandoffsDesc", { n: active, name: RUNTIME_LABEL[from] })
+              : t("agents.switch.notInstalledDesc", { name: RUNTIME_LABEL[from] })}
           </span>
         </span>
       </label>
 
       <div className="field">
-        <span>Models on {RUNTIME_LABEL[to]}</span>
-        <span className="subtle small">The project's models were carried over where {RUNTIME_LABEL[to]} has them; adjust as needed.</span>
+        <span>{t("agents.switch.modelsOn", { name: RUNTIME_LABEL[to] })}</span>
+        <span className="subtle small">{t("agents.switch.carried", { name: RUNTIME_LABEL[to] })}</span>
         {choice ? <ModelPicker key={to} value={choice} onChange={setChoice} runtime={to} /> : !error && <Loader2 size={14} className="spin" />}
       </div>
       {error && <div className="error">{error}</div>}

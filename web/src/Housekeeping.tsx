@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Eraser, RefreshCw } from "lucide-react";
 import { api, type HousekeepingReport, type Project } from "./api";
+import { useI18n } from "./i18n";
 
 const gb = (bytes: number) => (bytes >= 1024 ** 3 ? `${(bytes / 1024 ** 3).toFixed(1)} GB` : `${Math.round(bytes / 1024 ** 2)} MB`);
 
 /** Project settings: backups, work that exists only on this machine, helpers' disk use. */
 export function HousekeepingSection({ project }: { project: Project }) {
+  const { t } = useI18n();
   const [report, setReport] = useState<HousekeepingReport | null>(null);
   const [checking, setChecking] = useState(false);
   const [cleaning, setCleaning] = useState<string | null>(null);
@@ -47,15 +49,15 @@ export function HousekeepingSection({ project }: { project: Project }) {
     <section className="section">
       <div className="section-head">
         <div>
-          <h2>Storage &amp; backups</h2>
+          <h2>{t("usage.housekeeping.title")}</h2>
           <p>
-            Symbio backs up its state every day (the last 7 days, in <code>~/.symbio/backups</code>) and checks once a day for work that
-            exists only on this computer and for build outputs piling up in helpers' folders. When it finds either, you and core are told.
+            {t("usage.housekeeping.intro.before")} <code>~/.symbio/backups</code>
+            {t("usage.housekeeping.intro.after")}
           </p>
         </div>
         <button className="btn sm" onClick={check} disabled={checking}>
           <RefreshCw size={13} className={checking ? "spin" : undefined} />
-          {checking ? "Checking…" : "Check now"}
+          {checking ? t("usage.checking") : t("usage.checkNow")}
         </button>
       </div>
       {error && (
@@ -64,26 +66,26 @@ export function HousekeepingSection({ project }: { project: Project }) {
         </div>
       )}
       {!report ? (
-        !error && <div className="section-empty">Checking… (measuring folders can take a moment)</div>
+        !error && <div className="section-empty">{t("usage.housekeeping.measuring")}</div>
       ) : (
         <div className="stack" style={{ padding: 16, gap: 16 }}>
           <div className="field">
-            <span>Last backup</span>
-            <div className="small">{report.lastBackup ?? "Not yet: the first one runs a few minutes after Symbio starts."}</div>
+            <span>{t("usage.housekeeping.lastBackup")}</span>
+            <div className="small">{report.lastBackup ?? t("usage.housekeeping.noBackup")}</div>
           </div>
 
           <div className="field">
-            <span>Work only on this computer</span>
+            <span>{t("usage.housekeeping.unpushed")}</span>
             {!report.remote ? (
-              <div className="small subtle">This project has no git remote, so there's nowhere to push to.</div>
+              <div className="small subtle">{t("usage.housekeeping.noRemote")}</div>
             ) : report.unpushed.length === 0 ? (
-              <div className="small">Everything is on the remote ({report.remote}).</div>
+              <div className="small">{t("usage.housekeeping.allPushed", { remote: report.remote })}</div>
             ) : (
               <div className="list-compact">
                 {report.unpushed.map((b) => (
                   <div key={b.branch} className="small">
-                    <code>{b.branch}</code> — {b.commits} commit{b.commits === 1 ? "" : "s"} not on {report.remote}
-                    <span className="subtle"> · latest: {b.latest}</span>
+                    <code>{b.branch}</code> — {t(b.commits === 1 ? "usage.housekeeping.commit" : "usage.housekeeping.commits", { n: b.commits, remote: report.remote! })}
+                    <span className="subtle"> · {t("usage.housekeeping.latest", { latest: b.latest })}</span>
                   </div>
                 ))}
               </div>
@@ -91,16 +93,19 @@ export function HousekeepingSection({ project }: { project: Project }) {
           </div>
 
           <div className="field">
-            <span>Helpers' folders{buildTotal > 0 ? ` · ${gb(buildTotal)} of build outputs` : ""}</span>
+            <span>
+              {t("usage.housekeeping.folders")}
+              {buildTotal > 0 ? ` · ${t("usage.housekeeping.buildTotal", { size: gb(buildTotal) })}` : ""}
+            </span>
             {report.folders.length === 0 ? (
-              <div className="small subtle">No helper folders.</div>
+              <div className="small subtle">{t("usage.housekeeping.noFolders")}</div>
             ) : (
               <table className="usage-table">
                 <thead>
                   <tr>
-                    <th>Helper</th>
-                    <th className="num">Folder</th>
-                    <th className="num">Build outputs</th>
+                    <th>{t("usage.housekeeping.helper")}</th>
+                    <th className="num">{t("usage.housekeeping.folder")}</th>
+                    <th className="num">{t("usage.housekeeping.buildOutputs")}</th>
                     <th />
                   </tr>
                 </thead>
@@ -117,11 +122,11 @@ export function HousekeepingSection({ project }: { project: Project }) {
                           <button
                             className="btn ghost sm"
                             disabled={cleaning !== null || f.status === "busy" || f.status === "waiting"}
-                            title={f.status === "busy" || f.status === "waiting" ? "Available when the helper is idle" : "Delete git-ignored build folders (bin, obj, node_modules…); work is never touched"}
+                            title={f.status === "busy" || f.status === "waiting" ? t("usage.housekeeping.idleOnly") : t("usage.housekeeping.cleanTitle")}
                             onClick={() => clean(f.agentId)}
                           >
                             <Eraser size={13} />
-                            {cleaning === f.agentId ? "Cleaning…" : "Clean"}
+                            {cleaning === f.agentId ? t("usage.housekeeping.cleaning") : t("usage.housekeeping.clean")}
                           </button>
                         )}
                       </td>
@@ -131,7 +136,7 @@ export function HousekeepingSection({ project }: { project: Project }) {
               </table>
             )}
           </div>
-          <div className="small subtle">Checked {new Date(report.checkedAt).toLocaleString()}.</div>
+          <div className="small subtle">{t("usage.housekeeping.checked", { date: new Date(report.checkedAt).toLocaleString() })}</div>
         </div>
       )}
     </section>

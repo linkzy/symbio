@@ -71,8 +71,8 @@ export function AppearanceSection() {
               {tTheme.custom && (
                 <button
                   className="theme-card-remove"
-                  title={`Remove ${tTheme.label}`}
-                  aria-label={`Remove ${tTheme.label}`}
+                  title={t("appearance.removeTheme", { name: tTheme.label })}
+                  aria-label={t("appearance.removeTheme", { name: tTheme.label })}
                   onClick={() => {
                     removeCustomTheme(tTheme.id);
                     refresh((n) => n + 1);

@@ -3,30 +3,31 @@ import { MessagesSquare } from "lucide-react";
 import { api, subscribe, type LoggedMessage, type Project } from "./api";
 import { Md } from "./files";
 import { Avatar, EmptyState, clock } from "./ui";
+import { useI18n, type MessageKey } from "./i18n";
 
-const KIND: Record<string, { label: string; tone?: string }> = {
-  chat: { label: "Chat" },
-  info: { label: "Update" },
-  request: { label: "Request", tone: "accent" },
-  blocking: { label: "Blocking", tone: "red" },
-  urgent: { label: "Urgent", tone: "red" },
-  "needs-human": { label: "Question for you", tone: "amber" },
-  question: { label: "Question for you", tone: "amber" },
-  form: { label: "Question for you", tone: "amber" },
-  alert: { label: "Needs your action", tone: "red" },
-  budget: { label: "Budget", tone: "amber" },
-  job: { label: "Scheduled job", tone: "blue" },
-  approval: { label: "Approval requested", tone: "amber" },
-  permission: { label: "Permission request", tone: "amber" },
-  remote: { label: "Connection action", tone: "blue" },
+const KIND: Record<string, { label: MessageKey | "Symbio"; tone?: string }> = {
+  chat: { label: "work.messages.kind.chat" },
+  info: { label: "chat.kind.info" },
+  request: { label: "chat.kind.request", tone: "accent" },
+  blocking: { label: "chat.kind.blocking", tone: "red" },
+  urgent: { label: "chat.kind.urgent", tone: "red" },
+  "needs-human": { label: "work.messages.kind.question", tone: "amber" },
+  question: { label: "work.messages.kind.question", tone: "amber" },
+  form: { label: "work.messages.kind.question", tone: "amber" },
+  alert: { label: "work.messages.kind.alert", tone: "red" },
+  budget: { label: "work.messages.kind.budget", tone: "amber" },
+  job: { label: "work.messages.kind.job", tone: "blue" },
+  approval: { label: "work.messages.kind.approval", tone: "amber" },
+  permission: { label: "work.messages.kind.permission", tone: "amber" },
+  remote: { label: "work.messages.kind.remote", tone: "blue" },
   system: { label: "Symbio" },
-  "asset-request": { label: "Asset request", tone: "accent" },
-  "asset-granted": { label: "Asset granted", tone: "green" },
-  "asset-denied": { label: "Asset denied", tone: "red" },
-  "asset-released": { label: "Asset released" },
-  plan: { label: "Plan proposed", tone: "amber" },
-  "task-review": { label: "Ready for review", tone: "amber" },
-  "task-blocked": { label: "Task blocked", tone: "red" },
+  "asset-request": { label: "chat.kind.asset-request", tone: "accent" },
+  "asset-granted": { label: "chat.kind.asset-granted", tone: "green" },
+  "asset-denied": { label: "chat.kind.asset-denied", tone: "red" },
+  "asset-released": { label: "chat.kind.asset-released" },
+  plan: { label: "work.messages.kind.plan", tone: "amber" },
+  "task-review": { label: "chat.kind.task-review", tone: "amber" },
+  "task-blocked": { label: "work.messages.kind.taskBlocked", tone: "red" },
 };
 
 /** Questions addressed to the human that haven't been answered by a later human message to that agent. */
@@ -56,9 +57,10 @@ export function useProjectLog(projectId: string) {
 }
 
 export function Messages({ project, log, onOpenAgent }: { project: Project; log: LoggedMessage[] | null; onOpenAgent?: (agentId: string) => void }) {
+  const { t } = useI18n();
   const [hideChat, setHideChat] = useState(true);
   const scroller = useRef<HTMLDivElement>(null);
-  const name = (id: string) => (id === "human" ? "You" : id === "symbio" ? "Symbio" : (project.agents.find((a) => a.id === id)?.name ?? id));
+  const name = (id: string) => (id === "human" ? t("common.you") : id === "symbio" ? "Symbio" : (project.agents.find((a) => a.id === id)?.name ?? id));
 
   const shown = (log ?? []).filter((m) => !(hideChat && m.kind === "chat"));
   const open = new Set(openQuestions(log ?? []).map((m) => m.id));
@@ -71,21 +73,22 @@ export function Messages({ project, log, onOpenAgent }: { project: Project; log:
   return (
     <div className="chat">
       <div className="timeline-toolbar">
-        <span>Everything agents say to each other and to you, and what Symbio tells them.</span>
+        <span>{t("work.messages.intro")}</span>
         <span className="spacer" />
         <label className="check">
-          <input type="checkbox" checked={hideChat} onChange={(e) => setHideChat(e.target.checked)} /> Hide your direct chats
+          <input type="checkbox" checked={hideChat} onChange={(e) => setHideChat(e.target.checked)} /> {t("work.messages.hideChats")}
         </label>
       </div>
       <div className="timeline" ref={scroller}>
         {log && shown.length === 0 && (
-          <EmptyState icon={<MessagesSquare size={20} />} title="No team messages yet">
-            Requests, handoffs and questions between agents show up here as they happen.
+          <EmptyState icon={<MessagesSquare size={20} />} title={t("work.messages.empty.title")}>
+            {t("work.messages.empty.body")}
           </EmptyState>
         )}
         <div className="timeline-inner">
           {shown.map((m) => {
-            const kind = KIND[m.kind] ?? { label: m.kind };
+            const known = KIND[m.kind];
+            const kind = known ? { ...known, label: known.label === "Symbio" ? known.label : t(known.label) } : { label: m.kind, tone: undefined };
             const quiet = m.kind === "system" || m.kind === "chat";
             const from = name(m.from);
             return (
@@ -105,7 +108,7 @@ export function Messages({ project, log, onOpenAgent }: { project: Project; log:
                   {open.has(m.id) && m.kind === "needs-human" && <Reply project={project} agentId={m.from} />}
                   {open.has(m.id) && m.kind === "form" && onOpenAgent && (
                     <button className="btn primary sm" style={{ marginTop: 8 }} onClick={() => onOpenAgent(m.from)}>
-                      Answer in {from}'s chat
+                      {t("work.messages.answerIn", { name: from })}
                     </button>
                   )}
                 </div>
@@ -119,6 +122,7 @@ export function Messages({ project, log, onOpenAgent }: { project: Project; log:
 }
 
 function Reply({ project, agentId }: { project: Project; agentId: string }) {
+  const { t } = useI18n();
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -139,7 +143,7 @@ function Reply({ project, agentId }: { project: Project; agentId: string }) {
       <textarea
         value={text}
         rows={2}
-        placeholder="Write your answer…"
+        placeholder={t("work.messages.reply.placeholder")}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
@@ -149,7 +153,7 @@ function Reply({ project, agentId }: { project: Project; agentId: string }) {
         }}
       />
       <button className="btn primary sm" onClick={send} disabled={!text.trim() || sending}>
-        Reply
+        {t("work.messages.reply")}
       </button>
       {error && <div className="error">{error}</div>}
     </div>

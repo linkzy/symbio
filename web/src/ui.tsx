@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { Check, Copy, X } from "lucide-react";
-import { t } from "./i18n";
+import { currentLocale, t } from "./i18n";
 
 // Muted, distinguishable hues for agent avatars (stable per name).
 const AVATAR_COLORS = ["#5b5fc7", "#2f8f6f", "#a87326", "#a2508f", "#3b78cc", "#3c8c9b", "#8a5bb5", "#7c7448"];
@@ -26,7 +26,7 @@ export function Avatar({
   size?: "sm" | "lg";
   kind?: "agent" | "human" | "system";
 }) {
-  const letter = kind === "human" ? "You".slice(0, 1) : kind === "system" ? "S" : name.slice(0, 1);
+  const letter = kind === "human" ? t("common.you").slice(0, 1) : kind === "system" ? "S" : name.slice(0, 1);
   return (
     <span
       className={`avatar ${size ?? ""} ${kind !== "agent" ? kind : ""}`}
@@ -166,11 +166,11 @@ export function timeAgo(ms: number) {
   if (s < 45) return t("common.justNow");
   if (s < 3600) return t("common.minutesAgo", { n: Math.round(s / 60) });
   if (s < 86400) return t("common.hoursAgo", { n: Math.round(s / 3600) });
-  return new Date(ms).toLocaleDateString();
+  return new Date(ms).toLocaleDateString(currentLocale());
 }
 
 export function clock(ms: number) {
-  return new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return new Date(ms).toLocaleTimeString(currentLocale(), { hour: "2-digit", minute: "2-digit" });
 }
 
 /** "in 1:05", ticking each second, until a moment (a pinned agent's next try with its model). */
@@ -182,7 +182,7 @@ export function RetryIn({ until }: { until: number }) {
   }, []);
   const left = Math.max(0, Math.round((until - now) / 1000));
   if (left === 0) return <>{t("common.justNow")}</>;
-  return <>in {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}</>;
+  return <>{t("ui.retryIn", { time: `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` })}</>;
 }
 
 /** A pinned agent waiting for its model (not one stuck because every model failed). */

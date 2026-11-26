@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowUpCircle, RefreshCw } from "lucide-react";
 import { api, type UpdateMode, type UpdateState } from "./api";
+import { useI18n, type MessageKey } from "./i18n";
 
 /** Update state, refreshed now and then (the server checks npm every hour). */
 export function useUpdate(): [UpdateState | null, (s: UpdateState) => void] {
@@ -17,9 +18,10 @@ export function useUpdate(): [UpdateState | null, (s: UpdateState) => void] {
 /** Top bar: a small notice when a newer version exists, linking to Settings. */
 export function UpdateBadge() {
   const [state] = useUpdate();
+  const { t } = useI18n();
   if (!state?.available || state.install === "dev") return null;
   return (
-    <a className="btn sm update-badge" href="#/settings/computer" title={state.waiting ?? `Symbio ${state.latest} is available`}>
+    <a className="btn sm update-badge" href="#/settings/computer" title={state.waiting ?? t("usage.updates.badgeTitle", { version: state.latest ?? "" })}>
       <ArrowUpCircle size={15} />
       {state.latest}
     </a>
@@ -41,15 +43,16 @@ function waitForRestart(from: string) {
   }, 3000);
 }
 
-const MODES: { id: UpdateMode; label: string; hint: string }[] = [
-  { id: "auto", label: "Automatic", hint: "Installs new versions by itself, only when no agent has been working for 10 minutes and remote access is off; it backs up first and tells you in Messages." },
-  { id: "notify", label: "Tell me", hint: "Shows when a new version is available; you update with the button below or `sym update`." },
-  { id: "off", label: "Off", hint: "Doesn't check for new versions." },
+const MODES: { id: UpdateMode; label: MessageKey; hint: MessageKey }[] = [
+  { id: "auto", label: "usage.updates.auto", hint: "usage.updates.autoHint" },
+  { id: "notify", label: "usage.updates.notify", hint: "usage.updates.notifyHint" },
+  { id: "off", label: "usage.updates.off", hint: "usage.updates.offHint" },
 ];
 
 /** Settings → Updates. */
 export function UpdatesSection() {
   const [state, setState] = useUpdate();
+  const { t } = useI18n();
   const [busy, setBusy] = useState<null | "check" | "apply">(null);
   const [error, setError] = useState<string | null>(null);
   const [restarting, setRestarting] = useState(false);
@@ -60,8 +63,8 @@ export function UpdatesSection() {
     try {
       if (kind === "check") setState(await api.checkUpdate());
       else {
-        const warn = state?.busy ? `\n\nRight now ${state.busy}: it's interrupted and continues after the restart.` : "";
-        if (!confirm(`Update Symbio to ${state?.latest}? Symbio stops, installs it and starts again (a minute or two).${warn}`)) return;
+        const warn = state?.busy ? `\n\n${t("usage.updates.busyWarn", { busy: state.busy })}` : "";
+        if (!confirm(`${t("usage.updates.confirm", { version: String(state?.latest) })}${warn}`)) return;
         await api.applyUpdate();
         setRestarting(true);
         waitForRestart(state!.current);
@@ -81,21 +84,22 @@ export function UpdatesSection() {
     }
   }
 
+  const modeHint = MODES.find((m) => m.id === state?.mode)?.hint;
   return (
     <section className="section">
       <div className="section-head">
         <div>
-          <h2>Updates</h2>
+          <h2>{t("usage.updates.title")}</h2>
           <p>
-            You have Symbio <strong>{state?.current ?? "…"}</strong>
-            {state?.latest && !state.available && state.install === "npm" ? ", the latest version." : "."} Also available as{" "}
+            {t("usage.updates.youHave")} <strong>{state?.current ?? "…"}</strong>
+            {state?.latest && !state.available && state.install === "npm" ? t("usage.updates.latestVersion") : "."} {t("usage.updates.alsoAvailable")}{" "}
             <code>sym update</code>.
           </p>
         </div>
         {state?.install === "npm" && (
           <button className="btn sm" onClick={() => run("check")} disabled={!!busy || restarting}>
             <RefreshCw size={13} />
-            {busy === "check" ? "Checking…" : "Check now"}
+            {busy === "check" ? t("usage.checking") : t("usage.checkNow")}
           </button>
         )}
       </div>
@@ -103,27 +107,27 @@ export function UpdatesSection() {
         {error && <div className="error">{error}</div>}
         {state?.install === "dev" ? (
           <div className="small subtle">
-            This Symbio runs from a development folder, so it doesn't update itself: update it there with <code>git pull</code>,{" "}
-            <code>npm install</code> and <code>npm run build</code>.
+            {t("usage.updates.dev")} <code>git pull</code>,{" "}
+            <code>npm install</code> {t("common.and")} <code>npm run build</code>.
           </div>
         ) : (
           <>
             {state?.lastResult && !state.lastResult.ok && (
               <div className="error">
-                The update to {state.lastResult.to} didn't complete: {state.lastResult.error}
+                {t("usage.updates.failed", { version: state.lastResult.to, error: state.lastResult.error ?? "" })}
               </div>
             )}
             {state?.available && (
               <div className="update-available">
                 <div className="row" style={{ gap: 10 }}>
                   <ArrowUpCircle size={16} />
-                  <strong className="grow">Symbio {state.latest} is available</strong>
+                  <strong className="grow">{t("usage.updates.badgeTitle", { version: state.latest ?? "" })}</strong>
                   <button className="btn primary sm" onClick={() => run("apply")} disabled={!!busy || restarting}>
-                    {restarting ? "Restarting…" : busy === "apply" ? "Starting…" : "Update now"}
+                    {restarting ? t("usage.updates.restarting") : busy === "apply" ? t("usage.updates.starting") : t("usage.updates.updateNow")}
                   </button>
                 </div>
                 {restarting ? (
-                  <div className="small subtle">Symbio is restarting with the new version; this page reloads by itself.</div>
+                  <div className="small subtle">{t("usage.updates.restartingNote")}</div>
                 ) : (
                   state.waiting && <div className="small subtle">{state.waiting}</div>
                 )}
@@ -132,7 +136,7 @@ export function UpdatesSection() {
                     {state.notes.map((n) => (
                       <div key={n.version}>
                         <div className="small" style={{ fontWeight: 600 }}>
-                          What's new in {n.version}
+                          {t("usage.updates.whatsNew", { version: n.version })}
                         </div>
                         <ul>
                           {n.items.map((item, i) => (
@@ -146,18 +150,18 @@ export function UpdatesSection() {
               </div>
             )}
             <div className="field">
-              <span>New versions</span>
+              <span>{t("usage.updates.newVersions")}</span>
               <div className="seg">
                 {MODES.map((m) => (
                   <button key={m.id} className={state?.mode === m.id ? "on" : ""} onClick={() => setMode(m.id)} disabled={!state}>
-                    {m.label}
+                    {t(m.label)}
                   </button>
                 ))}
               </div>
-              <span className="hint">{MODES.find((m) => m.id === state?.mode)?.hint}</span>
+              <span className="hint">{modeHint && t(modeHint)}</span>
             </div>
             {state?.error && <div className="small subtle">{state.error}</div>}
-            {state?.checkedAt && <div className="small subtle">Last checked {new Date(state.checkedAt).toLocaleString()}.</div>}
+            {state?.checkedAt && <div className="small subtle">{t("usage.updates.lastChecked", { date: new Date(state.checkedAt).toLocaleString() })}</div>}
           </>
         )}
       </div>

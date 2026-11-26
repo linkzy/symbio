@@ -9,7 +9,7 @@ import { FolderBrowser } from "./FolderBrowser";
 import { ModelPicker, choiceBody, type ModelChoice } from "./ModelPicker";
 import { ProjectMenu } from "./ProjectMenu";
 import { Avatar, Dialog, EmptyState, timeAgo } from "./ui";
-import { useI18n } from "./i18n";
+import { useI18n, type MessageKey } from "./i18n";
 
 function baseName(p: string) {
   return p.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
@@ -172,7 +172,7 @@ const STEPS = ["newProject.steps.folder", "newProject.steps.setup", "newProject.
 const pickRuntime = (installed: RuntimeView[], wanted: RuntimeKind): RuntimeKind =>
   installed.some((r) => r.kind === wanted) ? wanted : (installed[0]?.kind ?? wanted);
 
-const RUNTIME_CHOICE: Record<RuntimeKind, string> = {
+const RUNTIME_CHOICE: Record<RuntimeKind, MessageKey> = {
   opencode: "newProject.runtime.opencode",
   copilot: "newProject.runtime.copilot",
 };

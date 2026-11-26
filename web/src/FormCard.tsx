@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { MessageCircleQuestion } from "lucide-react";
 import { api, type Agent, type Project } from "./api";
+import { useI18n } from "./i18n";
 
 // OpenCode "forms": an agent's interactive question. Fields have a key, a title,
 // a type and optional options; the answer is { [key]: value }.
@@ -107,6 +108,7 @@ export function AgentForms({ project, agent, fallback }: { project: Project; age
 }
 
 function FormView({ form, project, agent, onDone, compact }: { form: Form; project: Project; agent: Agent; onDone: () => void; compact?: boolean }) {
+  const { t } = useI18n();
   const [values, setValues] = useState<Record<string, unknown>>(() =>
     Object.fromEntries(form.fields.map((f) => [f.key, f.default ?? (isMulti(f) ? [] : f.type === "boolean" ? false : "")])),
   );
@@ -152,7 +154,7 @@ function FormView({ form, project, agent, onDone, compact }: { form: Form; proje
       {!compact && (
         <div className="form-card-head">
           <MessageCircleQuestion size={15} />
-          {agent.name} needs your answer{form.title ? ` — ${form.title}` : ""}
+          {t("work.form.needsAnswer", { name: agent.name })}{form.title ? ` — ${form.title}` : ""}
         </div>
       )}
       <div className="form-card-body">
@@ -164,7 +166,7 @@ function FormView({ form, project, agent, onDone, compact }: { form: Form; proje
             {f.description && <div className="form-field-desc">{f.description}</div>}
             {f.type === "external" && f.url ? (
               <a className="btn sm" href={f.url} target="_blank" rel="noopener noreferrer">
-                Open link
+                {t("work.form.openLink")}
               </a>
             ) : options ? (
               <div className="form-options">
@@ -178,7 +180,7 @@ function FormView({ form, project, agent, onDone, compact }: { form: Form; proje
                       key={o.value}
                       className={`form-option ${on ? "on" : ""}`}
                       disabled={full}
-                      title={full ? `Choose up to ${f.maxItems}` : undefined}
+                      title={full ? t("work.form.chooseUpTo", { n: f.maxItems! }) : undefined}
                       onClick={() => {
                         if (multi) {
                           const list = current as string[];
@@ -194,7 +196,7 @@ function FormView({ form, project, agent, onDone, compact }: { form: Form; proje
                 })}
                 {f.custom !== false && (
                   <input
-                    placeholder="Or type your own answer…"
+                    placeholder={t("work.form.ownAnswer")}
                     value={custom[f.key] ?? ""}
                     onChange={(e) => {
                       setCustom((c) => ({ ...c, [f.key]: e.target.value }));
@@ -207,14 +209,14 @@ function FormView({ form, project, agent, onDone, compact }: { form: Form; proje
               <div className="form-options">
                 {[true, false].map((b) => (
                   <button key={String(b)} className={`form-option ${values[f.key] === b ? "on" : ""}`} onClick={() => set(f.key, b)}>
-                    <strong>{b ? "Yes" : "No"}</strong>
+                    <strong>{b ? t("work.form.yes") : t("work.form.no")}</strong>
                   </button>
                 ))}
               </div>
             ) : (
               <textarea
                 rows={2}
-                placeholder={f.placeholder ?? "Your answer…"}
+                placeholder={f.placeholder ?? t("work.form.yourAnswer")}
                 value={String(values[f.key] ?? "")}
                 onChange={(e) => set(f.key, e.target.value)}
               />
@@ -225,7 +227,7 @@ function FormView({ form, project, agent, onDone, compact }: { form: Form; proje
       {error && <div className="error">{error}</div>}
       <div className="row" style={{ justifyContent: "flex-end" }}>
         <button className="btn primary" onClick={submit} disabled={sending || missing}>
-          {sending ? "Sending…" : "Send answer"}
+          {sending ? t("work.form.sending") : t("work.answer.send")}
         </button>
       </div>
       </div>

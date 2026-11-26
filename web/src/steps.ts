@@ -4,6 +4,8 @@
 // the file; shell commands by what they run, since OpenCode records no description for them.
 // Pure functions (no React), so they're unit-tested in tests/steps.test.ts.
 
+import { t } from "./i18n.js";
+
 /** How much a step matters when summarizing a run of them: changes > runs > looking around. */
 export type StepWeight = 3 | 2 | 1;
 
@@ -36,7 +38,7 @@ export function stepLabels(name: string, input: unknown, calls?: ToolCall[]): St
   if (name === "execute" || typeof i.code === "string") {
     const list = calls?.length ? calls : callsFromCode(s(i.code));
     if (list.length) return list.map((c) => toolLabel(c.tool.replace(/^symbio\./, ""), c.input ?? {}));
-    return [{ label: "Ran a script", detail: firstLine(i.code), weight: 2 }];
+    return [{ label: t("steps.ranScript"), detail: firstLine(i.code), weight: 2 }];
   }
   return [toolLabel(name.replace(/^symbio[._]/, ""), i)];
 }
@@ -64,152 +66,152 @@ function toolLabel(tool: string, i: Record<string, unknown>): StepLabel {
   switch (tool) {
     // The team
     case "send_message":
-      return { label: `Message to ${s(i.to) || "an agent"}`, detail: firstLine(i.message), weight: 3 };
+      return { label: t("steps.messageTo", { to: s(i.to) || t("steps.anAgent") }), detail: firstLine(i.message), weight: 3 };
     case "check_messages":
-      return { label: "Checked for messages", weight: 1 };
+      return { label: t("steps.checkedMessages"), weight: 1 };
     case "ask_human":
       return i.decided
-        ? { label: "Decided, and told you", detail: `${firstLine(i.question)} → ${firstLine(i.decided)}`, weight: 3 }
-        : { label: "Added a question for you", detail: firstLine(i.question), weight: 3 };
+        ? { label: t("steps.decidedToldYou"), detail: `${firstLine(i.question)} → ${firstLine(i.decided)}`, weight: 3 }
+        : { label: t("steps.addedQuestion"), detail: firstLine(i.question), weight: 3 };
     case "create_skill":
-      return { label: `Wrote a skill: ${s(i.name)}`, detail: firstLine(i.description), weight: 3 };
+      return { label: t("steps.wroteSkill", { name: s(i.name) }), detail: firstLine(i.description), weight: 3 };
     case "start_briefing":
-      return { label: "Started a briefing for you", detail: firstLine(i.feature), weight: 3 };
+      return { label: t("steps.startedBriefing"), detail: firstLine(i.feature), weight: 3 };
     case "schedule_job":
-      return { label: `Scheduled a job: ${s(i.title)}`, detail: firstLine(i.instructions), weight: 3 };
+      return { label: t("steps.scheduledJob", { title: s(i.title) }), detail: firstLine(i.instructions), weight: 3 };
     case "change_job":
-      return { label: `Changed scheduled job ${s(i.job)}`, weight: 2 };
+      return { label: t("steps.changedJob", { job: s(i.job) }), weight: 2 };
     case "remove_job":
-      return { label: `Removed scheduled job ${s(i.job)}`, weight: 2 };
+      return { label: t("steps.removedJob", { job: s(i.job) }), weight: 2 };
     case "report_job":
-      return { label: `Reported scheduled job ${s(i.job)}: ${s(i.outcome)}`, detail: firstLine(i.summary), weight: 3 };
+      return { label: t("steps.reportedJob", { job: s(i.job), outcome: s(i.outcome) }), detail: firstLine(i.summary), weight: 3 };
     case "list_jobs":
-      return { label: "Looked at the scheduled jobs", weight: 1 };
+      return { label: t("steps.lookedJobs"), weight: 1 };
     case "propose_check":
-      return { label: `Proposed a check: ${s(i.name)}`, detail: firstLine(i.command), weight: 3 };
+      return { label: t("steps.proposedCheck", { name: s(i.name) }), detail: firstLine(i.command), weight: 3 };
     case "request_review":
-      return { label: `Asked for a review of ${task}`, detail: firstLine(i.focus), weight: 3 };
+      return { label: t("steps.askedReview", { task }), detail: firstLine(i.focus), weight: 3 };
     case "submit_review":
-      return { label: `Reviewed ${task}: ${s(i.verdict) === "pass" ? "it passes" : "changes needed"}`, detail: firstLine(i.findings), weight: 3 };
+      return { label: t(s(i.verdict) === "pass" ? "steps.reviewedPasses" : "steps.reviewedChanges", { task }), detail: firstLine(i.findings), weight: 3 };
     case "list_questions":
-      return { label: "Checked your open questions", weight: 1 };
+      return { label: t("steps.checkedQuestions"), weight: 1 };
     case "close_question":
-      return { label: `Closed question ${s(i.question_id).toUpperCase()}`, detail: firstLine(i.answer), weight: 2 };
+      return { label: t("steps.closedQuestion", { id: s(i.question_id).toUpperCase() }), detail: firstLine(i.answer), weight: 2 };
     case "spawn_agent":
-      return { label: `Created helper ${s(i.name)}`, detail: firstLine(i.purpose), weight: 3 };
+      return { label: t("steps.createdHelper", { name: s(i.name) }), detail: firstLine(i.purpose), weight: 3 };
     case "stop_agent":
-      return { label: `Stopped helper ${s(i.agent ?? i.name)}`, weight: 3 };
+      return { label: t("steps.stoppedHelper", { name: s(i.agent ?? i.name) }), weight: 3 };
     case "list_team":
-      return { label: "Checked the team", weight: 1 };
+      return { label: t("steps.checkedTeam"), weight: 1 };
     case "move_to_project_folder":
-      return { label: `Moved ${s(i.agent)} into the project folder`, weight: 3 };
+      return { label: t("steps.movedToProjectFolder", { agent: s(i.agent) }), weight: 3 };
     // The plan
     case "submit_plan":
-      return { label: `Proposed a plan${Array.isArray(i.tasks) ? ` (${i.tasks.length} tasks)` : ""}`, detail: firstLine(i.goal), weight: 3 };
+      return { label: Array.isArray(i.tasks) ? t("steps.proposedPlanTasks", { n: i.tasks.length }) : t("steps.proposedPlan"), detail: firstLine(i.goal), weight: 3 };
     case "add_task":
-      return { label: `Added task ${s(i.key) && /^T\d+$/i.test(s(i.key)) ? `${s(i.key).toUpperCase()} ` : ""}"${firstLine(i.title, 80)}"`, weight: 3 };
+      return { label: t("steps.addedTask", { key: s(i.key) && /^T\d+$/i.test(s(i.key)) ? `${s(i.key).toUpperCase()} ` : "", title: firstLine(i.title, 80) }), weight: 3 };
     case "assign_task":
-      return { label: `Gave ${task} to ${s(i.agent)}`, detail: firstLine(i.note), weight: 3 };
+      return { label: t("steps.gaveTask", { task, agent: s(i.agent) }), detail: firstLine(i.note), weight: 3 };
     case "update_task": {
       const status = s(i.status);
-      const verb = status === "done" ? `Marked ${task} done` : status === "review" ? `Reported ${task} for review` : status === "blocked" ? `${task} is blocked` : `${task} → ${status}`;
+      const verb = status === "done" ? t("steps.markedDone", { task }) : status === "review" ? t("steps.reportedForReview", { task }) : status === "blocked" ? t("steps.isBlocked", { task }) : `${task} → ${status}`;
       return { label: verb, detail: firstLine(i.summary ?? i.note), weight: 3 };
     }
     case "list_tasks":
-      return { label: "Checked the plan", weight: 1 };
+      return { label: t("steps.checkedPlan"), weight: 1 };
     case "merge_work":
-      return { label: `Merged ${s(i.agent)}'s work`, weight: 3 };
+      return { label: t("steps.mergedWork", { agent: s(i.agent) }), weight: 3 };
     case "clean_build_outputs":
-      return { label: "Cleaned build outputs", weight: 2 };
+      return { label: t("steps.cleanedBuildOutputs"), weight: 2 };
     case "sub_repositories":
-      return { label: "Checked the repositories", weight: 1 };
+      return { label: t("steps.checkedRepositories"), weight: 1 };
     // Shared assets
     case "declare_asset":
-      return { label: `Declared shared asset ${s(i.name ?? i.asset)}`, weight: 2 };
+      return { label: t("steps.declaredAsset", { asset: s(i.name ?? i.asset) }), weight: 2 };
     case "request_asset":
-      return { label: `Asked for ${s(i.asset)}`, detail: firstLine(i.reason), weight: 2 };
+      return { label: t("steps.askedFor", { asset: s(i.asset) }), detail: firstLine(i.reason), weight: 2 };
     case "grant_asset":
-      return { label: `Gave ${s(i.asset)} to ${s(i.agent)}`, weight: 2 };
+      return { label: t("steps.gaveAsset", { asset: s(i.asset), agent: s(i.agent) }), weight: 2 };
     case "deny_asset":
-      return { label: `Refused ${s(i.asset)} to ${s(i.agent)}`, detail: firstLine(i.reason), weight: 2 };
+      return { label: t("steps.refusedAsset", { asset: s(i.asset), agent: s(i.agent) }), detail: firstLine(i.reason), weight: 2 };
     case "release_asset":
-      return { label: `Released ${s(i.asset)}`, detail: firstLine(i.summary), weight: 2 };
+      return { label: t("steps.releasedAsset", { asset: s(i.asset) }), detail: firstLine(i.summary), weight: 2 };
     case "list_assets":
-      return { label: "Checked the shared assets", weight: 1 };
+      return { label: t("steps.checkedAssets"), weight: 1 };
     // Documents, rules, images
     case "read_document":
-      return { label: `Read ${fileName(i.path ?? i.file)}`, weight: 1 };
+      return { label: t("steps.read", { file: fileName(i.path ?? i.file) }), weight: 1 };
     case "view_image":
-      return { label: `Looked at ${fileName(i.path ?? i.file)}`, weight: 1 };
+      return { label: t("steps.lookedAt", { file: fileName(i.path ?? i.file) }), weight: 1 };
     case "share_file":
-      return { label: `Shared ${fileName(i.path)} with you${s(i.tag) === "evidence" ? " as evidence" : ""}`, detail: firstLine(i.caption), weight: 3 };
+      return { label: t(s(i.tag) === "evidence" ? "steps.sharedEvidence" : "steps.shared", { file: fileName(i.path) }), detail: firstLine(i.caption), weight: 3 };
     case "list_shared_files":
-      return { label: "Looked at the shared files", detail: [s(i.task_id).toUpperCase(), s(i.tag)].filter(Boolean).join(" · "), weight: 1 };
+      return { label: t("steps.lookedSharedFiles"), detail: [s(i.task_id).toUpperCase(), s(i.tag)].filter(Boolean).join(" · "), weight: 1 };
     case "save_rule":
     case "save_rule_area":
     case "save_rule_source":
-      return { label: `Updated the rules register${s(i.id) ? ` (${s(i.id)})` : ""}`, weight: 2 };
+      return { label: s(i.id) ? t("steps.updatedRulesId", { id: s(i.id) }) : t("steps.updatedRules"), weight: 2 };
     case "list_rules":
-      return { label: "Checked the rules register", weight: 1 };
+      return { label: t("steps.checkedRules"), weight: 1 };
     // Processes and connections
     case "list_processes":
-      return { label: "Checked running processes", weight: 1 };
+      return { label: t("steps.checkedProcesses"), weight: 1 };
     case "stop_process":
-      return { label: "Stopped a process", weight: 2 };
+      return { label: t("steps.stoppedProcess"), weight: 2 };
     case "list_connections":
-      return { label: "Checked the connections", weight: 1 };
+      return { label: t("steps.checkedConnections"), weight: 1 };
     case "remote_exec":
-      return { label: `Ran a command on ${s(i.connection)}`, detail: firstLine(i.command), weight: 3 };
+      return { label: t("steps.ranCommandOn", { connection: s(i.connection) }), detail: firstLine(i.command), weight: 3 };
     case "remote_upload":
-      return { label: `Uploaded ${fileName(i.local_path)} to ${s(i.connection)}`, weight: 3 };
+      return { label: t("steps.uploaded", { file: fileName(i.local_path), connection: s(i.connection) }), weight: 3 };
     case "git_push":
-      return { label: `Pushed${s(i.branch) ? ` ${s(i.branch)}` : ""}${s(i.repo) ? ` (${s(i.repo)})` : ""}`, weight: 3 };
+      return { label: `${t("steps.pushed")}${s(i.branch) ? ` ${s(i.branch)}` : ""}${s(i.repo) ? ` (${s(i.repo)})` : ""}`, weight: 3 };
     case "git_pull":
-      return { label: `Pulled${s(i.branch) ? ` ${s(i.branch)}` : ""}${s(i.repo) ? ` (${s(i.repo)})` : ""}`, weight: 2 };
+      return { label: `${t("steps.pulled")}${s(i.branch) ? ` ${s(i.branch)}` : ""}${s(i.repo) ? ` (${s(i.repo)})` : ""}`, weight: 2 };
     case "github_api":
     case "azure_devops_api": {
       const method = s(i.method).toUpperCase() || "GET";
-      return { label: `${tool === "github_api" ? "GitHub" : "Azure DevOps"}: ${method === "GET" ? "looked up" : "changed"} ${firstLine(i.path, 60)}`, weight: method === "GET" ? 1 : 3 };
+      return { label: `${tool === "github_api" ? "GitHub" : "Azure DevOps"}: ${method === "GET" ? t("steps.lookedUp") : t("steps.changed")} ${firstLine(i.path, 60)}`, weight: method === "GET" ? 1 : 3 };
     }
     // The runtimes' own tools (OpenCode's, and GitHub Copilot CLI's: view, create, str_replace…)
     case "read":
     case "view":
-      return { label: `Read ${fileName(i.path ?? i.filePath)}`, weight: 1 };
+      return { label: t("steps.read", { file: fileName(i.path ?? i.filePath) }), weight: 1 };
     case "write":
     case "create":
-      return { label: `Wrote ${fileName(i.path ?? i.filePath)}`, weight: 3 };
+      return { label: t("steps.wrote", { file: fileName(i.path ?? i.filePath) }), weight: 3 };
     case "edit":
     case "multiedit":
     case "patch":
     case "str_replace":
     case "apply_patch":
-      return { label: `Edited ${fileName(i.path ?? i.filePath ?? patchedFile(i)) || "files"}`, weight: 3 };
+      return { label: t("steps.edited", { file: fileName(i.path ?? i.filePath ?? patchedFile(i)) || t("steps.files") }), weight: 3 };
     case "grep":
     case "search":
-      return { label: `Searched for "${firstLine(i.pattern ?? i.query, 50)}"`, weight: 1 };
+      return { label: t("steps.searchedFor", { query: firstLine(i.pattern ?? i.query, 50) }), weight: 1 };
     case "glob":
     case "list":
     case "ls":
-      return { label: `Listed files${s(i.pattern) ? ` (${s(i.pattern)})` : ""}`, weight: 1 };
+      return { label: s(i.pattern) ? t("steps.listedFilesPattern", { pattern: s(i.pattern) }) : t("steps.listedFiles"), weight: 1 };
     case "webfetch":
     case "fetch":
-      return { label: `Opened ${host(s(i.url))}`, weight: 1 };
+      return { label: t("steps.opened", { url: host(s(i.url)) }), weight: 1 };
     case "websearch":
-      return { label: `Searched the web for "${firstLine(i.query, 60)}"`, weight: 1 };
+      return { label: t("steps.searchedWeb", { query: firstLine(i.query, 60) }), weight: 1 };
     case "todowrite":
     case "todoread":
-      return { label: "Updated its to-do list", weight: 1 };
+      return { label: t("steps.updatedTodo"), weight: 1 };
     case "task":
-      return { label: "Asked a subagent", detail: firstLine(i.description ?? i.prompt), weight: 2 };
+      return { label: t("steps.askedSubagent"), detail: firstLine(i.description ?? i.prompt), weight: 2 };
     case "question":
-      return { label: "Asked you a question", detail: firstLine(i.question), weight: 3 };
+      return { label: t("steps.askedYouQuestion"), detail: firstLine(i.question), weight: 3 };
     case "shell":
     case "bash":
     case "powershell":
       return commandLabel(s(i.command));
     case "read_powershell":
     case "read_bash":
-      return { label: "Checked a running command", weight: 1 };
+      return { label: t("steps.checkedRunningCommand"), weight: 1 };
     default:
       return { label: tool.replace(/_/g, " "), weight: 2 };
   }
@@ -240,12 +242,12 @@ export function commandLabel(command: string): StepLabel {
   // "Start-Sleep 20; Test-NetConnection localhost -Port 7343": one thing, waiting for the app.
   const port = /(?:-Port\s+|localhost:|127\.0\.0\.1:)(\d{2,5})/i.exec(command)?.[1];
   const sleeps = /\b(Start-Sleep|sleep|timeout(?:\.exe)?)\b/i.test(command);
-  if (port && sleeps) labels.push({ label: `Waited for the app on port ${port}`, weight: 2 });
+  if (port && sleeps) labels.push({ label: t("steps.waitedForApp", { port }), weight: 2 });
   for (const part of parts) {
     const l = partLabel(part, !!(port && sleeps));
     if (l && !labels.some((x) => x.label === l.label)) labels.push(l);
   }
-  if (labels.length === 0) return { label: "Ran a command", detail: firstLine(command), weight: 2 };
+  if (labels.length === 0) return { label: t("steps.ranCommand"), detail: firstLine(command), weight: 2 };
   const top = [...labels].sort((a, b) => b.weight - a.weight).slice(0, 2);
   const kept = labels.filter((l) => top.includes(l));
   return { label: kept.map((l) => l.label).join(" · "), weight: Math.max(...kept.map((l) => l.weight)) as StepWeight };
@@ -296,36 +298,36 @@ function partLabel(part: string, waiting: boolean): StepLabel | null {
   const cmd = (words[0] ?? "").replace(/^&\s*/, "").replace(/\.exe$/i, "").toLowerCase();
   const args = words.slice(1);
   const arg = (k = 0) => (args.filter((a) => !a.startsWith("-"))[k] ?? "").replace(/^["']|["']$/g, "");
-  if (/^(start-sleep|sleep|timeout)$/.test(cmd)) return waiting ? null : { label: `Waited ${arg() || "a moment"}${/^\d+$/.test(arg()) ? "s" : ""}`, weight: 1 };
-  if (/^(test-netconnection)$/.test(cmd)) return waiting ? null : { label: "Checked a network connection", weight: 1 };
+  if (/^(start-sleep|sleep|timeout)$/.test(cmd)) return waiting ? null : { label: /^\d+$/.test(arg()) ? t("steps.waitedSeconds", { n: arg() }) : arg() ? t("steps.waited", { what: arg() }) : t("steps.waitedMoment"), weight: 1 };
+  if (/^(test-netconnection)$/.test(cmd)) return waiting ? null : { label: t("steps.checkedNetwork"), weight: 1 };
   if (cmd === "git") return gitLabel(args);
   if (/^(npm|pnpm|yarn|bun|npx)$/.test(cmd)) return packageLabel(cmd, args);
   if (cmd === "dotnet") return dotnetLabel(args);
-  if (/^(pytest|jest|vitest|mocha)$/.test(cmd) || (cmd === "go" && args[0] === "test") || (cmd === "cargo" && args[0] === "test")) return { label: "Ran the tests", weight: 2 };
-  if (/^(tsc|msbuild|make|cmake|gradle|mvn)$/.test(cmd) || (cmd === "cargo" && args[0] === "build") || (cmd === "go" && args[0] === "build")) return { label: "Built the project", weight: 2 };
-  if (/^(get-content|gc|cat|type|head|tail|less|more)$/.test(cmd)) return { label: `Read ${fileName(arg())}`, weight: 1 };
-  if (/^(select-string|sls|grep|rg|findstr|ag)$/.test(cmd)) return { label: `Searched for "${firstLine(arg(), 40)}"`, weight: 1 };
-  if (/^(get-childitem|gci|ls|dir|tree|find|get-item)$/.test(cmd)) return { label: `Listed files${arg() ? ` in ${fileName(arg())}` : ""}`, weight: 1 };
-  if (/^(remove-item|rm|del|rmdir|rd)$/.test(cmd)) return { label: `Deleted ${fileName(arg())}`, weight: 3 };
-  if (/^(copy-item|cp|copy|xcopy|robocopy)$/.test(cmd)) return { label: `Copied ${fileName(arg())}`, weight: 2 };
-  if (/^(move-item|mv|move|rename-item|ren)$/.test(cmd)) return { label: `Moved ${fileName(arg())}`, weight: 2 };
-  if (/^(new-item|mkdir|md|ni)$/.test(cmd)) return { label: `Created ${fileName(arg())}`, weight: 2 };
-  if (/^(set-content|add-content|out-file|sc|ac)$/.test(cmd)) return { label: `Wrote ${fileName(arg())}`, weight: 3 };
-  if (/^(stop-process|kill|taskkill)$/.test(cmd)) return { label: "Stopped a process", weight: 2 };
-  if (/^(start-process|start)$/.test(cmd)) return { label: `Started ${fileName(arg())}`, weight: 2 };
-  if (/^(get-process|ps|tasklist)$/.test(cmd)) return { label: "Checked running processes", weight: 1 };
+  if (/^(pytest|jest|vitest|mocha)$/.test(cmd) || (cmd === "go" && args[0] === "test") || (cmd === "cargo" && args[0] === "test")) return { label: t("steps.ranTests"), weight: 2 };
+  if (/^(tsc|msbuild|make|cmake|gradle|mvn)$/.test(cmd) || (cmd === "cargo" && args[0] === "build") || (cmd === "go" && args[0] === "build")) return { label: t("steps.builtProject"), weight: 2 };
+  if (/^(get-content|gc|cat|type|head|tail|less|more)$/.test(cmd)) return { label: t("steps.read", { file: fileName(arg()) }), weight: 1 };
+  if (/^(select-string|sls|grep|rg|findstr|ag)$/.test(cmd)) return { label: t("steps.searchedFor", { query: firstLine(arg(), 40) }), weight: 1 };
+  if (/^(get-childitem|gci|ls|dir|tree|find|get-item)$/.test(cmd)) return { label: arg() ? t("steps.listedFilesIn", { folder: fileName(arg()) }) : t("steps.listedFiles"), weight: 1 };
+  if (/^(remove-item|rm|del|rmdir|rd)$/.test(cmd)) return { label: t("steps.deleted", { file: fileName(arg()) }), weight: 3 };
+  if (/^(copy-item|cp|copy|xcopy|robocopy)$/.test(cmd)) return { label: t("steps.copied", { file: fileName(arg()) }), weight: 2 };
+  if (/^(move-item|mv|move|rename-item|ren)$/.test(cmd)) return { label: t("steps.moved", { file: fileName(arg()) }), weight: 2 };
+  if (/^(new-item|mkdir|md|ni)$/.test(cmd)) return { label: t("steps.created", { file: fileName(arg()) }), weight: 2 };
+  if (/^(set-content|add-content|out-file|sc|ac)$/.test(cmd)) return { label: t("steps.wrote", { file: fileName(arg()) }), weight: 3 };
+  if (/^(stop-process|kill|taskkill)$/.test(cmd)) return { label: t("steps.stoppedProcess"), weight: 2 };
+  if (/^(start-process|start)$/.test(cmd)) return { label: t("steps.started", { file: fileName(arg()) }), weight: 2 };
+  if (/^(get-process|ps|tasklist)$/.test(cmd)) return { label: t("steps.checkedProcesses"), weight: 1 };
   if (/^(curl|wget|invoke-webrequest|invoke-restmethod|iwr|irm)$/.test(cmd)) {
     const url = args.find((a) => /^["']?https?:/.test(a))?.replace(/^["']|["']$/g, "") ?? arg();
-    return { label: `Called ${host(url)}`, weight: 1 };
+    return { label: t("steps.called", { url: host(url) }), weight: 1 };
   }
-  if (/^(sqlcmd|psql|mysql|sqlite3|mongosh)$/.test(cmd)) return { label: "Queried the database", weight: 2 };
+  if (/^(sqlcmd|psql|mysql|sqlite3|mongosh)$/.test(cmd)) return { label: t("steps.queriedDatabase"), weight: 2 };
   if (/^(node|python|python3|py|deno|ruby|php|pwsh|powershell)$/.test(cmd)) {
     // An inline script (node -e "…", python -c "…") has no file to name.
-    if (args.some((a) => /^-(e|c|p|-eval|command)$/i.test(a))) return { label: "Ran a script", weight: 2 };
-    return arg() ? { label: `Ran ${fileName(arg())}`, weight: 2 } : null;
+    if (args.some((a) => /^-(e|c|p|-eval|command)$/i.test(a))) return { label: t("steps.ranScript"), weight: 2 };
+    return arg() ? { label: t("steps.ran", { what: fileName(arg()) }), weight: 2 } : null;
   }
   if (/^(echo|write-output|write-host|out-null|out-string|select|select-object|sort|sort-object|measure-object|format-table|ft|fl)$/.test(cmd)) return null;
-  return cmd ? { label: `Ran ${fileName(cmd)}`, weight: 2 } : null;
+  return cmd ? { label: t("steps.ran", { what: fileName(cmd) }), weight: 2 } : null;
 }
 
 function gitLabel(args: string[]): StepLabel {
@@ -334,40 +336,40 @@ function gitLabel(args: string[]): StepLabel {
   const target = (rest[0] ?? "").replace(/^["']|["']$/g, "");
   switch (sub) {
     case "merge":
-      return { label: target ? `Merged ${target}` : "Merged", weight: 3 };
+      return { label: target ? t("steps.merged", { target }) : t("steps.mergedPlain"), weight: 3 };
     case "commit":
-      return { label: "Committed", weight: 3 };
+      return { label: t("steps.committed"), weight: 3 };
     case "push":
-      return { label: "Pushed", weight: 3 };
+      return { label: t("steps.pushed"), weight: 3 };
     case "pull":
     case "fetch":
-      return { label: "Fetched changes", weight: 2 };
+      return { label: t("steps.fetchedChanges"), weight: 2 };
     case "checkout":
     case "switch":
-      return { label: target ? `Switched to ${target}` : "Switched branch", weight: 2 };
+      return { label: target ? t("steps.switchedTo", { target }) : t("steps.switchedBranch"), weight: 2 };
     case "rebase":
-      return { label: "Rebased", weight: 3 };
+      return { label: t("steps.rebased"), weight: 3 };
     case "reset":
     case "restore":
     case "revert":
-      return { label: "Undid changes", weight: 3 };
+      return { label: t("steps.undidChanges"), weight: 3 };
     case "stash":
-      return { label: "Stashed changes", weight: 2 };
+      return { label: t("steps.stashedChanges"), weight: 2 };
     case "add":
-      return { label: "Staged changes", weight: 2 };
+      return { label: t("steps.stagedChanges"), weight: 2 };
     case "diff":
-      return { label: "Compared changes", weight: 1 };
+      return { label: t("steps.comparedChanges"), weight: 1 };
     case "status":
-      return { label: "Checked git status", weight: 1 };
+      return { label: t("steps.checkedGitStatus"), weight: 1 };
     case "log":
     case "show":
-      return { label: "Looked at the history", weight: 1 };
+      return { label: t("steps.lookedHistory"), weight: 1 };
     case "grep":
-      return { label: `Searched the repository${target ? ` for "${firstLine(target, 40)}"` : ""}`, weight: 1 };
+      return { label: target ? t("steps.searchedRepoFor", { query: firstLine(target, 40) }) : t("steps.searchedRepo"), weight: 1 };
     case "branch":
-      return { label: "Checked branches", weight: 1 };
+      return { label: t("steps.checkedBranches"), weight: 1 };
     case "worktree":
-      return { label: "Managed worktrees", weight: 2 };
+      return { label: t("steps.managedWorktrees"), weight: 2 };
     default:
       return { label: `git ${sub}`.trim(), weight: 1 };
   }
@@ -375,22 +377,22 @@ function gitLabel(args: string[]): StepLabel {
 
 function packageLabel(cmd: string, args: string[]): StepLabel {
   const sub = args[0] === "run" ? args[1] ?? "" : args[0] ?? "";
-  if (/test/.test(sub)) return { label: "Ran the tests", weight: 2 };
-  if (/build|typecheck|tsc/.test(sub)) return { label: "Built the project", weight: 2 };
-  if (/^(install|i|ci|add)$/.test(sub)) return { label: "Installed dependencies", weight: 2 };
-  if (/^(start|dev|serve|preview)$/.test(sub)) return { label: "Started the app", weight: 2 };
-  if (/lint|format/.test(sub)) return { label: "Checked the code style", weight: 1 };
-  return { label: `Ran ${cmd} ${sub}`.trim(), weight: 2 };
+  if (/test/.test(sub)) return { label: t("steps.ranTests"), weight: 2 };
+  if (/build|typecheck|tsc/.test(sub)) return { label: t("steps.builtProject"), weight: 2 };
+  if (/^(install|i|ci|add)$/.test(sub)) return { label: t("steps.installedDeps"), weight: 2 };
+  if (/^(start|dev|serve|preview)$/.test(sub)) return { label: t("steps.startedApp"), weight: 2 };
+  if (/lint|format/.test(sub)) return { label: t("steps.checkedCodeStyle"), weight: 1 };
+  return { label: t("steps.ran", { what: `${cmd} ${sub}`.trim() }), weight: 2 };
 }
 
 function dotnetLabel(args: string[]): StepLabel {
   const sub = args[0] ?? "";
-  if (sub === "test") return { label: "Ran the tests", weight: 2 };
-  if (sub === "build" || sub === "publish") return { label: sub === "publish" ? "Published the app" : "Built the project", weight: 2 };
-  if (sub === "run" || sub === "watch") return { label: "Started the app", weight: 2 };
-  if (sub === "restore" || sub === "add") return { label: "Installed dependencies", weight: 2 };
-  if (sub === "ef") return { label: "Ran a database migration", weight: 3 };
-  return { label: `Ran dotnet ${sub}`.trim(), weight: 2 };
+  if (sub === "test") return { label: t("steps.ranTests"), weight: 2 };
+  if (sub === "build" || sub === "publish") return { label: sub === "publish" ? t("steps.publishedApp") : t("steps.builtProject"), weight: 2 };
+  if (sub === "run" || sub === "watch") return { label: t("steps.startedApp"), weight: 2 };
+  if (sub === "restore" || sub === "add") return { label: t("steps.installedDeps"), weight: 2 };
+  if (sub === "ef") return { label: t("steps.ranMigration"), weight: 3 };
+  return { label: t("steps.ran", { what: `dotnet ${sub}`.trim() }), weight: 2 };
 }
 
 /** One line for a run of steps: the most telling labels first, and how many more there were. */
@@ -404,5 +406,5 @@ export function summarize(labels: StepLabel[], max = 2): string {
     .slice(0, max)
     .map((l) => l.label);
   const rest = distinct.length - kept.length;
-  return kept.join(" · ") + (rest > 0 ? ` and ${rest} more` : "");
+  return kept.join(" · ") + (rest > 0 ? t("steps.andMore", { n: rest }) : "");
 }

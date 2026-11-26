@@ -185,7 +185,7 @@ An honest list; see [docs/known-issues.md](docs/known-issues.md) for details and
 | **One person** | No accounts or sharing; remote access lets you, not others, use it from another device. |
 | **GitHub Copilot CLI** | In preview: it relies on the Copilot SDK, which is new. |
 | **Conversations** | They live in the runtime's storage on this computer; a project moved to another machine keeps its docs and plan, not its agents' sessions. |
-| **Languages** | English, and Portuguese (Brazil) for the main screens. |
+| **Languages** | English and Portuguese (Brazil), the browser's language by default; Spanish, French and German in progress. |
 
 ## FAQ
 

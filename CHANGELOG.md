@@ -5,6 +5,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **The whole interface in Portuguese (Brazil)** (#13): every screen now goes through translations (about 1,350 texts),
+  and Symbio starts in the browser's language (English when it doesn't have it); the choice in the top bar still wins.
+  The texts live in one file per language (`web/src/i18n/`), keys are typed, `npm run i18n:check` lists what a language
+  lacks (CI shows it as a warning), and `docs/development.md` explains how to add a language. Spanish, French and German
+  are open for translators (#68, #69, #70).
+
 - **Settings in groups** (#62): tabs across the top (Agents, Notifications, Connections, Usage and costs, This computer,
   Help), each with its own address (`#/settings/usage`), so a reload stays there and links into Settings open the right
   group (the update badge opens This computer, "add a price" opens Usage and costs: #35). A project's settings are grouped
@@ -20,8 +26,10 @@ versions follow [Semantic Versioning](https://semver.org/).
   - A run due while the team is paused, or while the previous one is still going, is skipped and you're told why; one
     missed while Symbio was off runs when it's back. Results reach you as notifications (a failure as something that needs you).
 
-- GitHub Copilot CLI: a change to an agent's skills or brief made while its session was still opening now applies on its
-  next turn (it used to wait for the one after; an end-to-end test caught it now and then).
+- A helper's skills changed by you now apply to its very next turn: Symbio saved the change before telling the agent
+  runtime, so a message sent right then could still run with the old skills (on GitHub Copilot CLI; an end-to-end test
+  caught it now and then). Also on Copilot, a change made while an agent's session was still opening applies on its next
+  turn.
 - **Budgets per project** (#7), in the project's settings: a spending limit for the whole project and per day, in the
   estimated cost Symbio already shows in Usage.
   - Near a limit (80%, or the share you set) you're told, and core gets a note to spend carefully.

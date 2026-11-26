@@ -2,12 +2,14 @@ import { useState } from "react";
 import { api, type Agent, type Project } from "./api";
 import { modelsForRole } from "./ModelPicker";
 import { Dialog } from "./ui";
+import { useI18n } from "./i18n";
 
 /**
  * A helper the human creates from the team list, to talk to directly (like opening a new chat).
  * It's a full team member: the same as one core creates with spawn_agent, without a first task.
  */
 export function NewHelperDialog({ project, onClose, onCreated }: { project: Project; onClose: () => void; onCreated: (agent: Agent) => void }) {
+  const { t } = useI18n();
   const models = modelsForRole(project, "worker");
   const [name, setName] = useState("");
   const [purpose, setPurpose] = useState("");
@@ -32,37 +34,37 @@ export function NewHelperDialog({ project, onClose, onCreated }: { project: Proj
 
   return (
     <Dialog
-      title="New helper"
-      subtitle="A helper you talk to directly, in its own chat. core is told, and leaves it to you."
+      title={t("newHelper.title")}
+      subtitle={t("newHelper.subtitle")}
       onClose={onClose}
       footer={
         <>
           <button className="btn ghost" onClick={onClose}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button className="btn primary" onClick={create} disabled={busy || !valid}>
-            {busy ? "Creating…" : "Create and open its chat"}
+            {busy ? t("newHelper.creating") : t("newHelper.create")}
           </button>
         </>
       }
     >
       <label className="field">
-        <span>Name</span>
+        <span>{t("newHelper.name")}</span>
         <input
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && valid && !busy && void create()}
-          placeholder="e.g. researcher, writer, ideas"
+          placeholder={t("newHelper.namePlaceholder")}
         />
-        {name && !valid && <span className="hint warn">Letters, digits and dashes, starting with a letter or digit.</span>}
+        {name && !valid && <span className="hint warn">{t("newHelper.nameInvalid")}</span>}
       </label>
       <label className="field">
-        <span>What it's for (optional)</span>
-        <input value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="e.g. Brainstorms level ideas with me" />
+        <span>{t("newHelper.purpose")}</span>
+        <input value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder={t("newHelper.purposePlaceholder")} />
       </label>
       <label className="field">
-        <span>Model</span>
+        <span>{t("newHelper.model")}</span>
         <select value={model} onChange={(e) => setModel(e.target.value)}>
           {models.map((m) => (
             <option key={m} value={m}>
@@ -72,19 +74,19 @@ export function NewHelperDialog({ project, onClose, onCreated }: { project: Proj
         </select>
       </label>
       <div className="field">
-        <span>Where it works</span>
+        <span>{t("newHelper.where")}</span>
         <div className="seg">
           <button className={workspace === "shared" ? "on" : ""} onClick={() => setWorkspace("shared")}>
-            In the project folder
+            {t("newHelper.shared")}
           </button>
           <button className={workspace === "own" ? "on" : ""} onClick={() => setWorkspace("own")}>
-            In its own copy
+            {t("newHelper.own")}
           </button>
         </div>
         <span className="hint">
           {workspace === "shared"
-            ? "What it writes is in the project at once, like core's own work."
-            : "A separate copy (git branch): its work stays apart until core merges it."}
+            ? t("newHelper.sharedHint")
+            : t("newHelper.ownHint")}
         </span>
       </div>
       {error && <div className="error">{error}</div>}

@@ -1,5 +1,5 @@
 // Takes screenshots of the running UI with the locally installed Edge/Chrome.
-// Usage: node scripts/screenshot.mjs <baseUrl> <outDir> [hashRoute ...]
+// Usage: node scripts/screenshot.mjs <baseUrl> <outDir> [hashRoute ...]   (LOCALE=pt-BR for the interface in another language)
 import { chromium } from "playwright-core";
 import path from "node:path";
 
@@ -8,7 +8,7 @@ const channel = process.env.BROWSER_CHANNEL ?? (process.platform === "win32" ? "
 
 const browser = await chromium.launch({ channel, headless: true });
 try {
-  const page = await browser.newPage({ viewport: { width: 1400, height: 900 }, colorScheme: "dark" });
+  const page = await browser.newPage({ viewport: { width: 1400, height: 900 }, colorScheme: "dark", locale: process.env.LOCALE ?? "en-US" });
   for (const route of routes.length ? routes : [""]) {
     await page.goto(`${baseUrl}/${route}`);
     await page.waitForTimeout(2500);

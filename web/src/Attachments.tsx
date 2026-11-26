@@ -3,6 +3,7 @@ import { Download, ExternalLink, File as FileIcon, FileSpreadsheet, FileText, Pa
 import { api, attachmentBlob, openAttachment, subscribe, uploadAttachments, type Attachment, type Project, type SharedFile } from "./api";
 import { FileCard } from "./files";
 import { EmptyState, timeAgo } from "./ui";
+import { useI18n } from "./i18n";
 
 const IMAGE = /\.(png|jpe?g|gif|webp|bmp)$/i;
 export const isImage = (name: string) => IMAGE.test(name);
@@ -99,6 +100,7 @@ export function usePendingFiles(projectId: string, storageKey?: string) {
 }
 
 export function PendingFiles({ projectId, files, onRemove }: { projectId: string; files: PendingFile[]; onRemove: (key: string) => void }) {
+  const { t } = useI18n();
   if (!files.length) return null;
   return (
     <div className="att-pending">
@@ -108,10 +110,10 @@ export function PendingFiles({ projectId, files, onRemove }: { projectId: string
           <span className="att-chip-text">
             <span className="ellipsis">{f.name}</span>
             <span className="att-chip-sub">
-              {f.status === "uploading" ? `Uploading… ${Math.round(f.progress * 100)}%` : f.status === "error" ? f.error : formatSize(f.size)}
+              {f.status === "uploading" ? t("usage.files.uploading", { n: Math.round(f.progress * 100) }) : f.status === "error" ? f.error : formatSize(f.size)}
             </span>
           </span>
-          <button className="btn ghost icon xs" onClick={() => onRemove(f.key)} title="Remove" aria-label={`Remove ${f.name}`}>
+          <button className="btn ghost icon xs" onClick={() => onRemove(f.key)} title={t("common.remove")} aria-label={t("usage.files.removeName", { name: f.name })}>
             <X size={12} />
           </button>
         </div>
@@ -122,6 +124,7 @@ export function PendingFiles({ projectId, files, onRemove }: { projectId: string
 
 /** The paperclip button and its hidden file input. */
 export function AttachButton({ onFiles, disabled }: { onFiles: (files: File[]) => void; disabled?: boolean }) {
+  const { t } = useI18n();
   const input = useRef<HTMLInputElement>(null);
   return (
     <>
@@ -135,7 +138,7 @@ export function AttachButton({ onFiles, disabled }: { onFiles: (files: File[]) =
           e.target.value = "";
         }}
       />
-      <button className="btn ghost icon sm" onClick={() => input.current?.click()} disabled={disabled} title="Attach files (or drop or paste them)" aria-label="Attach files">
+      <button className="btn ghost icon sm" onClick={() => input.current?.click()} disabled={disabled} title={t("usage.files.attachTitle")} aria-label={t("usage.files.attach")}>
         <Paperclip size={15} />
       </button>
     </>
@@ -160,6 +163,7 @@ export function splitAttachmentNote(text: string): { body: string; files: string
 
 /** Chips for the files a past message carried (matched to the gallery by stored file name). */
 export function MessageAttachments({ projectId, files }: { projectId: string; files: string[] }) {
+  const { t } = useI18n();
   const [list] = useAttachments(projectId);
   if (!files.length) return null;
   const byFile = new Map((list ?? []).map((a) => [`${a.id.slice(4, 12)}-${a.name}`, a]));
@@ -169,7 +173,7 @@ export function MessageAttachments({ projectId, files }: { projectId: string; fi
         const a = byFile.get(f);
         const name = a?.name ?? f.replace(/^[a-z0-9]{8}-/, "");
         return (
-          <button key={f} className="att-chip sent" disabled={!a} onClick={() => a && openAttachment(projectId, a)} title={a ? `Open ${name}` : `${name} (no longer in the gallery)`}>
+          <button key={f} className="att-chip sent" disabled={!a} onClick={() => a && openAttachment(projectId, a)} title={a ? t("usage.files.openName", { name }) : t("usage.files.gone", { name })}>
             <AttachmentThumb projectId={projectId} a={{ id: a?.id, name }} size={a && isImage(name) ? 64 : 30} />
             {!(a && isImage(name)) && <span className="ellipsis">{name}</span>}
           </button>
@@ -183,12 +187,13 @@ export function MessageAttachments({ projectId, files }: { projectId: string; fi
 
 /** Everything sent in this project's chats, to find, open, resend or delete. */
 export function FilesView({ project }: { project: Project }) {
+  const { t } = useI18n();
   const [all] = useAttachments(project.id);
   const sharedAll = useSharedFiles(project.id);
   // Filters: what it is (evidence, reports, the human's own) and which task.
   const [show, setShow] = useState<"all" | "evidence" | "report" | "mine">("all");
   const [task, setTask] = useState("");
-  const tasks = [...new Set(sharedAll.map((s) => s.taskId).filter((t): t is string => !!t))].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
+  const tasks = [...new Set(sharedAll.map((s) => s.taskId).filter((id): id is string => !!id))].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
   const shared = sharedAll.filter((s) => show !== "mine" && (show === "all" || s.tag === show) && (!task || s.taskId === task));
   const list = (show === "all" && !task) || show === "mine" ? (all ?? []) : [];
   const [dragging, setDragging] = useState(false);
@@ -196,7 +201,7 @@ export function FilesView({ project }: { project: Project }) {
   const [uploading, setUploading] = useState<number | null>(null);
   const [sendTo, setSendTo] = useState<string | null>(null);
   const agents = project.agents.filter((a) => a.status !== "stopped");
-  const nameOf = (id: string) => project.agents.find((a) => a.id === id)?.name ?? "an agent";
+  const nameOf = (id: string) => project.agents.find((a) => a.id === id)?.name ?? t("usage.files.anAgent");
 
   async function upload(files: File[]) {
     if (!files.length) return;
@@ -239,10 +244,10 @@ export function FilesView({ project }: { project: Project }) {
     <div className={`files ${dragging ? "dragging" : ""}`} {...drop}>
       <div className="files-head">
         <div>
-          <h2>Files</h2>
+          <h2>{t("project.tab.files")}</h2>
           <p className="muted small">
-            Files the team shared with you, and the ones you sent in this project's chats (kept in <code>.symbio/attachments</code>, not
-            committed). Drop files here to add them, then send them to an agent.
+            {t("usage.files.intro.before")} <code>.symbio/attachments</code>
+            {t("usage.files.intro.after")}
           </p>
         </div>
         <span className="spacer" />
@@ -254,23 +259,23 @@ export function FilesView({ project }: { project: Project }) {
           <div className="seg">
             {(
               [
-                ["all", "All"],
-                ["evidence", "Evidence"],
-                ["report", "Reports"],
-                ["mine", "Sent by you"],
+                ["all", "usage.files.all"],
+                ["evidence", "usage.files.evidence"],
+                ["report", "usage.files.reports"],
+                ["mine", "usage.files.mine"],
               ] as const
             ).map(([id, label]) => (
               <button key={id} className={show === id ? "on" : ""} onClick={() => setShow(id)}>
-                {label}
+                {t(label)}
               </button>
             ))}
           </div>
           {tasks.length > 0 && show !== "mine" && (
-            <select value={task} onChange={(e) => setTask(e.target.value)} aria-label="Task">
-              <option value="">Any task</option>
-              {tasks.map((t) => (
-                <option key={t} value={t}>
-                  {t}
+            <select value={task} onChange={(e) => setTask(e.target.value)} aria-label={t("usage.files.task")}>
+              <option value="">{t("usage.files.anyTask")}</option>
+              {tasks.map((id) => (
+                <option key={id} value={id}>
+                  {id}
                 </option>
               ))}
             </select>
@@ -279,7 +284,7 @@ export function FilesView({ project }: { project: Project }) {
       )}
       {shared.length > 0 && (
         <>
-          <h3 className="files-section">From the team</h3>
+          <h3 className="files-section">{t("usage.files.fromTeam")}</h3>
           <div className="shared-files">
             {shared.map((s) => (
               <FileCard
@@ -291,20 +296,20 @@ export function FilesView({ project }: { project: Project }) {
               />
             ))}
           </div>
-          {list && list.length > 0 && <h3 className="files-section">Sent by you</h3>}
+          {list && list.length > 0 && <h3 className="files-section">{t("usage.files.mine")}</h3>}
         </>
       )}
       {all && all.length === 0 && sharedAll.length === 0 ? (
-        <EmptyState icon={<Paperclip size={20} />} title="No files yet">
-          Attach files in a chat (the paperclip, drag and drop, or paste a screenshot), or drop them here.
+        <EmptyState icon={<Paperclip size={20} />} title={t("usage.files.empty")}>
+          {t("usage.files.emptyBody")}
         </EmptyState>
       ) : list.length === 0 && shared.length === 0 ? (
-        <div className="subtle small">No files match.</div>
+        <div className="subtle small">{t("usage.files.noMatch")}</div>
       ) : (
         <div className="files-grid">
           {list.map((a) => (
             <div key={a.id} className="file-card">
-              <button className="file-card-preview" onClick={() => openAttachment(project.id, a)} title={`Open ${a.name}`}>
+              <button className="file-card-preview" onClick={() => openAttachment(project.id, a)} title={t("usage.files.openName", { name: a.name })}>
                 <AttachmentThumb projectId={project.id} a={a} size={isImage(a.name) ? 132 : 56} />
               </button>
               <div className="file-card-body">
@@ -315,12 +320,14 @@ export function FilesView({ project }: { project: Project }) {
                   {formatSize(a.size)} · {timeAgo(a.addedAt)}
                 </div>
                 <div className="file-card-sub ellipsis">
-                  {a.sentTo.length ? `Sent to ${[...new Set(a.sentTo.map((s) => nameOf(s.agentId)))].join(", ")}` : "Not sent yet"}
+                  {a.sentTo.length
+                    ? t("usage.files.sentTo", { names: [...new Set(a.sentTo.map((s) => nameOf(s.agentId)))].join(", ") })
+                    : t("usage.files.notSent")}
                 </div>
               </div>
               <div className="file-card-actions">
                 <div className="file-send">
-                  <button className="btn ghost icon xs" title="Send to an agent" onClick={() => setSendTo(sendTo === a.id ? null : a.id)} disabled={!agents.length}>
+                  <button className="btn ghost icon xs" title={t("usage.files.sendTo")} onClick={() => setSendTo(sendTo === a.id ? null : a.id)} disabled={!agents.length}>
                     <Send size={13} />
                   </button>
                   {sendTo === a.id && (
@@ -333,17 +340,17 @@ export function FilesView({ project }: { project: Project }) {
                     </div>
                   )}
                 </div>
-                <button className="btn ghost icon xs" title="Open" onClick={() => openAttachment(project.id, a)}>
+                <button className="btn ghost icon xs" title={t("common.open")} onClick={() => openAttachment(project.id, a)}>
                   <ExternalLink size={13} />
                 </button>
-                <button className="btn ghost icon xs" title="Download" onClick={() => openAttachment(project.id, a, true)}>
+                <button className="btn ghost icon xs" title={t("common.download")} onClick={() => openAttachment(project.id, a, true)}>
                   <Download size={13} />
                 </button>
                 <button
                   className="btn ghost icon xs"
-                  title="Delete"
+                  title={t("common.delete")}
                   onClick={() => {
-                    if (confirm(`Delete ${a.name}? Agents that received it can no longer open it.`)) api.deleteAttachment(project.id, a.id).catch((e) => setError(e.message));
+                    if (confirm(t("usage.files.deleteConfirm", { name: a.name }))) api.deleteAttachment(project.id, a.id).catch((e) => setError(e.message));
                   }}
                 >
                   <Trash2 size={13} />
@@ -353,12 +360,13 @@ export function FilesView({ project }: { project: Project }) {
           ))}
         </div>
       )}
-      {dragging && <DropOverlay label="Drop to add to this project's files" />}
+      {dragging && <DropOverlay label={t("usage.files.drop")} />}
     </div>
   );
 }
 
 function AttachButtonLabeled({ onFiles, busy, progress }: { onFiles: (files: File[]) => void; busy: boolean; progress: number | null }) {
+  const { t } = useI18n();
   const input = useRef<HTMLInputElement>(null);
   return (
     <>
@@ -374,7 +382,7 @@ function AttachButtonLabeled({ onFiles, busy, progress }: { onFiles: (files: Fil
       />
       <button className="btn sm" onClick={() => input.current?.click()} disabled={busy}>
         <Upload size={13} />
-        {busy ? `Uploading… ${Math.round((progress ?? 0) * 100)}%` : "Add files"}
+        {busy ? t("usage.files.uploading", { n: Math.round((progress ?? 0) * 100) }) : t("usage.files.add")}
       </button>
     </>
   );

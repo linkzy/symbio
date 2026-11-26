@@ -103,7 +103,7 @@
   phone.
 - **Copy from the chat.** A whole answer as written, a code block, or your own message, with one
   click.
-- **Two languages.** The interface in English or Portuguese (Brazil), chosen in the top bar.
+- **Two languages, more coming.** The whole interface in English or Portuguese (Brazil): your browser's language at first, or the one you choose in the top bar. Spanish, French and German are being translated (#68, #69, #70).
 - **Themes and layouts.** The default look, or the colors of VS Code's Dark Modern and Light Modern
   themes, and a *Workbench* layout like an editor's: tools on the left, the work in the middle, the
   chat on the right (Settings → Appearance, kept per browser). Bring your own by importing a VS Code

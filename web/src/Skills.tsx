@@ -4,6 +4,7 @@ import { BookOpen, Download, Plus, Sparkles, Trash2 } from "lucide-react";
 import { api, type Agent, type Project, type SkillInfo } from "./api";
 import { Md } from "./files";
 import { Dialog } from "./ui";
+import { useI18n, type MessageKey } from "./i18n";
 
 // Skills (server: skills.ts): packaged methods agents load when a task calls for one. Settings has
 // the library (Symbio's and the human's own, and others found on this computer to add a copy of);
@@ -26,12 +27,13 @@ function useSkills() {
 
 /** Who wrote a skill: Symbio's own, or its author (linked), its license and where it comes from. */
 function Credit({ skill }: { skill: SkillInfo }) {
+  const { t } = useI18n();
   const c = skill.credit;
   if (!c) return null;
-  if (c.author === "Symbio") return <span className="tag">Symbio's</span>;
+  if (c.author === "Symbio") return <span className="tag">{t("agents.skills.symbios")}</span>;
   return (
     <span className="skill-credit subtle small">
-      by{" "}
+      {t("agents.skills.by")}{" "}
       {c.authorUrl ? (
         <a href={c.authorUrl} target="_blank" rel="noreferrer">
           {c.author}
@@ -44,7 +46,7 @@ function Credit({ skill }: { skill: SkillInfo }) {
         <>
           {" · "}
           <a href={c.source} target="_blank" rel="noreferrer">
-            source
+            {t("agents.skills.source")}
           </a>
         </>
       )}
@@ -54,11 +56,12 @@ function Credit({ skill }: { skill: SkillInfo }) {
 
 /** A skill's SKILL.md, to read before adding or giving it. */
 function SkillView({ skill, onClose, footer }: { skill: SkillInfo; onClose: () => void; footer?: React.ReactNode }) {
+  const { t } = useI18n();
   const [text, setText] = useState<string | null>(null);
   useEffect(() => {
     api.skillText(skill.name).then(
       (r) => setText(r.text),
-      (e) => setText(`Couldn't read it: ${(e as Error).message}`),
+      (e) => setText(t("agents.skills.readError", { error: (e as Error).message })),
     );
   }, [skill.name]);
   return (
@@ -66,20 +69,22 @@ function SkillView({ skill, onClose, footer }: { skill: SkillInfo; onClose: () =
       {skill.credit && skill.credit.author !== "Symbio" && (
         <div className="skill-credit-box small">
           <Credit skill={skill} />
-          {skill.credit.changes?.length ? <div className="subtle">Symbio's copy: {skill.credit.changes.join("; ")}.</div> : null}
+          {skill.credit.changes?.length ? <div className="subtle">{t("agents.skills.symbiosCopy", { changes: skill.credit.changes.join("; ") })}</div> : null}
         </div>
       )}
       <div className="skill-source subtle small">
         {skill.dir}
-        {skill.files.length > 0 && ` · also ${skill.files.length} file${skill.files.length === 1 ? "" : "s"}: ${skill.files.slice(0, 8).join(", ")}${skill.files.length > 8 ? "…" : ""}`}
+        {skill.files.length > 0 &&
+          ` · ${t(skill.files.length === 1 ? "agents.skills.alsoFile" : "agents.skills.alsoFiles", { n: skill.files.length, files: `${skill.files.slice(0, 8).join(", ")}${skill.files.length > 8 ? "…" : ""}` })}`}
       </div>
-      <div className="skill-text">{text === null ? <span className="subtle">Loading…</span> : <Md text={text.replace(/^---[\s\S]*?---\s*/, "")} projectId="" />}</div>
+      <div className="skill-text">{text === null ? <span className="subtle">{t("common.loading")}</span> : <Md text={text.replace(/^---[\s\S]*?---\s*/, "")} projectId="" />}</div>
     </Dialog>
   );
 }
 
 /** Settings → Skills: the library. */
 export function SkillsSection() {
+  const { t } = useI18n();
   const { data, error, reload } = useSkills();
   const [viewing, setViewing] = useState<SkillInfo | null>(null);
   const [creating, setCreating] = useState(false);
@@ -110,31 +115,27 @@ export function SkillsSection() {
     <section className="section" id="skills">
       <div className="section-head">
         <div>
-          <h2>Skills</h2>
-          <p>
-            Packaged methods agents load when a task calls for one: a review, a briefing, a front-end checklist, a writing style. Each agent
-            gets only the skills it's given (core's in each project's settings; helpers' from core or from you, in their chat). Skills you add
-            are copies kept by Symbio: they don't change when the original does, and agents can't edit them.
-          </p>
+          <h2>{t("agents.skills.title")}</h2>
+          <p>{t("agents.skills.intro")}</p>
         </div>
         <button className="btn sm" onClick={() => setCreating(true)}>
           <Plus size={13} />
-          New skill
+          {t("agents.skills.new")}
         </button>
       </div>
       <div className="section-body">
         {error && <div className="error">{error}</div>}
         <div className="skill-filters">
-          <input placeholder="Search skills" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search skills" />
+          <input placeholder={t("agents.skills.search")} value={query} onChange={(e) => setQuery(e.target.value)} aria-label={t("agents.skills.search")} />
           <div className="chips">
-            {[{ id: "all", label: "All" }, ...present].map((c) => (
+            {[{ id: "all", label: t("agents.skills.all") }, ...present].map((c) => (
               <button key={c.id} className={`chip${category === c.id ? " on" : ""}`} onClick={() => setCategory(c.id)}>
                 {c.label}
               </button>
             ))}
           </div>
         </div>
-        {data && shown.length === 0 && <div className="subtle small" style={{ padding: "8px 4px" }}>No skills match.</div>}
+        {data && shown.length === 0 && <div className="subtle small" style={{ padding: "8px 4px" }}>{t("agents.skills.noMatch")}</div>}
         {groups.map((g) => (
           <div key={g.id} className="skill-category" data-category={g.id}>
             <div className="skill-group-title">{g.label}</div>
@@ -149,15 +150,15 @@ export function SkillsSection() {
             </div>
             <button className="btn ghost sm" onClick={() => setViewing(s)}>
               <BookOpen size={13} />
-              Read
+              {t("agents.skills.read")}
             </button>
             {s.source === "library" && (
               <button
                 className="btn ghost icon sm"
-                title={`Remove ${s.name}`}
-                aria-label={`Remove ${s.name}`}
+                title={t("agents.skills.removeTitle", { name: s.name })}
+                aria-label={t("agents.skills.removeTitle", { name: s.name })}
                 disabled={busy}
-                onClick={() => confirm(`Remove the skill "${s.name}"? Agents that have it lose it.`) && act(() => api.removeSkill(s.name))}
+                onClick={() => confirm(t("agents.skills.removeConfirm", { name: s.name })) && act(() => api.removeSkill(s.name))}
               >
                 <Trash2 size={13} />
               </button>
@@ -169,7 +170,7 @@ export function SkillsSection() {
 
         {data && data.computer.length > 0 && (
           <>
-            <div className="skill-group-title">On this computer, from other tools: add a copy to give it to agents</div>
+            <div className="skill-group-title">{t("agents.skills.computer")}</div>
             {data.computer.map((s) => (
               <div key={`${s.dir}`} className="list-row skill-row">
                 <Sparkles size={15} className="subtle" />
@@ -179,7 +180,7 @@ export function SkillsSection() {
                 </div>
                 <button className="btn sm" onClick={() => setViewing(s)}>
                   <Download size={13} />
-                  Read and add
+                  {t("agents.skills.readAndAdd")}
                 </button>
               </div>
             ))}
@@ -188,7 +189,7 @@ export function SkillsSection() {
 
         <div className="skill-import row">
           <input
-            placeholder="Add a skill from a folder (the one with its SKILL.md), e.g. C:\Users\me\skills\front-end"
+            placeholder={t("agents.skills.fromFolder")}
             value={fromFolder}
             onChange={(e) => setFromFolder(e.target.value)}
           />
@@ -197,7 +198,7 @@ export function SkillsSection() {
             disabled={busy || !fromFolder.trim()}
             onClick={() => act(async () => (await api.importSkill(fromFolder.trim()), setFromFolder("")))}
           >
-            Add a copy
+            {t("agents.skills.addCopy")}
           </button>
         </div>
       </div>
@@ -210,12 +211,12 @@ export function SkillsSection() {
             footer={
               viewing.source === "computer" ? (
                 <>
-                  <span className="subtle small grow">Read it first: a skill is instructions agents follow, and its files can be scripts they run.</span>
+                  <span className="subtle small grow">{t("agents.skills.readFirst")}</span>
                   <button className="btn ghost" onClick={() => setViewing(null)}>
-                    Cancel
+                    {t("common.cancel")}
                   </button>
                   <button className="btn primary" disabled={busy} onClick={() => act(() => api.importSkill(viewing.dir)).then(() => setViewing(null))}>
-                    Add a copy
+                    {t("agents.skills.addCopy")}
                   </button>
                 </>
               ) : undefined
@@ -229,6 +230,7 @@ export function SkillsSection() {
 }
 
 function NewSkillDialog({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [instructions, setInstructions] = useState("");
@@ -248,34 +250,34 @@ function NewSkillDialog({ onClose, onCreated }: { onClose: () => void; onCreated
   }
   return (
     <Dialog
-      title="New skill"
-      subtitle="A method agents can load when a task calls for it."
+      title={t("agents.skills.new")}
+      subtitle={t("agents.skills.newSubtitle")}
       onClose={onClose}
       wide
       footer={
         <>
           <button className="btn ghost" onClick={onClose}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button className="btn primary" onClick={save} disabled={busy || !name.trim() || !description.trim() || !instructions.trim()}>
-            Create
+            {t("common.create")}
           </button>
         </>
       }
     >
       <label className="field">
-        <span>Name</span>
-        <input autoFocus value={name} onChange={(e) => setName(e.target.value.toLowerCase().replace(/\s+/g, "-"))} placeholder="e.g. front-end-review" />
-        <span className="hint">Lowercase letters, digits and dashes.</span>
+        <span>{t("agents.skills.name")}</span>
+        <input autoFocus value={name} onChange={(e) => setName(e.target.value.toLowerCase().replace(/\s+/g, "-"))} placeholder={t("agents.skills.namePlaceholder")} />
+        <span className="hint">{t("agents.skills.nameHint")}</span>
       </label>
       <label className="field">
-        <span>What it's for, and when to use it</span>
-        <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Review a web page's layout and accessibility. Use after building or changing a page." />
-        <span className="hint">Agents see this and decide when to load the skill.</span>
+        <span>{t("agents.skills.description")}</span>
+        <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t("agents.skills.descriptionPlaceholder")} />
+        <span className="hint">{t("agents.skills.descriptionHint")}</span>
       </label>
       <label className="field">
-        <span>Instructions</span>
-        <textarea rows={12} value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="The method, step by step (Markdown)." />
+        <span>{t("agents.skills.instructions")}</span>
+        <textarea rows={12} value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder={t("agents.skills.instructionsPlaceholder")} />
       </label>
       {error && <div className="error">{error}</div>}
     </Dialog>
@@ -285,26 +287,27 @@ function NewSkillDialog({ onClose, onCreated }: { onClose: () => void; onCreated
 /** Checkboxes over the library: which skills are chosen. */
 /** The library's categories, in order (as skills.ts lists them). */
 const CATEGORY_ORDER = ["leading", "planning", "software", "design", "writing", "data", "operations", "media", "other"];
-const CATEGORY_LABEL: Record<string, string> = {
-  leading: "Leading the team",
-  planning: "Planning and specs",
-  software: "Software development",
-  design: "Design",
-  writing: "Writing",
-  data: "Data and research",
-  operations: "Operations and servers",
-  media: "Video and media",
-  other: "Other",
+const CATEGORY_LABEL: Record<string, MessageKey> = {
+  leading: "agents.skills.category.leading",
+  planning: "agents.skills.category.planning",
+  software: "agents.skills.category.software",
+  design: "agents.skills.category.design",
+  writing: "agents.skills.category.writing",
+  data: "agents.skills.category.data",
+  operations: "agents.skills.category.operations",
+  media: "agents.skills.category.media",
+  other: "agents.skills.category.other",
 };
 
 export function SkillChecklist({ skills, chosen, onChange, disabled }: { skills: SkillInfo[]; chosen: string[]; onChange: (next: string[]) => void; disabled?: boolean }) {
+  const { t } = useI18n();
   const order = (s: SkillInfo) => CATEGORY_ORDER.indexOf(s.category) + (CATEGORY_ORDER.includes(s.category) ? 0 : 99);
   const sorted = [...skills].sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name));
   return (
     <div className="skill-checklist">
       {sorted.map((s, i) => (
         <div key={s.name}>
-          {(i === 0 || sorted[i - 1].category !== s.category) && <div className="skill-group-title">{CATEGORY_LABEL[s.category] ?? s.category}</div>}
+          {(i === 0 || sorted[i - 1].category !== s.category) && <div className="skill-group-title">{CATEGORY_LABEL[s.category] ? t(CATEGORY_LABEL[s.category]) : s.category}</div>}
         <label key={s.name} className="check skill-check">
           <input
             type="checkbox"
@@ -319,7 +322,7 @@ export function SkillChecklist({ skills, chosen, onChange, disabled }: { skills:
         </label>
         </div>
       ))}
-      {skills.length === 0 && <span className="subtle small">No skills in the library yet (Settings → Skills).</span>}
+      {skills.length === 0 && <span className="subtle small">{t("agents.skills.emptyLibrary")}</span>}
     </div>
   );
 }
@@ -328,6 +331,7 @@ const DEFAULT_CORE = ["briefing", "glossary", "handoff", "review"];
 
 /** Project settings → Skills: core's, and the ones core may give helpers. */
 export function ProjectSkillsSection({ project, onChanged }: { project: Project; onChanged: (p: Project) => void }) {
+  const { t } = useI18n();
   const { data } = useSkills();
   const library = data?.skills ?? [];
   const names = library.map((s) => s.name);
@@ -354,33 +358,30 @@ export function ProjectSkillsSection({ project, onChanged }: { project: Project;
     <section className="section" id="project-skills">
       <div className="section-head">
         <div>
-          <h2>Skills</h2>
-          <p>
-            core gets the skills chosen here; helpers get the ones core gives them, from the skills allowed below (or the ones you give them in
-            their chat). The library is in Settings → Skills.
-          </p>
+          <h2>{t("agents.skills.title")}</h2>
+          <p>{t("agents.skills.projectIntro")}</p>
         </div>
       </div>
       <div className="section-body">
         <div className="field">
-          <span>core's skills</span>
+          <span>{t("agents.skills.coreSkills")}</span>
           <SkillChecklist skills={library} chosen={core} onChange={setCore} />
         </div>
         <div className="field">
-          <span>Skills core may give helpers</span>
+          <span>{t("agents.skills.helperSkills")}</span>
           <label className="check">
             <input type="checkbox" checked={helpers === null} onChange={(e) => setHelpers(e.target.checked ? null : [...names])} />
-            Any skill in the library
+            {t("agents.skills.anySkill")}
           </label>
           {helpers !== null && <SkillChecklist skills={library} chosen={helpers} onChange={setHelpers} />}
         </div>
         {dirty && (
           <div className="row" style={{ justifyContent: "flex-end", gap: 6 }}>
             <button className="btn ghost sm" onClick={() => (setCore(project.coreSkills ?? DEFAULT_CORE), setHelpers(project.helperSkills ?? null))} disabled={saving}>
-              Reset
+              {t("agents.skills.reset")}
             </button>
             <button className="btn primary sm" onClick={save} disabled={saving}>
-              Save
+              {t("common.save")}
             </button>
           </div>
         )}
@@ -391,15 +392,16 @@ export function ProjectSkillsSection({ project, onChanged }: { project: Project;
 
 /** In a chat header: the agent's skills; for a helper, a click to change them. */
 export function AgentSkills({ project, agent }: { project: Project; agent: Agent }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const skills = agent.role === "coordinator" ? (project.coreSkills ?? DEFAULT_CORE) : (agent.skills ?? []);
-  const label = skills.length ? `${skills.length} skill${skills.length === 1 ? "" : "s"}` : "no skills";
+  const label = skills.length ? t(skills.length === 1 ? "agents.skills.countOne" : "agents.skills.countMany", { n: skills.length }) : t("agents.skills.noneShort");
   return (
     <>
       {" · "}
       <button
         className="inline-select agent-skills"
-        title={skills.length ? `Skills: ${skills.join(", ")}` : "No skills"}
+        title={skills.length ? t("agents.skills.list", { list: skills.join(", ") }) : t("agents.skills.none")}
         onClick={() => setOpen(true)}
       >
         {label}
@@ -410,12 +412,13 @@ export function AgentSkills({ project, agent }: { project: Project; agent: Agent
 }
 
 function AgentSkillsDialog({ project, agent, onClose }: { project: Project; agent: Agent; onClose: () => void }) {
+  const { t } = useI18n();
   const { data } = useSkills();
   const [chosen, setChosen] = useState<string[]>(agent.skills ?? []);
   if (agent.role === "coordinator") {
     const mine = project.coreSkills ?? DEFAULT_CORE;
     return (
-      <Dialog title="core's skills" subtitle="Chosen in this project's settings (Settings tab → Skills)." onClose={onClose}>
+      <Dialog title={t("agents.skills.coreSkills")} subtitle={t("agents.skills.coreSubtitle")} onClose={onClose}>
         <SkillChecklist skills={(data?.skills ?? []).filter((s) => mine.includes(s.name))} chosen={mine} onChange={() => {}} disabled />
       </Dialog>
     );
@@ -434,16 +437,16 @@ function AgentSkillsDialog({ project, agent, onClose }: { project: Project; agen
   }
   return (
     <Dialog
-      title={`Skills: ${agent.name}`}
-      subtitle="It loads one when a task matches its description. Skills you choose here core can't change."
+      title={t("agents.skills.list", { list: agent.name })}
+      subtitle={t("agents.skills.agentSubtitle")}
       onClose={onClose}
       footer={
         <>
           <button className="btn ghost" onClick={onClose}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button className="btn primary" onClick={save} disabled={busy}>
-            Save
+            {t("common.save")}
           </button>
         </>
       }

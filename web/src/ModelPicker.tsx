@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, Crown, Eye, Lock, Search } from "lucide-react";
 import { api, type ModelInfo, type RuntimeKind } from "./api";
+import { useI18n } from "./i18n";
 
 /** The project's models and who may use them (Project.coreModels, Project.coreOnlyModels). */
 export interface ModelChoice {
@@ -40,6 +41,7 @@ export const choiceBody = (c: ModelChoice) => ({ allowedModels: c.allowed, coord
  * crown for core to be able to use it (several can be crowned), the lock to keep it for core only.
  */
 export function ModelPicker(props: { value: ModelChoice; onChange: (next: ModelChoice) => void; runtime?: RuntimeKind }) {
+  const { t, locale } = useI18n();
   const { value, onChange } = props;
   const { allowed, core, coreOnly } = value;
   const [models, setModels] = useState<ModelInfo[] | null>(null);
@@ -79,8 +81,8 @@ export function ModelPicker(props: { value: ModelChoice; onChange: (next: ModelC
       groups.get(m.providerID)!.push(m);
     }
     const sorted = [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
-    return selected.length ? [["Selected", selected] as [string, ModelInfo[]], ...sorted] : sorted;
-  }, [visible, pinned]);
+    return selected.length ? [[t("agents.models.selected"), selected] as [string, ModelInfo[]], ...sorted] : sorted;
+  }, [visible, pinned, locale]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Every change goes through here: keeps the lists consistent and core on a model it may use. */
   const set = (next: { allowed: string[]; core: string[]; coreOnly: string[] }) => {
@@ -117,44 +119,44 @@ export function ModelPicker(props: { value: ModelChoice; onChange: (next: ModelC
   const helpers = allowed.filter((m) => !coreOnly.includes(m));
   const everyone = core.length === allowed.length && coreOnly.length === 0;
 
-  if (error) return <div className="error">Could not load models: {error}</div>;
-  if (!models) return <div className="subtle">Loading models…</div>;
+  if (error) return <div className="error">{t("agents.models.loadError", { error })}</div>;
+  if (!models) return <div className="subtle">{t("agents.models.loading")}</div>;
 
   return (
     <div className="model-picker">
       <div className="model-picker-head">
         <Search size={14} className="subtle" />
-        <input placeholder="Search models…" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <input placeholder={t("agents.models.search")} value={query} onChange={(e) => setQuery(e.target.value)} />
         <label className="check">
-          <input type="checkbox" checked={freeOnly} onChange={(e) => setFreeOnly(e.target.checked)} /> Free
+          <input type="checkbox" checked={freeOnly} onChange={(e) => setFreeOnly(e.target.checked)} /> {t("agents.models.free")}
         </label>
         <label className="check">
-          <input type="checkbox" checked={visionOnly} onChange={(e) => setVisionOnly(e.target.checked)} /> Vision
+          <input type="checkbox" checked={visionOnly} onChange={(e) => setVisionOnly(e.target.checked)} /> {t("agents.models.vision")}
         </label>
         <button
           className="btn ghost xs"
           onClick={selectAll}
           disabled={visible.every((m) => allowed.includes(m.ref))}
-          title="Allow every model listed (with the current search and filters)"
+          title={t("agents.models.selectAllTitle")}
         >
-          Select all
+          {t("agents.models.selectAll")}
         </button>
         <button className="btn ghost xs" onClick={selectNone} disabled={allowed.length === 0}>
-          None
+          {t("common.none")}
         </button>
       </div>
       <div className="model-summary">
         {allowed.length === 0 ? (
-          <span className="subtle">Select the models agents may use. Agents switch to the next one if a model fails.</span>
+          <span className="subtle">{t("agents.models.empty")}</span>
         ) : everyone ? (
           <span>
-            {allowed.length} selected, for everyone · <Crown size={12} style={{ color: "var(--amber)", verticalAlign: -1 }} /> core runs on{" "}
+            {t("agents.models.everyone", { n: allowed.length })} <Crown size={12} style={{ color: "var(--amber)", verticalAlign: -1 }} /> {t("agents.models.coreRunsOn")}{" "}
             <strong style={{ color: "var(--text)" }}>{value.coordinator ? nameOf(value.coordinator) : "—"}</strong>
           </span>
         ) : (
           <span>
-            <Crown size={12} style={{ color: "var(--amber)", verticalAlign: -1 }} /> core: {core.map(nameOf).join(", ")} · helpers:{" "}
-            {helpers.length ? helpers.map(nameOf).join(", ") : <strong style={{ color: "var(--red)" }}>none — unlock a model</strong>}
+            <Crown size={12} style={{ color: "var(--amber)", verticalAlign: -1 }} /> {t("agents.models.coreAndHelpers", { core: core.map(nameOf).join(", ") })}{" "}
+            {helpers.length ? helpers.map(nameOf).join(", ") : <strong style={{ color: "var(--red)" }}>{t("agents.models.noHelpers")}</strong>}
           </span>
         )}
       </div>
@@ -173,13 +175,13 @@ export function ModelPicker(props: { value: ModelChoice; onChange: (next: ModelC
                     {m.name}
                     {pinned.has(m.ref) && <span className="subtle"> · {m.providerID}</span>}
                   </span>
-                  {m.free && <span className="tag green">Free</span>}
-                  <span className="subtle" title={m.vision ? "Can read images" : undefined} style={{ display: "inline-flex", width: 14, opacity: m.vision ? 1 : 0 }}>
+                  {m.free && <span className="tag green">{t("agents.models.free")}</span>}
+                  <span className="subtle" title={m.vision ? t("agents.models.canReadImages") : undefined} style={{ display: "inline-flex", width: 14, opacity: m.vision ? 1 : 0 }}>
                     <Eye size={13} />
                   </span>
                   <button
                     className={`lead-btn ${crowned ? "on" : ""}`}
-                    title={crowned ? (m.ref === value.coordinator ? "core runs on this model" : "core may use this model") : "Let core use this model"}
+                    title={crowned ? (m.ref === value.coordinator ? t("agents.models.coreRuns") : t("agents.models.coreMay")) : t("agents.models.letCore")}
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleCrown(m.ref);
@@ -189,7 +191,7 @@ export function ModelPicker(props: { value: ModelChoice; onChange: (next: ModelC
                   </button>
                   <button
                     className={`lock-btn ${locked ? "on" : ""}`}
-                    title={locked ? "Only core uses this model (helpers don't)" : "Keep this model for core only"}
+                    title={locked ? t("agents.models.onlyCore") : t("agents.models.keepCore")}
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleLock(m.ref);
@@ -202,7 +204,7 @@ export function ModelPicker(props: { value: ModelChoice; onChange: (next: ModelC
             })}
           </div>
         ))}
-        {byProvider.length === 0 && <div className="section-empty">No models match.</div>}
+        {byProvider.length === 0 && <div className="section-empty">{t("agents.models.noMatch")}</div>}
       </div>
     </div>
   );

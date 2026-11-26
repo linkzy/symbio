@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Bug } from "lucide-react";
 import { api } from "./api";
+import { useI18n } from "./i18n";
 
 const NEW_BUG = "https://github.com/linkzy/symbio/issues/new";
 
@@ -43,10 +44,11 @@ export function useReportProblemUrl(): string {
 /** Top bar: opens a new bug report in a new tab. */
 export function ReportProblemLink() {
   const href = useReportProblemUrl();
+  const { t } = useI18n();
   return (
-    <a className="btn ghost sm" href={href} target="_blank" rel="noreferrer" title="Report a problem on GitHub">
+    <a className="btn ghost sm" href={href} target="_blank" rel="noreferrer" title={t("usage.report.linkTitle")}>
       <Bug size={15} />
-      <span className="btn-label">Report a problem</span>
+      <span className="btn-label">{t("usage.report.title")}</span>
     </a>
   );
 }
@@ -54,21 +56,19 @@ export function ReportProblemLink() {
 /** Settings → Report a problem. */
 export function ReportProblemSection() {
   const href = useReportProblemUrl();
+  const { t } = useI18n();
   return (
     <section className="section">
       <div className="section-head">
         <div>
-          <h2>Report a problem</h2>
-          <p>
-            Opens a new bug report on GitHub in a new tab, with Symbio's version, the agent runtimes installed and your operating
-            system filled in. Nothing about your projects is added (no names, paths, logs or keys); you add what you choose before sending.
-          </p>
+          <h2>{t("usage.report.title")}</h2>
+          <p>{t("usage.report.intro")}</p>
         </div>
       </div>
       <div className="section-body" style={{ padding: "10px 16px 14px" }}>
         <a className="btn sm" href={href} target="_blank" rel="noreferrer">
           <Bug size={14} />
-          Report a problem
+          {t("usage.report.title")}
         </a>
       </div>
     </section>

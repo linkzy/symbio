@@ -6,6 +6,7 @@ import { ArrowLeft, BookOpen, ChevronDown, ChevronRight, FileText, Folder, Penci
 import { api, openDocFile, subscribe, type DocFile, type DocMatch, type Project, type RulesRegister } from "./api";
 import { RulesView } from "./Rules";
 import { EmptyState, timeAgo } from "./ui";
+import { useI18n } from "./i18n";
 
 /** Where to land in a doc after opening it: a heading anchor, a line (text files), or a line's text (Markdown). */
 type Target = { anchor?: string; line?: number; text?: string } | null;
@@ -14,6 +15,7 @@ type Target = { anchor?: string; line?: number; text?: string } | null;
 const RULES = ":rules";
 
 export function Docs({ project }: { project: Project }) {
+  const { t } = useI18n();
   const [files, setFiles] = useState<DocFile[] | null>(null);
   const [root, setRoot] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
@@ -197,8 +199,8 @@ export function Docs({ project }: { project: Project }) {
 
   if (files && files.length === 0 && !showRules) {
     return (
-      <EmptyState icon={<BookOpen size={20} />} title="No documentation yet">
-        core writes it as it learns the project — {project.docsLocation === "private" ? "privately in .symbio/docs" : "in AGENTS.md and docs/"}.
+      <EmptyState icon={<BookOpen size={20} />} title={t("docs.empty.title")}>
+        {t("docs.empty.body", { where: project.docsLocation === "private" ? t("docs.empty.private") : t("docs.empty.project") })}
       </EmptyState>
     );
   }
@@ -211,9 +213,9 @@ export function Docs({ project }: { project: Project }) {
       <nav className="docs-list">
         <div className="docs-search">
           <Search size={13} />
-          <input value={query} placeholder="Search docs" onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Escape" && setQuery("")} />
+          <input value={query} placeholder={t("docs.search.placeholder")} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Escape" && setQuery("")} />
           {query && (
-            <button className="btn ghost icon sm" title="Clear search" onClick={() => setQuery("")}>
+            <button className="btn ghost icon sm" title={t("docs.search.clear")} onClick={() => setQuery("")}>
               <X size={12} />
             </button>
           )}
@@ -230,12 +232,12 @@ export function Docs({ project }: { project: Project }) {
             {showRules && (
               <button className={`docs-item docs-rules ${selected === RULES ? "active" : ""}`} onClick={() => open(RULES)}>
                 <Scale size={14} />
-                <span className="grow">Rules</span>
+                <span className="grow">{t("docs.list.rules")}</span>
                 <span className="docs-item-time">{register!.rules.length}</span>
               </button>
             )}
             <div className="side-group-title" title={root}>
-              {project.docsLocation === "private" ? "Private docs" : "Project docs"}
+              {project.docsLocation === "private" ? t("docs.list.private") : t("docs.list.project")}
             </div>
             {files && <Tree nodes={tree(files)} selected={selected} expanded={expanded} setExpanded={setExpanded} onOpen={(p) => open(p)} />}
           </>
@@ -246,11 +248,11 @@ export function Docs({ project }: { project: Project }) {
         {error && <div className="error">{error}</div>}
         {selected && (
           <div className="docs-toolbar">
-            <button className="btn ghost icon sm" title="Back" disabled={!history.length || editing} onClick={back}>
+            <button className="btn ghost icon sm" title={t("common.back")} disabled={!history.length || editing} onClick={back}>
               <ArrowLeft size={14} />
             </button>
             {selected === RULES ? (
-              <strong className="small">Rules register</strong>
+              <strong className="small">{t("docs.toolbar.rulesRegister")}</strong>
             ) : (
               <code className="ellipsis" title={selected}>
                 {selected}
@@ -260,11 +262,11 @@ export function Docs({ project }: { project: Project }) {
             {selected === RULES ? null : editing ? (
               <>
                 <button className="btn ghost sm" onClick={() => setEditing(false)}>
-                  Cancel
+                  {t("common.cancel")}
                 </button>
                 <button className="btn primary sm" onClick={save} disabled={saving}>
                   <Save size={13} />
-                  {saving ? "Saving…" : "Save"}
+                  {saving ? t("common.saving") : t("common.save")}
                 </button>
               </>
             ) : (
@@ -277,7 +279,7 @@ export function Docs({ project }: { project: Project }) {
                 disabled={content === null}
               >
                 <Pencil size={13} />
-                Edit
+                {t("common.edit")}
               </button>
             )}
           </div>
@@ -306,7 +308,7 @@ export function Docs({ project }: { project: Project }) {
             ) : editing ? (
               <textarea className="docs-editor" value={draft} onChange={(e) => setDraft(e.target.value)} spellCheck />
             ) : content === null ? (
-              <div className="muted">Loading…</div>
+              <div className="muted">{t("common.loading")}</div>
             ) : isText ? (
               <TextDoc content={content} />
             ) : (
@@ -318,7 +320,7 @@ export function Docs({ project }: { project: Project }) {
                 </div>
                 {headings.length >= 3 && (
                   <aside className="docs-toc">
-                    <div className="docs-toc-title">On this page</div>
+                    <div className="docs-toc-title">{t("docs.toc")}</div>
                     {headings.map((h) => (
                       <button key={h.id} className={`docs-toc-item level-${h.level}`} onClick={() => open(selected!, { anchor: h.id })} title={h.text}>
                         {h.text}
@@ -444,6 +446,7 @@ function SearchResults({
   searching: boolean;
   onOpen: (m: DocMatch) => void;
 }) {
+  const { t } = useI18n();
   const byFile = new Map<string, DocMatch[]>();
   for (const m of results.matches) byFile.set(m.path, [...(byFile.get(m.path) ?? []), m]);
   const n = results.matches.length;
@@ -451,10 +454,13 @@ function SearchResults({
     <div className="docs-results">
       <div className="side-group-title">
         {searching
-          ? "Searching…"
+          ? t("docs.search.searching")
           : n === 0
-            ? "No matches"
-            : `${n}${results.truncated ? "+" : ""} match${n === 1 ? "" : "es"} in ${byFile.size} doc${byFile.size === 1 ? "" : "s"}`}
+            ? t("docs.search.none")
+            : `${t(n === 1 ? "docs.search.matches.one" : "docs.search.matches.other", { n: `${n}${results.truncated ? "+" : ""}` })} ${t(
+                byFile.size === 1 ? "docs.search.inDocs.one" : "docs.search.inDocs.other",
+                { n: byFile.size },
+              )}`}
       </div>
       {[...byFile].map(([path, matches]) => (
         <div key={path} className="docs-result-file">
@@ -464,12 +470,12 @@ function SearchResults({
             <span className="docs-item-time">{matches.length}</span>
           </div>
           {matches.slice(0, 20).map((m) => (
-            <button key={m.line} className="docs-result" onClick={() => onOpen(m)} title={`Line ${m.line}`}>
+            <button key={m.line} className="docs-result" onClick={() => onOpen(m)} title={t("docs.search.line", { n: m.line })}>
               <span className="docs-result-line">{m.line}</span>
               <span className="docs-result-text">{highlight(m.text, query)}</span>
             </button>
           ))}
-          {matches.length > 20 && <div className="docs-result-more">+{matches.length - 20} more in this doc</div>}
+          {matches.length > 20 && <div className="docs-result-more">{t("docs.search.more", { n: matches.length - 20 })}</div>}
         </div>
       ))}
     </div>

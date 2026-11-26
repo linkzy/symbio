@@ -140,7 +140,7 @@ export function Settings() {
               </button>
               <button className="btn sm" onClick={() => setEditing("new-server")}>
                 <Plus size={13} />
-                Server
+                {t("settings.connections.addServer")}
               </button>
               <button className="btn sm" onClick={() => setEditing("new-ftp")}>
                 <Plus size={13} />
@@ -330,7 +330,7 @@ function ConnectionForm({
       {type === "github" ? (
         <label className="field">
           <span>{t("settings.connections.token")}</span>
-          <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder={keep("token") || "github_pat_… or ghp_…"} />
+          <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder={keep("token") || `github_pat_… ${t("common.or")} ghp_…`} />
           <span className="hint">{t("settings.connections.token.hint.github")}</span>
         </label>
       ) : type === "azure" ? (
@@ -342,7 +342,7 @@ function ConnectionForm({
           </label>
           <label className="field">
             <span>{t("settings.connections.token")}</span>
-            <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder={keep("token") || "Paste the token"} />
+            <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder={keep("token") || t("settings.connections.token.paste")} />
             <span className="hint">{t("settings.connections.token.hint.azure")}</span>
           </label>
         </>
@@ -409,7 +409,7 @@ function ConnectionForm({
           <div className="field-row">
             <label className="field" style={{ flex: 3 }}>
               <span>{t("settings.connections.host")}</span>
-              <input value={host} onChange={(e) => setHost(e.target.value)} placeholder="203.0.113.10 or vps.example.com" />
+              <input value={host} onChange={(e) => setHost(e.target.value)} placeholder={`203.0.113.10 ${t("common.or")} vps.example.com`} />
             </label>
             <label className="field" style={{ flex: 1 }}>
               <span>{t("settings.connections.port")}</span>

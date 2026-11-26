@@ -1,17 +1,18 @@
 import { motion } from "motion/react";
 import { FileText, FolderOpen, FolderPlus, GitBranch } from "lucide-react";
 import type { Inspection } from "./api";
+import { useI18n, type MessageKey } from "./i18n";
 
-const KIND_LABEL: Record<string, string> = {
-  documents: "documents",
-  spreadsheets: "spreadsheets",
-  presentations: "presentations",
-  images: "images",
-  "audio-video": "audio/video",
-  code: "code",
-  data: "data",
-  archives: "archives",
-  other: "other",
+const KIND_LABEL: Record<string, MessageKey> = {
+  documents: "folderSummary.kind.documents",
+  spreadsheets: "folderSummary.kind.spreadsheets",
+  presentations: "folderSummary.kind.presentations",
+  images: "folderSummary.kind.images",
+  "audio-video": "folderSummary.kind.audioVideo",
+  code: "folderSummary.kind.code",
+  data: "folderSummary.kind.data",
+  archives: "folderSummary.kind.archives",
+  other: "folderSummary.kind.other",
 };
 
 export function formatBytes(n: number) {
@@ -22,13 +23,15 @@ export function formatBytes(n: number) {
 }
 
 export function FolderSummary({ inspection: i }: { inspection: Inspection }) {
+  const { t } = useI18n();
+  const kindLabel = (kind: string) => (KIND_LABEL[kind] ? t(KIND_LABEL[kind]) : kind);
   const kinds = Object.entries(i.kinds).sort((a, b) => b[1] - a[1]);
   const total = kinds.reduce((s, [, n]) => s + n, 0) || 1;
 
   let headline: string;
-  if (!i.exists) headline = "New folder — it will be created";
-  else if (i.empty) headline = "Empty folder — a new project";
-  else headline = `Existing folder · ${i.fileCount}${i.truncated ? "+" : ""} files · ${formatBytes(i.totalBytes)}`;
+  if (!i.exists) headline = t("folderSummary.new");
+  else if (i.empty) headline = t("folderSummary.empty");
+  else headline = t("folderSummary.existing", { count: `${i.fileCount}${i.truncated ? "+" : ""}`, size: formatBytes(i.totalBytes) });
 
   return (
     <motion.div className="folder-summary" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}>
@@ -44,7 +47,7 @@ export function FolderSummary({ inspection: i }: { inspection: Inspection }) {
         {i.repos.length > 0 && (
           <span className="tag" title={i.repos.join("\n")}>
             <GitBranch />
-            {i.repos.length === 1 ? "1 repository inside" : `${i.repos.length} repositories inside`}
+            {i.repos.length === 1 ? t("folderSummary.oneRepo") : t("folderSummary.repos", { n: i.repos.length })}
           </span>
         )}
         {i.guidance.map((g) => (
@@ -65,7 +68,7 @@ export function FolderSummary({ inspection: i }: { inspection: Inspection }) {
                 initial={{ width: 0 }}
                 animate={{ width: `${(n / total) * 100}%` }}
                 transition={{ duration: 0.5, delay: idx * 0.05 }}
-                title={`${KIND_LABEL[kind] ?? kind}: ${n}`}
+                title={`${kindLabel(kind)}: ${n}`}
               />
             ))}
           </div>
@@ -73,7 +76,7 @@ export function FolderSummary({ inspection: i }: { inspection: Inspection }) {
             {kinds.map(([kind, n], idx) => (
               <span key={kind}>
                 <i className={`k${idx % 6}`} />
-                {KIND_LABEL[kind] ?? kind} {n}
+                {kindLabel(kind)} {n}
               </span>
             ))}
           </div>
@@ -81,7 +84,7 @@ export function FolderSummary({ inspection: i }: { inspection: Inspection }) {
       )}
 
       {i.topLevel.length > 0 && (
-        <div className="top-level" title="Top-level contents">
+        <div className="top-level" title={t("folderSummary.topLevel")}>
           {i.topLevel.slice(0, 14).join("  ·  ")}
           {i.topLevel.length > 14 && "  ·  …"}
         </div>

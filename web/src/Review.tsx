@@ -3,6 +3,7 @@ import { Check, ChevronDown, ChevronRight, CornerUpLeft, FileDiff, ListChecks } 
 import { api, type Task, type TaskChange } from "./api";
 import { Md } from "./files";
 import { AttachButton, PendingFiles, usePendingFiles } from "./Attachments";
+import { useI18n } from "./i18n";
 
 // The human's review of a finished task (Settings → Team → Who reviews the work): the helper's
 // guide for checking it, and approve / send back. Used in Needs you and in the Plan tab.
@@ -12,12 +13,13 @@ import { AttachButton, PendingFiles, usePendingFiles } from "./Attachments";
  * them (looked up in the helper's own copy first, where the work is before it's merged).
  */
 export function ReviewGuide({ guide, projectId, agentId }: { guide?: string; projectId: string; agentId?: string | null }) {
-  if (!guide?.trim()) return <div className="small subtle">No guide was given for this task.</div>;
+  const { t } = useI18n();
+  if (!guide?.trim()) return <div className="small subtle">{t("work.review.noGuide")}</div>;
   return (
     <div className="review-guide md">
       <div className="review-guide-head">
         <ListChecks size={13} />
-        How to check it
+        {t("work.review.howToCheck")}
       </div>
       <Md text={guide} projectId={projectId} agentId={agentId} className="" />
     </div>
@@ -26,6 +28,7 @@ export function ReviewGuide({ guide, projectId, agentId }: { guide?: string; pro
 
 /** Approve, or send back with a note (it goes to the helper that did the work). */
 export function ReviewActions({ projectId, task, onDone }: { projectId: string; task: Task; onDone?: () => void }) {
+  const { t } = useI18n();
   const [sendingBack, setSendingBack] = useState(false);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -49,7 +52,7 @@ export function ReviewActions({ projectId, task, onDone }: { projectId: string; 
         <textarea
           autoFocus
           rows={3}
-          placeholder="What needs to change? It goes to the helper that did the work. Attach screenshots or files if they help."
+          placeholder={t("work.review.note.placeholder")}
           value={note}
           onChange={(e) => setNote(e.target.value)}
           onPaste={(e) => {
@@ -65,10 +68,10 @@ export function ReviewActions({ projectId, task, onDone }: { projectId: string; 
           <AttachButton onFiles={pending.add} />
           <button className="btn primary sm" onClick={() => decide("send-back")} disabled={busy || !note.trim() || pending.uploading}>
             <CornerUpLeft size={13} />
-            Send back
+            {t("work.review.sendBack")}
           </button>
           <button className="btn ghost sm" onClick={() => setSendingBack(false)} disabled={busy}>
-            Cancel
+            {t("common.cancel")}
           </button>
         </div>
       </div>
@@ -78,11 +81,11 @@ export function ReviewActions({ projectId, task, onDone }: { projectId: string; 
     <div className="review-actions">
       <button className="btn primary sm" onClick={() => decide("approve")} disabled={busy}>
         <Check size={13} />
-        Approve
+        {t("common.approve")}
       </button>
       <button className="btn sm" onClick={() => setSendingBack(true)} disabled={busy}>
         <CornerUpLeft size={13} />
-        Send back…
+        {t("work.review.sendBackEllipsis")}
       </button>
     </div>
   );
@@ -92,6 +95,7 @@ export const waitingForReview = (t: Task) => t.humanReview?.state === "waiting";
 
 /** What a task changed: its files (+/−), each diff on click. Loaded when opened. */
 export function TaskChanges({ projectId, taskId }: { projectId: string; taskId: string }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<{ files: TaskChange[]; note?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -109,15 +113,15 @@ export function TaskChanges({ projectId, taskId }: { projectId: string; taskId: 
     <div className="task-changes">
       <button className="btn ghost sm" onClick={toggle}>
         <FileDiff size={13} />
-        {open ? "Hide changes" : "Show changes"}
+        {open ? t("work.review.hideChanges") : t("work.review.showChanges")}
         {data && ` (${data.files.length})`}
       </button>
       {open && (
         <div className="changes-list">
           {error && <div className="small error">{error}</div>}
-          {!data && !error && <div className="small subtle">Loading…</div>}
+          {!data && !error && <div className="small subtle">{t("common.loading")}</div>}
           {data?.note && <div className="small subtle">{data.note}</div>}
-          {data && !data.note && data.files.length === 0 && <div className="small subtle">No file changes recorded for this task.</div>}
+          {data && !data.note && data.files.length === 0 && <div className="small subtle">{t("work.review.noChanges")}</div>}
           {data?.files.map((f) => (
             <div key={f.file} className="change-file">
               <button className="change-file-head" onClick={() => setShown(shown === f.file ? null : f.file)}>

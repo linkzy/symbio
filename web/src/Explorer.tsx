@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, Download, ExternalLink, File, FileAudio, Fil
 import { api, openProjectFile, projectFileBlob, type DirEntry, type Project } from "./api";
 import { FileViewer, formatSize } from "./files";
 import { EmptyState } from "./ui";
+import { useI18n } from "./i18n";
 
 // The Explorer tab: the project's folders and files (or a helper's copy, where its branch's work is
 // before it's merged), read-only. Folders load when opened; what the server hides (git's internals,
@@ -21,11 +22,12 @@ export interface ExplorerPick {
 
 /** The Explorer tab of the classic layout: the tree beside the preview. */
 export function Explorer({ project }: { project: Project }) {
+  const { t } = useI18n();
   const [agentId, setAgentId] = useState<string | null>(null);
   const [picked, setPicked] = useState<ExplorerPick | null>(null);
   return (
     <div className="docs explorer">
-      <nav className="docs-list explorer-tree" aria-label="Project files">
+      <nav className="docs-list explorer-tree" aria-label={t("docs.explorer.aria")}>
         <ExplorerTree project={project} agentId={agentId} onAgent={(id) => (setAgentId(id), setPicked(null))} picked={picked} onPick={setPicked} />
       </nav>
       <section className="docs-view explorer-view">
@@ -49,6 +51,7 @@ export function ExplorerTree({
   picked: ExplorerPick | null;
   onPick: (p: ExplorerPick) => void;
 }) {
+  const { t } = useI18n();
   // Whose folder: the project's (null) or a helper's own copy.
   const copies = project.agents.filter((a) => a.branch && a.role !== "coordinator");
   const [listings, setListings] = useState<Record<string, Listing>>({});
@@ -85,9 +88,9 @@ export function ExplorerTree({
   const renderDir = (dir: string, depth: number): React.ReactNode => {
     const listing = listings[dir];
     const pad = { paddingLeft: 8 + depth * 14 };
-    if (!listing || listing === "loading") return <div className="explorer-note" style={pad}>Loading…</div>;
+    if (!listing || listing === "loading") return <div className="explorer-note" style={pad}>{t("common.loading")}</div>;
     if ("error" in listing) return <div className="explorer-note explorer-error" style={pad}>{listing.error}</div>;
-    if (listing.entries.length === 0) return <div className="explorer-note" style={pad}>{depth === 0 ? "The folder is empty." : "Empty"}</div>;
+    if (listing.entries.length === 0) return <div className="explorer-note" style={pad}>{depth === 0 ? t("docs.explorer.emptyFolder") : t("docs.explorer.empty")}</div>;
     return (
       <>
         {listing.entries.map((e) => {
@@ -120,7 +123,7 @@ export function ExplorerTree({
             </button>
           );
         })}
-        {listing.truncated && <div className="explorer-note" style={pad}>Only the first 2000 entries are shown.</div>}
+        {listing.truncated && <div className="explorer-note" style={pad}>{t("docs.explorer.truncated")}</div>}
       </>
     );
   };
@@ -129,18 +132,18 @@ export function ExplorerTree({
     <>
       <div className="explorer-head">
         {copies.length > 0 ? (
-          <select value={agentId ?? ""} onChange={(e) => onAgent(e.target.value || null)} aria-label="Whose folder" title="The project folder, or a helper's own copy (its branch, before it's merged)">
-            <option value="">Project folder</option>
+          <select value={agentId ?? ""} onChange={(e) => onAgent(e.target.value || null)} aria-label={t("docs.explorer.whose")} title={t("docs.explorer.whose.hint")}>
+            <option value="">{t("docs.explorer.projectFolder")}</option>
             {copies.map((a) => (
               <option key={a.id} value={a.id}>
-                {a.name}'s copy
+                {t("docs.explorer.copyOf", { name: a.name })}
               </option>
             ))}
           </select>
         ) : (
-          <span className="explorer-title grow">Project folder</span>
+          <span className="explorer-title grow">{t("docs.explorer.projectFolder")}</span>
         )}
-        <button className="btn ghost icon xs" onClick={refresh} title="Refresh" aria-label="Refresh">
+        <button className="btn ghost icon xs" onClick={refresh} title={t("common.refresh")} aria-label={t("common.refresh")}>
           <RefreshCw size={13} />
         </button>
       </div>
@@ -151,10 +154,11 @@ export function ExplorerTree({
 
 /** The picked file: text beside the tree, images previewed, anything else to open or download. */
 export function ExplorerPreview({ projectId, picked }: { projectId: string; picked: ExplorerPick | null }) {
+  const { t } = useI18n();
   if (!picked) {
     return (
-      <EmptyState icon={<FolderTree size={20} />} title="The project's files">
-        Pick a file to see it. This view is read-only: the team does the editing.
+      <EmptyState icon={<FolderTree size={20} />} title={t("docs.explorer.none.title")}>
+        {t("docs.explorer.none.body")}
       </EmptyState>
     );
   }
@@ -162,6 +166,7 @@ export function ExplorerPreview({ projectId, picked }: { projectId: string; pick
 }
 
 function Preview({ projectId, agentId, path, entry }: { projectId: string; agentId: string | null; path: string; entry: DirEntry }) {
+  const { t } = useI18n();
   const [src, setSrc] = useState<string | null>(null);
   const kind = entry.kind ?? "other";
   useEffect(() => {
@@ -186,16 +191,16 @@ function Preview({ projectId, agentId, path, entry }: { projectId: string; agent
           {kind !== "other" && (
             <button className="btn sm" onClick={() => openProjectFile(projectId, { rel: path, agentId })}>
               <ExternalLink size={13} />
-              Open
+              {t("common.open")}
             </button>
           )}
           <button className="btn ghost sm" onClick={() => openProjectFile(projectId, { rel: path, agentId }, true)}>
             <Download size={13} />
-            Download
+            {t("common.download")}
           </button>
         </div>
         {kind === "image" && src && <img className="explorer-image" src={src} alt={path} />}
-        {kind === "other" && <p className="subtle small">Symbio can't show this kind of file; download it to open it on your computer.</p>}
+        {kind === "other" && <p className="subtle small">{t("docs.explorer.cantShow")}</p>}
       </div>
     </div>
   );

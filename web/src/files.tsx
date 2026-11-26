@@ -5,7 +5,7 @@ import remarkGfm from "remark-gfm";
 import { api, openProjectFile, projectFileBlob, type ProjectFile } from "./api";
 import { parseFileHref, remarkPaths } from "./paths";
 import { CopyButton } from "./ui";
-import { t } from "./i18n";
+import { t, useI18n } from "./i18n";
 
 // Files in what the team writes: paths become links (to the files that exist), files agents share
 // show as cards, and Markdown or code opens in a viewer page at the line mentioned (files.ts).
@@ -67,13 +67,14 @@ function useFile(projectId: string, agentId: string | null | undefined, path: st
 export const viewerHref = (projectId: string, rel: string, agentId?: string | null, line?: number) =>
   `#/view/${projectId}?path=${encodeURIComponent(rel)}${agentId ? `&agent=${encodeURIComponent(agentId)}` : ""}${line ? `&line=${line}` : ""}`;
 
-const where = (f: ProjectFile) => (f.where && f.where !== "project" ? ` (in ${f.where}'s copy)` : "");
+const where = (f: ProjectFile) => (f.where && f.where !== "project" ? ` (${t("docs.files.inCopy", { name: f.where })})` : "");
 
 /** A path in the text: a link when the file exists, plain text otherwise. */
 function FileLink({ projectId, agentId, path, line, children }: { projectId: string; agentId?: string | null; path: string; line?: number; children: React.ReactNode }) {
+  const { t } = useI18n();
   const f = useFile(projectId, agentId, path);
   if (!f?.found || !f.rel) return <>{children}</>;
-  const title = `Open ${f.rel}${line ? ` at line ${line}` : ""}${where(f)}`;
+  const title = `${line ? t("docs.files.openAtLine", { file: f.rel, n: line }) : t("docs.files.open", { file: f.rel })}${where(f)}`;
   if (f.kind === "markdown" || f.kind === "text") {
     return (
       <a className="file-link" href={viewerHref(projectId, f.rel, f.agentId, line)} target="_blank" rel="noopener" title={title}>
@@ -85,7 +86,7 @@ function FileLink({ projectId, agentId, path, line, children }: { projectId: str
     <a
       className="file-link"
       href="#"
-      title={f.kind === "other" ? `Download ${f.rel}${where(f)}` : title}
+      title={f.kind === "other" ? `${t("docs.files.downloadFile", { file: f.rel })}${where(f)}` : title}
       onClick={(e) => {
         e.preventDefault();
         openProjectFile(projectId, { rel: f.rel!, agentId: f.agentId }, f.kind === "other");
@@ -154,6 +155,7 @@ const KIND_ICON = { image: FileImage, video: FileVideo, audio: FileAudio, pdf: F
 
 /** A file an agent shared: shown in place when the browser can, with Open / Download. */
 export function FileCard({ projectId, agentId, path, caption }: { projectId: string; agentId?: string | null; path: string; caption?: string }) {
+  const { t } = useI18n();
   const f = useFile(projectId, agentId, path);
   const [src, setSrc] = useState<string | null>(null);
   const previewable = f?.found && (f.kind === "image" || f.kind === "video" || f.kind === "audio") && (f.size ?? 0) <= MAX_PREVIEW;
@@ -167,7 +169,7 @@ export function FileCard({ projectId, agentId, path, caption }: { projectId: str
       <div className="shared-file missing">
         <FileQuestion size={16} />
         <span className="shared-file-name">{name}</span>
-        <span className="small subtle">{f.refused ?? "no longer there"}</span>
+        <span className="small subtle">{f.refused ?? t("docs.files.gone")}</span>
       </div>
     );
   }
@@ -192,19 +194,19 @@ export function FileCard({ projectId, agentId, path, caption }: { projectId: str
         {f?.rel && (f.kind === "markdown" || f.kind === "text") && (
           <a className="btn sm" href={viewerHref(projectId, f.rel, f.agentId)} target="_blank" rel="noopener">
             <ExternalLink size={13} />
-            Open
+            {t("common.open")}
           </a>
         )}
         {f?.rel && (f.kind === "pdf" || f.kind === "image" || (f.kind !== "other" && !previewable && f.kind !== "markdown" && f.kind !== "text")) && (
           <button className="btn sm" onClick={open}>
             <ExternalLink size={13} />
-            Open
+            {t("common.open")}
           </button>
         )}
         {f?.rel && (
-          <button className="btn ghost sm" title="Download" onClick={() => openProjectFile(projectId, { rel: f.rel!, agentId: f.agentId }, true)}>
+          <button className="btn ghost sm"           title={t("common.download")} onClick={() => openProjectFile(projectId, { rel: f.rel!, agentId: f.agentId }, true)}>
             <Download size={13} />
-            {f.kind === "other" ? "Download" : ""}
+                      {f.kind === "other" ? t("common.download") : ""}
           </button>
         )}
       </div>
@@ -216,6 +218,7 @@ export function FileCard({ projectId, agentId, path, caption }: { projectId: str
 
 /** A text file on its own page: Markdown formatted, code with line numbers, scrolled to the line. */
 export function FileViewer({ projectId, rel, agentId, line, embedded }: { projectId: string; rel: string; agentId?: string | null; line?: number; embedded?: boolean }) {
+  const { t } = useI18n();
   const [data, setData] = useState<{ content: string; where: string; kind: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [source, setSource] = useState(false);
@@ -264,22 +267,22 @@ export function FileViewer({ projectId, rel, agentId, line, embedded }: { projec
       <div className="file-view-head">
         <FileText size={15} />
         <strong>{rel}</strong>
-        {data && data.where !== "project" && <span className="tag">in {data.where}'s copy</span>}
-        {line && <span className="small subtle">line {line}</span>}
+        {data && data.where !== "project" &&         <span className="tag">{t("docs.files.inCopy", { name: data.where })}</span>}
+                {line && <span className="small subtle">{t("docs.files.line", { n: line })}</span>}
         <span className="grow" />
         {data?.kind === "markdown" && (
           <button className="btn ghost sm" onClick={() => setSource((s) => !s)}>
-            {source ? "Formatted" : "Source"}
+            {source ? t("docs.files.formatted") : t("docs.files.source")}
           </button>
         )}
         <button className="btn ghost sm" onClick={() => openProjectFile(projectId, { rel, agentId }, true)}>
           <Download size={13} />
-          Download
+          {t("common.download")}
         </button>
       </div>
       <div ref={body} className="file-view-body">
         {error && <div className="error">{error}</div>}
-        {!data && !error && <div className="subtle">Loading…</div>}
+        {!data && !error && <div className="subtle">{t("common.loading")}</div>}
         {data && markdown && (
           <div className="md">
             <Markdown remarkPlugins={[remarkGfm]} components={components}>

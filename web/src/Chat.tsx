@@ -169,7 +169,7 @@ function mergeLatest(prev: any[] | null, page: { messages: any[]; hasMore: boole
 }
 
 export function Chat({ project, agent }: { project: Project; agent: Agent }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [history, setHistory] = useState<any[] | null>(null);
   const [hasOlder, setHasOlder] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -270,7 +270,7 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
       }
       if (type.startsWith("session.execution.")) {
         setRetry(null);
-        if (type === "session.execution.failed") setFailure(data.error?.message ?? "The agent's turn failed.");
+        if (type === "session.execution.failed") setFailure(data.error?.message ?? t("chat.turnFailed"));
         void loadHistory().then(() => setLive([]));
         return;
       }
@@ -397,7 +397,7 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
                   <option value="">{t("chat.sessions.current")}</option>
                   {[...agent.previousSessions!].reverse().map((s, i) => (
                     <option key={s.sessionId} value={s.sessionId}>
-                      {t("chat.sessions.earlierItem", { n: agent.previousSessions!.length - i, date: new Date(s.endedAt).toLocaleString() })}
+                      {t("chat.sessions.earlierItem", { n: agent.previousSessions!.length - i, date: new Date(s.endedAt).toLocaleString(locale) })}
                     </option>
                   ))}
                 </select>
@@ -999,7 +999,7 @@ function lastTurnHasError(history: any[] | null): boolean {
 
 function retryLabel(data: any): string {
   const r = data?.retry ?? data;
-  const reason = r?.error?.message ?? r?.message ?? "provider error";
+  const reason = r?.error?.message ?? r?.message ?? t("chat.providerError");
   const attempt = r?.attempt ? t("chat.attempt", { n: r.attempt }) : "";
   return t("chat.retry", { attempt, reason });
 }

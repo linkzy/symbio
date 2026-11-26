@@ -322,10 +322,11 @@ function LanguageMenu() {
 }
 
 function SymbioVersion() {
+  const { t } = useI18n();
   const [state] = useUpdate();
   if (!state?.current) return null;
   return (
-    <span className="brand-version" title={state.install === "dev" ? "Symbio version (development copy)" : "Symbio version"}>
+    <span className="brand-version" title={state.install === "dev" ? t("app.version.dev") : t("app.version")}>
       {state.current}
     </span>
   );

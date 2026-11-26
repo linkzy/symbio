@@ -4,6 +4,7 @@ import { api, subscribe, type Briefing, type Project, type Question } from "./ap
 import { AttachButton, PendingFiles, usePendingFiles } from "./Attachments";
 import { Md } from "./files";
 import { Avatar, timeAgo } from "./ui";
+import { useI18n } from "./i18n";
 
 // The team's open questions for the human (Needs you): kept in Symbio instead of the chat, where
 // they scrolled away. Answer several and send them together; each agent that asked gets its
@@ -73,6 +74,7 @@ function AnswerFiles(props: {
 }
 
 export function OpenQuestions({ project, questions }: { project: Project; questions: Question[] }) {
+  const { t } = useI18n();
   const briefings = useBriefings(project.id);
   const open = questions.filter((q) => q.state === "open");
   // A briefing's questions together under its feature; the others after them.
@@ -85,7 +87,7 @@ export function OpenQuestions({ project, questions }: { project: Project; questi
   const [drafts, setDrafts] = useState<Record<string, string>>(() => loadDrafts(project.id));
   const [sending, setSending] = useState(false);
   const [showClosed, setShowClosed] = useState(false);
-  const nameOf = (id: string) => project.agents.find((a) => a.id === id)?.name ?? "a helper";
+  const nameOf = (id: string) => project.agents.find((a) => a.id === id)?.name ?? t("work.questions.aHelper");
 
   useEffect(() => {
     sessionStorage.setItem(draftKey(project.id), JSON.stringify(drafts));
@@ -115,7 +117,7 @@ export function OpenQuestions({ project, questions }: { project: Project; questi
   }
 
   async function setAside(q: Question) {
-    const note = prompt(`Set aside ${q.id}? It won't be asked again. A note for ${nameOf(q.askedBy)} (optional):`, "");
+    const note = prompt(t("work.questions.setAside.prompt", { id: q.id, name: nameOf(q.askedBy) }), "");
     if (note === null) return;
     await api.setAsideQuestion(project.id, q.id, note || undefined).catch((e) => alert(e.message));
   }
@@ -138,13 +140,13 @@ export function OpenQuestions({ project, questions }: { project: Project; questi
         <span className="small">{nameOf(q.askedBy)}</span>
         {q.taskId && <span className="tag">{q.taskId}</span>}
         {q.blocking && (
-          <span className="tag amber" title="Work waits on this answer">
-            Blocking
+          <span className="tag amber" title={t("work.questions.blocking.title")}>
+            {t("work.questions.blocking")}
           </span>
         )}
         {q.decided && (
-          <span className="tag green" title="The team went on with this; keep it or change it">
-            Decided
+          <span className="tag green" title={t("work.questions.decided.title")}>
+            {t("work.questions.decided")}
           </span>
         )}
         <span className="when">{timeAgo(q.askedAt)}</span>
@@ -167,18 +169,18 @@ export function OpenQuestions({ project, questions }: { project: Project; questi
       {q.decided && (
         <div className="question-decided">
           <div className="grow">
-            <span className="subtle small">{nameOf(q.askedBy)} decided, and went on with it:</span>
+            <span className="subtle small">{t("work.questions.decidedBy", { name: nameOf(q.askedBy) })}</span>
             <div>{q.decided}</div>
           </div>
           <button className="btn sm" onClick={() => keep(q)}>
-            Keep it
+            {t("work.questions.keep")}
           </button>
         </div>
       )}
-      <textarea rows={2} placeholder={q.decided ? "Or write what to do instead" : q.options ? "Pick an option, or write your answer" : "Your answer"} value={drafts[q.id] ?? ""} onChange={(e) => setDraft(q.id, e.target.value)} />
+      <textarea rows={2} placeholder={q.decided ? t("work.questions.placeholder.instead") : q.options ? t("work.questions.placeholder.options") : t("work.questions.placeholder.answer")} value={drafts[q.id] ?? ""} onChange={(e) => setDraft(q.id, e.target.value)} />
       <AnswerFiles projectId={project.id} questionId={q.id} onChange={onFiles}>
         <button className="btn ghost sm" onClick={() => setAside(q)}>
-          Set aside
+          {t("work.questions.setAside")}
         </button>
       </AnswerFiles>
     </div>
@@ -190,12 +192,12 @@ export function OpenQuestions({ project, questions }: { project: Project; questi
       {open.length > 0 && (
         <div className="questions-head">
           <MessageCircleQuestion size={14} />
-          <span className="inbox-kind">Open questions</span>
+          <span className="inbox-kind">{t("work.questions.open")}</span>
           <span className="column-count">{open.length}</span>
           <span className="grow" />
-          <button className="btn primary sm" onClick={send} disabled={sending || uploading || ready.length === 0} title={uploading ? "Waiting for files to upload" : undefined}>
+          <button className="btn primary sm" onClick={send} disabled={sending || uploading || ready.length === 0} title={uploading ? t("work.questions.uploading") : undefined}>
             <Send size={13} />
-            {ready.length > 1 ? `Send ${ready.length} answers` : "Send answer"}
+            {ready.length > 1 ? t("work.questions.sendN", { n: ready.length }) : t("work.answer.send")}
           </button>
         </div>
       )}
@@ -208,11 +210,11 @@ export function OpenQuestions({ project, questions }: { project: Project; questi
                 {b.id} · {b.feature}
               </strong>
               <span className="subtle small">
-                {b.questions.length - qs.length + qs.filter((q) => drafts[q.id]?.trim()).length} of {b.questions.length} answered
+                {t("work.questions.answeredOf", { answered: b.questions.length - qs.length + qs.filter((q) => drafts[q.id]?.trim()).length, total: b.questions.length })}
               </span>
             </div>
             {b.why && <div className="small">{b.why}</div>}
-            <div className="hint">{nameOf(b.askedBy)} gets the answers together once all are in; they become this feature's spec.</div>
+            <div className="hint">{t("work.questions.briefing.hint", { name: nameOf(b.askedBy) })}</div>
           </div>
           {qs.map(card)}
         </div>
@@ -222,14 +224,14 @@ export function OpenQuestions({ project, questions }: { project: Project; questi
         <div className="questions-closed">
           <button className="btn ghost sm" onClick={() => setShowClosed((s) => !s)}>
             <History size={13} />
-            {showClosed ? "Hide answered questions" : `Answered questions (${questions.filter((q) => q.state !== "open").length})`}
+            {showClosed ? t("work.questions.hideAnswered") : t("work.questions.answered", { n: questions.filter((q) => q.state !== "open").length })}
           </button>
           {showClosed &&
             closed.map((q) => (
               <div key={q.id} className="question-closed">
                 <span className="question-id">{q.id}</span> {q.question}
                 <div className="question-answer">
-                  {q.state === "answered" ? `→ ${q.answer}${q.answeredIn === "chat" ? " (in the chat)" : ""}` : "Set aside"}
+                  {q.state === "answered" ? `→ ${q.answer}${q.answeredIn === "chat" ? t("work.questions.inChat") : ""}` : t("work.questions.setAside")}
                 </div>
               </div>
             ))}

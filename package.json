@@ -48,7 +48,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p web/tsconfig.json",
     "prepublishOnly": "npm run typecheck && npm test && npm run build",
     "test:contract": "tsx --test tests/contract/*.test.ts",
-    "test:e2e": "node scripts/e2e.mjs"
+    "test:e2e": "node scripts/e2e.mjs",
+    "i18n:check": "tsx scripts/i18n-check.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",

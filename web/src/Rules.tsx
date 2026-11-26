@@ -4,25 +4,27 @@ import remarkGfm from "remark-gfm";
 import { Check, ChevronDown, ChevronRight, Minus, Scale, X } from "lucide-react";
 import type { Rule, RuleConfirmation, RuleStatus, RulesRegister } from "./api";
 import { EmptyState } from "./ui";
+import { useI18n, type MessageKey } from "./i18n";
 
-const STATUS: Record<RuleStatus, { label: string; icon: ReactNode; className: string }> = {
-  done: { label: "Done", icon: <Check size={13} />, className: "done" },
-  partial: { label: "Partial", icon: <span className="rule-dot" />, className: "partial" },
-  missing: { label: "Missing", icon: <X size={13} />, className: "missing" },
-  "not-applicable": { label: "N/A", icon: <Minus size={13} />, className: "na" },
+const STATUS: Record<RuleStatus, { label: MessageKey; icon: ReactNode; className: string }> = {
+  done: { label: "docs.rules.status.done", icon: <Check size={13} />, className: "done" },
+  partial: { label: "docs.rules.status.partial", icon: <span className="rule-dot" />, className: "partial" },
+  missing: { label: "docs.rules.status.missing", icon: <X size={13} />, className: "missing" },
+  "not-applicable": { label: "docs.rules.status.na", icon: <Minus size={13} />, className: "na" },
 };
 
-const CONFIRMATION: Record<RuleConfirmation, { label: string; className: string; hint: string }> = {
-  found: { label: "Found", className: "", hint: "Extracted from the source; nobody checked it yet" },
-  "checked-by-agent": { label: "Checked (agent)", className: "blue", hint: "An agent compared text, location and excerpt with the source" },
-  "checked-by-human": { label: "Checked (human)", className: "green", hint: "A person confirmed it" },
-  contested: { label: "Contested", className: "amber", hint: "A source contradicts it; waiting for a decision" },
+const CONFIRMATION: Record<RuleConfirmation, { label: MessageKey; className: string; hint: MessageKey }> = {
+  found: { label: "docs.rules.confirmation.found", className: "", hint: "docs.rules.confirmation.found.hint" },
+  "checked-by-agent": { label: "docs.rules.confirmation.agent", className: "blue", hint: "docs.rules.confirmation.agent.hint" },
+  "checked-by-human": { label: "docs.rules.confirmation.human", className: "green", hint: "docs.rules.confirmation.human.hint" },
+  contested: { label: "docs.rules.confirmation.contested", className: "amber", hint: "docs.rules.confirmation.contested.hint" },
 };
 
 /** Opens a cited source file: in the Docs tab when it's a doc (at a line), else in a new tab (at a page). */
 export type OpenSource = (file: string, at: { line?: number; page?: number }) => void;
 
 export function RulesView({ register, openSource }: { register: RulesRegister; openSource: OpenSource }) {
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
   const [confirmation, setConfirmation] = useState("");
@@ -68,10 +70,10 @@ export function RulesView({ register, openSource }: { register: RulesRegister; o
 
   if (!register.rules.length) {
     return (
-      <EmptyState icon={<Scale size={20} />} title="No rules recorded yet">
+      <EmptyState icon={<Scale size={20} />} title={t("docs.rules.empty.title")}>
         {register.enabled
-          ? "Agents add the project's rules here as they come up: what each says, where it came from and whether it's met."
-          : "This project doesn't keep a rules register. Turn it on in the project's Settings."}
+          ? t("docs.rules.empty.enabled")
+          : t("docs.rules.empty.disabled")}
       </EmptyState>
     );
   }
@@ -132,13 +134,13 @@ export function RulesView({ register, openSource }: { register: RulesRegister; o
     <div className="rules">
       <div className="rules-filters">
         <label className="field">
-          <span>Search</span>
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="id, text, source or excerpt" />
+          <span>{t("common.search")}</span>
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("docs.rules.search.placeholder")} />
         </label>
-        <Select label="Status" value={status} onChange={setStatus} options={Object.entries(STATUS).map(([v, s]) => [v, s.label])} />
-        <Select label="Confirmation" value={confirmation} onChange={setConfirmation} options={Object.entries(CONFIRMATION).map(([v, c]) => [v, c.label])} />
+        <Select label={t("docs.rules.filter.status")} value={status} onChange={setStatus} options={Object.entries(STATUS).map(([v, s]) => [v, t(s.label)])} />
+        <Select label={t("docs.rules.filter.confirmation")} value={confirmation} onChange={setConfirmation} options={Object.entries(CONFIRMATION).map(([v, c]) => [v, t(c.label)])} />
         <Select
-          label="Area"
+          label={t("docs.rules.filter.area")}
           value={area}
           onChange={(v) => {
             setArea(v);
@@ -146,26 +148,26 @@ export function RulesView({ register, openSource }: { register: RulesRegister; o
           }}
           options={register.areas.map((a) => [a.id, `${a.id} · ${a.name}`])}
         />
-        <Select label="Stage" value={stage} onChange={setStage} options={areaStages.map((s) => [s.id, `${s.id}. ${s.name}`])} disabled={!area} />
-        <Select label="Imposed by" value={imposedBy} onChange={setImposedBy} options={whoValues.map((w) => [w, authorities.get(w) ? `${w} · ${authorities.get(w)}` : w])} />
+        <Select label={t("docs.rules.filter.stage")} value={stage} onChange={setStage} options={areaStages.map((s) => [s.id, `${s.id}. ${s.name}`])} disabled={!area} />
+        <Select label={t("docs.rules.filter.imposedBy")} value={imposedBy} onChange={setImposedBy} options={whoValues.map((w) => [w, authorities.get(w) ? `${w} · ${authorities.get(w)}` : w])} />
         <div className="rules-filters-foot">
           <label className="rules-check">
             <input type="checkbox" checked={allExcerpts} onChange={(e) => setAllExcerpts(e.target.checked)} />
-            Show all excerpts
+            {t("docs.rules.showAllExcerpts")}
           </label>
           {filtering && (
             <button className="btn ghost sm" onClick={clear}>
-              Clear filters
+              {t("docs.rules.clearFilters")}
             </button>
           )}
           <span className="spacer" />
           <span className="muted small">
-            {filtered.length === register.rules.length ? `${register.rules.length} rules` : `${filtered.length} of ${register.rules.length} rules`}
+            {filtered.length === register.rules.length ? t("docs.rules.count", { n: register.rules.length }) : t("docs.rules.countOf", { n: filtered.length, total: register.rules.length })}
           </span>
         </div>
       </div>
 
-      {filtered.length === 0 && <div className="section-empty">No rules match these filters.</div>}
+      {filtered.length === 0 && <div className="section-empty">{t("docs.rules.noMatch")}</div>}
 
       {byArea.map(({ area: a, rules }) => {
         const stages = [...a.stages.map((s) => ({ ...s, rules: rules.filter((r) => r.stage === s.id) })), { id: "", name: "", rules: rules.filter((r) => !r.stage || !a.stages.some((s) => s.id === r.stage)) }].filter(
@@ -180,7 +182,7 @@ export function RulesView({ register, openSource }: { register: RulesRegister; o
             {a.description && <p className="muted small">{a.description}</p>}
             {stages.length > 1 && (
               <div className="rules-stages">
-                Stages:{" "}
+                {t("docs.rules.stages")}{" "}
                 {stages
                   .filter((s) => s.id)
                   .map((s) => (
@@ -221,7 +223,7 @@ export function RulesView({ register, openSource }: { register: RulesRegister; o
       })}
       {orphans.length > 0 && (
         <section className="rules-area">
-          <h2>Without an area</h2>
+          <h2>{t("docs.rules.withoutArea")}</h2>
           <RulesTable
             rules={orphans}
             sources={sources}
@@ -257,19 +259,20 @@ function RulesTable({
   md: (text?: string) => ReactNode;
   jumpTo: (id: string) => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="rules-table-wrap">
       <table className="rules-table">
         <thead>
           <tr>
-            <th style={{ width: 76 }}>Id</th>
-            <th>Rule</th>
-            <th style={{ width: "11%" }}>Action</th>
-            <th style={{ width: "17%" }}>Source</th>
-            <th style={{ width: 56 }}>By</th>
-            <th style={{ width: 118 }}>Confirmation</th>
-            <th style={{ width: 92 }}>Status</th>
-            <th style={{ width: "22%" }}>Current state</th>
+            <th style={{ width: 76 }}>{t("docs.rules.col.id")}</th>
+            <th>{t("docs.rules.col.rule")}</th>
+            <th style={{ width: "11%" }}>{t("docs.rules.col.action")}</th>
+            <th style={{ width: "17%" }}>{t("docs.rules.col.source")}</th>
+            <th style={{ width: 56 }}>{t("docs.rules.col.by")}</th>
+            <th style={{ width: 118 }}>{t("docs.rules.col.confirmation")}</th>
+            <th style={{ width: 92 }}>{t("docs.rules.col.status")}</th>
+            <th style={{ width: "22%" }}>{t("docs.rules.col.current")}</th>
           </tr>
         </thead>
         <tbody>
@@ -284,7 +287,7 @@ function RulesTable({
                   {r.id}
                   {r.supersededBy && (
                     <div className="rules-superseded">
-                      superseded by{" "}
+                      {t("docs.rules.supersededBy")}{" "}
                       <a
                         href={`#rule:${r.supersededBy}`}
                         onClick={(e) => {
@@ -299,13 +302,13 @@ function RulesTable({
                 </td>
                 <td className="rules-md">
                   {md(r.text)}
-                  {r.check && <div className="rules-check-how">Check: {r.check}</div>}
+                  {r.check && <div className="rules-check-how">{t("docs.rules.checkHow", { check: r.check })}</div>}
                 </td>
                 <td className="rules-md">{md(r.action) ?? <span className="muted">—</span>}</td>
                 <td>
                   {r.citations.length === 0 ? (
-                    <span className="tag amber" title="Nothing backs this rule yet">
-                      No source
+                    <span className="tag amber" title={t("docs.rules.noSource.hint")}>
+                                          {t("docs.rules.noSource")}
                     </span>
                   ) : (
                     <div className="rules-cites">
@@ -320,7 +323,7 @@ function RulesTable({
                             {openable ? (
                               <a
                                 href={`#${src!.file}`}
-                                title={`${src!.name} — open ${src!.file}${line ? ` at line ${line}` : page ? ` at page ${page}` : ""}`}
+                                title={t(line ? "docs.rules.cite.openAtLine" : page ? "docs.rules.cite.openAtPage" : "docs.rules.cite.open", { name: src!.name, file: src!.file!, n: line ?? page ?? "" })}
                                 onClick={(e) => {
                                   e.preventDefault();
                                   openSource(src!.file!, { line, page });
@@ -329,7 +332,7 @@ function RulesTable({
                                 {label}
                               </a>
                             ) : (
-                              <span className="rules-cite" title={src ? `${src.name}${src.file ? ` — ${src.file}` : ""}` : "Unknown source"}>
+                              <span className="rules-cite" title={src ? `${src.name}${src.file ? ` — ${src.file}` : ""}` : t("docs.rules.cite.unknown")}>
                                 {label}
                               </span>
                             )}
@@ -343,7 +346,7 @@ function RulesTable({
                     <>
                       <button className="rules-excerpt-toggle" onClick={() => toggleExcerpt(r.id)}>
                         {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-                        Literal excerpt{withExcerpt.length > 1 ? `s (${withExcerpt.length})` : ""}
+                        {withExcerpt.length > 1 ? t("docs.rules.excerpt.many", { n: withExcerpt.length }) : t("docs.rules.excerpt.one")}
                       </button>
                       {open &&
                         withExcerpt.map((c, i) => (
@@ -360,14 +363,14 @@ function RulesTable({
                 </td>
                 <td title={r.imposedBy ? authorities.get(r.imposedBy) : undefined}>{r.imposedBy ?? <span className="muted">—</span>}</td>
                 <td>
-                  <span className={`tag ${conf.className}`} title={conf.hint}>
-                    {conf.label}
+                  <span className={`tag ${conf.className}`}                   title={t(conf.hint)}>
+                                      {t(conf.label)}
                   </span>
                 </td>
                 <td>
                   <span className={`rules-status ${st.className}`}>
                     {st.icon}
-                    {st.label}
+                    {t(st.label)}
                   </span>
                 </td>
                 <td className="rules-md">{md(r.current) ?? <span className="muted">—</span>}</td>
@@ -393,11 +396,12 @@ function Select({
   options: [string, string][];
   disabled?: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <label className="field">
       <span>{label}</span>
       <select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
-        <option value="">All</option>
+        <option value="">{t("docs.rules.filter.all")}</option>
         {options.map(([v, l]) => (
           <option key={v} value={v}>
             {l}

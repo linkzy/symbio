@@ -203,9 +203,11 @@ let browser: Browser | null = null;
 /** A logged-in page (desktop by default, or a phone). */
 export async function openPage(symbio: Symbio, opts: { phone?: boolean } = {}): Promise<{ page: Page; context: BrowserContext }> {
   browser ??= await chromium.launch({ channel: process.env.BROWSER_CHANNEL ?? (process.platform === "win32" ? "msedge" : "chrome") });
-  const context = await browser.newContext(
-    opts.phone ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } : { viewport: { width: 1280, height: 800 } },
-  );
+  // In English whatever the computer's language: the interface follows the browser's (i18n.ts), and the tests read English.
+  const context = await browser.newContext({
+    locale: "en-US",
+    ...(opts.phone ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } : { viewport: { width: 1280, height: 800 } }),
+  });
   const page = await context.newPage();
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
