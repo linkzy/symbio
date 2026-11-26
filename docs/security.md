@@ -206,8 +206,11 @@ every hour while they run (npm when it doesn't answer). The request carries:
   the computer; it lets us count copies in use (per day, week and month), new installs, and
   whether people keep using Symbio.
 
-Nothing else: no project data, no names, no paths. The endpoint keeps, per id, the days it was seen
-and the version, for 90 days after the last check, and no IP addresses. Installed copies tell the
+Nothing else: no project data, no names, no paths. The endpoint keeps, per id, when it was seen
+(date and time), the version, and the country the check came from, for 90 days after the last
+check. The country is worked out from the connection's address when the check arrives; the address
+itself isn't kept. The country tells us which translations to do next, the times tell real copies
+from test runs. Installed copies tell the
 human about the id once, in Messages. **Turn it off** in Settings → This computer → Updates (the id
 is deleted; turning it on again makes a new one, which can't be linked to the old). Update checks
 keep working without it. Development folders, the tests and CI ask npm directly and send nothing,
