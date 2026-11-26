@@ -5,11 +5,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.35.0]
+
 - **Projects without git** (#72): creating a project no longer fails when git is there but doesn't work; the project is
   made without it, and you're told why. With git missing, the New project dialog says what that changes (helpers share
   the folder instead of working in their own copies), how to install it, and checks again once you have.
-
-## [0.35.0]
 
 - **An anonymous install id with update checks**, so we can tell how many people use Symbio and whether they keep using
   it (counting checks couldn't: one copy left on all day looked like many). It's a random number made on your computer,

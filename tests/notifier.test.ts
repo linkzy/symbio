@@ -12,6 +12,15 @@ import type { Question } from "../src/server/questions.js";
 import type { Agent, LoggedMessage, Project } from "../src/server/store.js";
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+// Timers on a busy machine (CI) run late: wait for what's expected instead of a fixed time.
+async function until(check: () => boolean, ms = 3000) {
+  const end = Date.now() + ms;
+  while (!check()) {
+    if (Date.now() > end) return;
+    await wait(10);
+  }
+  await wait(120); // and a moment more, so an extra notification would show up too
+}
 
 function setup(opts: { minRunMs?: number; tasks?: Partial<Task>[]; questions?: Partial<Question>[] } = {}) {
   const agent = { id: "a1", name: "core", status: "idle" } as Agent;
@@ -53,7 +62,7 @@ test("what happens together goes out as one notification, what waits on the huma
     log({ kind: "question", text: "Q1: Which font for the titles?" });
     log({ kind: "approval", text: "Deploy to production\n\nWhy: the site is ready" });
     log({ kind: "chat", text: "Working on it" }); // the chat isn't a notification
-    await wait(120);
+    await until(() => sent.length >= 1);
     assert.equal(sent.length, 1);
     assert.equal(sent[0].title, "My site: needs you (3)");
     assert.equal(sent[0].important, true);
@@ -76,13 +85,13 @@ test("a project that wants only what needs the human doesn't send news, and one 
     await wait(100);
     assert.equal(sent.length, 0);
     log({ kind: "plan", text: "Proposed a plan (revision 1, 2 tasks) — review it in the Plan tab.\n\n**Goal:** A faster site" });
-    await wait(100);
+    await until(() => sent.length >= 1);
     assert.equal(sent.length, 1);
     assert.equal(sent[0].title, "My site: Plan to review");
     assert.equal(sent[0].body, "Goal: A faster site");
     project.notify = "off";
     log({ kind: "alert", text: "core can't continue" });
-    await wait(100);
+    await until(() => sent.length >= 1);
     assert.equal(sent.length, 1);
   } finally {
     notifier.stop();
@@ -99,7 +108,7 @@ test("tasks done count once, not the ones done before; every task done is its ow
     plan.tasks[1].status = "done";
     bus.publish({ type: "plan.updated", projectId: project.id });
     bus.publish({ type: "plan.updated", projectId: project.id });
-    await wait(100);
+    await until(() => sent.length >= 1);
     assert.equal(sent.length, 1);
     assert.equal(sent[0].title, "My site: needs you (2)");
     assert.match(sent[0].body, /• All 2 tasks done: Goal: Ship the site\n• T2 done: The contact page/);
@@ -115,7 +124,7 @@ test("the team stopping after a while of work is news, with what it last said; a
     s.status("busy");
     s.log({ kind: "chat", text: "The **contact page** is done; next I'd add a map." });
     s.status("idle");
-    await wait(150);
+    await until(() => s.sent.length >= 1);
     assert.equal(s.sent.length, 1);
     assert.equal(s.sent[0].title, "My site: The team stopped working");
     assert.equal(s.sent[0].body, "The contact page is done; next I'd add a map.");
@@ -124,14 +133,14 @@ test("the team stopping after a while of work is news, with what it last said; a
     s.status("busy");
     s.log({ kind: "question", text: "Q9: Which map?" });
     s.status("idle");
-    await wait(150);
+    await until(() => s.sent.length >= 2);
     assert.equal(s.sent.length, 2);
     assert.equal(s.sent[1].title, "My site: core asks");
 
     // Answered, back at work, then stopped: that's news again.
     s.status("busy");
     s.status("idle");
-    await wait(150);
+    await until(() => s.sent.length >= 3);
     assert.equal(s.sent.length, 3);
     assert.equal(s.sent[2].title, "My site: The team stopped working");
   } finally {

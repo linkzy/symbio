@@ -155,7 +155,7 @@ Collected, not sorted or promised yet.
 
 Newest first; details per version in [CHANGELOG.md](../CHANGELOG.md).
 
-- **0.35.0** — An anonymous install id with update checks (can be turned off), to count copies in use and whether people keep using Symbio; the website as Symbio's homepage.
+- **0.35.0** — An anonymous install id with update checks (can be turned off), to count copies in use and whether people keep using Symbio; the website as Symbio's homepage; projects without git never fail, and the dialog says what git is for (#72).
 - **0.34.0** — Budgets per project (#7): a limit for the whole project and per day, a warning near it, the team paused at it. Scheduled work (#8): recurring jobs core runs when they're due, with their runs in the Plan tab. Settings in groups, each with its own address (#62, #35). The whole interface translatable, in Portuguese (Brazil), and in the browser's language by default (#13). Update checks through Symbio's own endpoint, which counts them.
 - **0.33.0** — Notifications (#5): what waits on you and what got done, grouped per project, in the browser and through Telegram, ntfy, a webhook or e-mail; each project chooses what it sends. Also the remote link and code copied and shared together, by @TariQMah (#61).
 - **0.32.0** — Runs on its own or asks, per project (decisions to keep or change, plans approved as made, what the team may do without asking, briefing or grilling), and a skill library by category with popular third-party skills, credited.
