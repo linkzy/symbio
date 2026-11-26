@@ -23,7 +23,7 @@ const MAX_OUTPUT = 60_000;
 
 export const fingerprint = (key: Buffer) => `SHA256:${createHash("sha256").update(key).digest("base64").replace(/=+$/, "")}`;
 
-function connect(target: SshTarget, timeoutMs = 20_000): Promise<Client> {
+export function connect(target: SshTarget, timeoutMs = 20_000): Promise<Client> {
   return new Promise((resolve, reject) => {
     const client = new Client();
     let seen: string | null = null;
@@ -40,11 +40,18 @@ function connect(target: SshTarget, timeoutMs = 20_000): Promise<Client> {
       },
       ...(target.privateKey ? { privateKey: target.privateKey, passphrase: target.passphrase } : { password: target.password }),
     };
+    let settled = false;
     client.once("ready", async () => {
       if (!target.hostKey && seen) await target.onFirstHostKey?.(seen);
+      settled = true;
       resolve(client);
     });
-    client.once("error", (err) => {
+    // Always listening: ssh2 can emit more than one error (a timeout, then "Connection lost before
+    // handshake"), and an error with no listener crashes Symbio. After connecting, the command or
+    // upload under way hears about it (connectionLost).
+    client.on("error", (err) => {
+      if (settled) return;
+      settled = true;
       if (target.hostKey && seen && seen !== target.hostKey) {
         reject(
           new Error(
@@ -74,11 +81,18 @@ export interface ExecResult {
   truncated: boolean;
 }
 
+/** Rejects when the connection fails or closes before the work on it is done (a no-op after it is). */
+function connectionLost(client: Client, reject: (err: Error) => void) {
+  client.once("error", (err) => reject(new Error(`The connection to the server failed: ${err.message}`)));
+  client.once("close", () => reject(new Error("The connection to the server was closed.")));
+}
+
 /** Runs one command (non-interactive) and returns its output. */
 export async function sshExec(target: SshTarget, command: string, timeoutMs = 10 * 60_000): Promise<ExecResult> {
   const client = await connect(target);
   try {
     return await new Promise<ExecResult>((resolve, reject) => {
+      connectionLost(client, reject);
       client.exec(command, (err, stream) => {
         if (err) return reject(err);
         let stdout = "";
@@ -119,7 +133,9 @@ export async function sshExec(target: SshTarget, command: string, timeoutMs = 10
 export async function sftpCheck(target: SshTarget): Promise<string> {
   const client = await connect(target);
   try {
-    const sftp = await new Promise<SFTPWrapper>((resolve, reject) => client.sftp((e, s) => (e ? reject(e) : resolve(s))));
+    const lost = new Promise<never>((_, reject) => connectionLost(client, reject));
+    lost.catch(() => {});
+    const sftp = await Promise.race([lost, new Promise<SFTPWrapper>((resolve, reject) => client.sftp((e, s) => (e ? reject(e) : resolve(s))))]);
     const home = await new Promise<string>((resolve, reject) => sftp.realpath(".", (e, p) => (e ? reject(e) : resolve(p))));
     const entries = await new Promise<unknown[]>((resolve, reject) => sftp.readdir(".", (e, list) => (e ? reject(e) : resolve(list))));
     return `${home} (${entries.length} item(s))`;
@@ -134,7 +150,9 @@ export async function sshUpload(target: SshTarget, localPath: string, remotePath
   remotePath = remotePath.replace(/^~\/?/, "") || ".";
   const client = await connect(target);
   try {
-    const sftp = await new Promise<SFTPWrapper>((resolve, reject) => client.sftp((e, s) => (e ? reject(e) : resolve(s))));
+    const lost = new Promise<never>((_, reject) => connectionLost(client, reject));
+    lost.catch(() => {});
+    const sftp = await Promise.race([lost, new Promise<SFTPWrapper>((resolve, reject) => client.sftp((e, s) => (e ? reject(e) : resolve(s))))]);
     const stat = await fs.stat(localPath);
     if (stat.isFile()) {
       await mkdirp(sftp, path.posix.dirname(remotePath));
