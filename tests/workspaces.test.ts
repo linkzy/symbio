@@ -56,6 +56,22 @@ test("two helpers change the same line: conflict is detected, aborted, then reso
   assert.equal(read(path.join(dir, "shared.css")), "body { color: red; }\nh1 { color: blue; }\n");
 });
 
+test("a helper that brought the project's later work into its branch is credited only with its own changes", async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "orq-ws-"));
+  writeFileSync(path.join(dir, "server.txt"), "v1\n");
+  await initRepository(dir);
+  const project: any = { id: "prj_threeway", directory: dir };
+  const ws = await createWorkspace(project, "client");
+  const client: any = { id: "client", name: "client", directory: ws.directory, branch: ws.branch, base: ws.base };
+  writeFileSync(path.join(client.directory, "web.txt"), "page\n");
+  await commitAll(client.directory, "client: web");
+  // The project moves on (another helper's merge), and client brings it in, as asked after a conflict.
+  writeFileSync(path.join(dir, "server.txt"), "v2\n");
+  await commitAll(dir, "server work");
+  await git(client.directory, "merge", "-q", "--no-edit", await git(dir, "rev-parse", "--abbrev-ref", "HEAD"));
+  assert.deepEqual((await changedFiles(project, client)).committed, ["web.txt"], "not the server work it merged in");
+});
+
 test("uncommitted work blocks a merge", async () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), "orq-ws-"));
   writeFileSync(path.join(dir, "a.txt"), "1\n");
@@ -64,7 +80,7 @@ test("uncommitted work blocks a merge", async () => {
   const ws = await createWorkspace(project, "helper");
   const agent: any = { name: "helper", directory: ws.directory, branch: ws.branch, base: ws.base };
   writeFileSync(path.join(ws.directory, "a.txt"), "2\n");
-  assert.deepEqual((await changedFiles(agent)).uncommitted, ["a.txt"]);
+  assert.deepEqual((await changedFiles(project, agent)).uncommitted, ["a.txt"]);
   const res = await mergeWorkspace(project, agent);
   assert.equal(res.ok, false);
   assert.match(!res.ok ? res.reason : "", /uncommitted/);

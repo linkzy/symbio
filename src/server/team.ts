@@ -757,7 +757,7 @@ export class Team implements TeamCore {
     this.assetsChanged(project);
     // Helpers have their own folder; the project root is shared, so leave its processes alone.
     await this.processes.stopAll(project, agent);
-    const { committed, uncommitted } = await changedFiles(agent);
+    const { committed, uncommitted } = await changedFiles(project, agent);
     const unmerged = committed.length > 0 || uncommitted.length > 0;
     if (!unmerged) await removeWorkspace(project, agent);
     agent.status = "stopped";
@@ -1760,6 +1760,7 @@ export class Team implements TeamCore {
     // watchdog interrupt it as a hang ten minutes later.
     if (status === "busy" && agent.status === "waiting" && this.waitsOnHuman(project, agent)) return;
     this.machineWatch.statusChanged(agent, status);
+    agent.busySince = status === "busy" ? Date.now() : null;
     agent.status = status;
     agent.lastActivity = Date.now();
     bus.publish({ type: "agent.status", projectId: project.id, agentId: agent.id, status });

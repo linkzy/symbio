@@ -2,7 +2,7 @@
 // programs seen that way before whose parent has exited since.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { agentProcesses, descendants, parseWindowsListing, type ProcessInfo } from "../src/server/machine.js";
+import { agentProcesses, descendants, MachineMonitor, parseWindowsListing, type ProcessInfo } from "../src/server/machine.js";
 
 const p = (pid: number, parent: number, name: string, started = 1): ProcessInfo => ({ pid, parent, name, command: name, memory: 1, cpuTime: 0, started });
 
@@ -47,4 +47,13 @@ test("a Windows listing with a raw control character in a command line still par
   const out = '[{"p":10,"q":1,"n":"odd.exe","c":"odd.exe --title \u0007bell\u001b[0m","m":1,"t":0,"s":0},{"p":11,"q":1,"n":"ok.exe","c":null,"m":2,"t":0,"s":0}]';
   const list = parseWindowsListing(out);
   assert.deepEqual(list.map((p) => [p.pid, p.command]), [[10, "odd.exe --title  bell [0m"], [11, "ok.exe"]]);
+});
+
+test("stop_program tells an ended program apart from one that isn't an agent's", async () => {
+  const { mkdtempSync } = await import("node:fs");
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const machine = new MachineMonitor(mkdtempSync(path.join(os.tmpdir(), "symbio-machine-")), () => [], () => false);
+  await assert.rejects(machine.stopProcess(process.pid), /is running, but it isn't a program an agent started/);
+  await assert.rejects(machine.stopProcess(2 ** 30), /has already ended: there's nothing to stop/);
 });

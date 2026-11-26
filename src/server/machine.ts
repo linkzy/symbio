@@ -269,6 +269,15 @@ export interface AgentProcess {
 }
 
 /** "overdrive · core", "overdrive · core or tester", or "" when unknown. */
+function isRunning(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return (err as NodeJS.ErrnoException).code === "EPERM"; // exists, but someone else's
+  }
+}
+
 export function startedBy(p: Pick<AgentProcess, "owners">): string {
   const projects = new Set(p.owners.map((o) => o.projectId));
   if (projects.size === 1) return `${p.owners[0].project} · ${p.owners.map((o) => o.agent).join(" or ")}`;
@@ -519,7 +528,11 @@ export class MachineMonitor extends EventEmitter<{ changed: [MachineLoad]; overl
   async stopProcess(pid: number): Promise<AgentProcess> {
     const current = await this.processes();
     const target = current.find((p) => p.pid === pid);
-    if (!target) throw new Error("That process isn't one an agent started (or it has already ended).");
+    if (!target) {
+      // Two different answers: one means it worked (the program was already gone), the other doesn't.
+      if (!isRunning(pid)) throw new Error(`Process ${pid} has already ended: there's nothing to stop.`);
+      throw new Error(`Process ${pid} is running, but it isn't a program an agent started, so it can't be stopped from here.`);
+    }
     await killTree(pid, target.started);
     this.known.delete(pid);
     return target;

@@ -3,7 +3,8 @@
 // them to the human when they review the work).
 
 import { changedFiles, mergeWorkspace, syncWorkspace } from "../workspaces.js";
-import type { TaskInput, TaskStatus } from "../plan.js";
+import type { Asset } from "../assets.js";
+import type { Task, TaskInput, TaskStatus } from "../plan.js";
 import type { Agent, Project } from "../store.js";
 import { active, type TeamCore } from "./core.js";
 import type { QuietHelpers } from "./quiet-helpers.js";
@@ -15,6 +16,29 @@ export interface TaskFlowHost extends TeamCore {
   readonly reviews: Reviews;
   readonly quiet: QuietHelpers;
   readonly verifier: Verifier;
+  readonly machine: { state(): { overloaded: boolean } } | null;
+}
+
+/**
+ * After a merge: tasks that could start now (todo, their dependencies done, no asset of theirs
+ * held by a helper) and the helpers with nothing under way. core tended to keep one lane going
+ * while independent work (a separate part, the deployment) waited for days next to an idle helper.
+ */
+export function readyNote(tasks: Task[], agents: Agent[], assets: Asset[], overloaded: boolean): string {
+  const done = new Set(tasks.filter((t) => t.status === "done").map((t) => t.id));
+  const held = new Set(assets.filter((a) => a.holder).map((a) => a.name));
+  const ready = tasks.filter((t) => t.status === "todo" && t.dependsOn.every((d) => done.has(d)) && !t.assets.some((a) => held.has(a)));
+  if (!ready.length) return "";
+  const busy = new Set(tasks.filter((t) => t.assignee && (t.status === "in-progress" || t.status === "review" || t.status === "blocked")).map((t) => t.assignee));
+  const idle = agents.filter((a) => a.role === "worker" && a.status === "idle" && !busy.has(a.id)).map((a) => a.name);
+  const list = ready.slice(0, 8).map((t) => `${t.id} (${t.title})`).join(", ") + (ready.length > 8 ? ", …" : "");
+  return (
+    `\nReady to start, with nothing in their way: ${list}.` +
+    (idle.length ? ` Helpers with nothing under way: ${idle.join(", ")}.` : "") +
+    (overloaded
+      ? " The computer is overloaded now: start them once it isn't."
+      : " Work that touches different parts can run in parallel: start what's independent instead of queuing it behind the current lane.")
+  );
 }
 
 export class TaskFlow {
@@ -193,7 +217,7 @@ export class TaskFlow {
   }
 
   async mergeWork(project: Project, agent: Agent, force: boolean): Promise<string> {
-    const { committed, uncommitted } = await changedFiles(agent);
+    const { committed, uncommitted } = await changedFiles(project, agent);
     const reg = await this.team.assets(project);
     // Asset patterns are relative to the project folder; a sub-repository's paths are relative to it.
     const inProject = (f: string) => (agent.repo ? `${agent.repo}/${f}` : f);
@@ -238,7 +262,8 @@ export class TaskFlow {
       `${result.summary}\n${result.files.map((f) => `- ${f}`).join("\n")}` +
       (gate.ok && gate.note ? `\n${gate.note}` : "") +
       (completed.length ? `\nMarked done: ${completed.join(", ")}.` : "") +
-      (waiting.length ? `\nWaiting for the human's review: ${waiting.join(", ")} (done when they approve).` : "")
+      (waiting.length ? `\nWaiting for the human's review: ${waiting.join(", ")} (done when they approve).` : "") +
+      readyNote((await this.team.plan(project)).plan.tasks, project.agents, reg.list(), !!this.team.machine?.state().overloaded)
     );
   }
 }

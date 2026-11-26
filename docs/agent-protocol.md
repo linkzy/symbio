@@ -224,7 +224,7 @@ All agents:
 | `close_question` | Close an open question: with the answer the human gave in the chat, or without one when it's no longer needed |
 | `share_file` | Show the human a file (image, video, report…): a card in the chat, shown in place or with a download button, and in the Files tab. `tag` (evidence, report, other) and `task_id`: evidence without a task goes to the agent's one task in progress or review |
 | `list_shared_files` | The files the team shared, newest first, by task and tag (a task's evidence) |
-| `list_team` | Agents on the project: name, role, purpose, status, model, reasoning effort, skills |
+| `list_team` | Agents on the project: name, role, purpose, status, model, reasoning effort, skills; for working ones, for how long, their last activity and the programs they run |
 | `list_assets` | Declared shared assets, holders and queues |
 | `request_asset` | Ask core for a shared asset; don't touch it until granted |
 | `release_asset` | Release a held asset with a summary of the changes |
@@ -263,7 +263,7 @@ core only:
 | `pin_model` | Pin a helper to its model (it waits and retries it when it fails, instead of switching) or unpin it; not a pin the human made |
 | `stop_agent` | Stop a helper; its assets are released |
 | `clean_build_outputs` | Delete an idle helper's git-ignored build folders (bin, obj, node_modules…) to free disk space |
-| `merge_work` | Merge a helper's committed work; refuses ungranted asset changes, or failing checks, unless forced |
+| `merge_work` | Merge a helper's committed work; refuses ungranted asset changes (only the helper's own: compared from where its branch last met the project), or failing checks, unless forced. Its answer lists the tasks that could start now and the helpers with nothing under way |
 | `request_review` | Start a reviewer on a task in review (optionally with what to look at) |
 | `propose_check` | Propose a check (name, command, folder, time limit) for the human to approve |
 | `schedule_job` | Set up recurring (or one-off) work the human asked for: a title, instructions to start from alone, and when (`every` hours / day / week / month / once, with `at`, `days`, `day`, `interval`, `date`; the computer's time). In a project that asks, the human approves it first |

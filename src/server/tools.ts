@@ -193,13 +193,17 @@ const listSharedFiles: Tool = {
 
 const listTeam: Tool = {
   name: "list_team",
-  description: "List the agents on this project: name, role, purpose, status, model, reasoning effort and skills.",
+  description:
+    "List the agents on this project: name, role, purpose, status, model, reasoning effort and skills; for those working, " +
+    "for how long, their last sign of activity and the programs they're running, to tell a long task from a stuck one.",
   inputSchema: obj({}),
-  run(_args, { team, project }) {
+  async run(_args, { team, project }) {
+    const programs = team.machine ? await team.machine.processes().catch(() => []) : [];
     return project.agents
       .map(
         (a) =>
-          `- ${a.name} (${a.role}${a.status === "stopped" ? ", stopped" : `, ${a.status}`}) — ${a.purpose ?? "coordinates the project"}${a.repo ? ` · repository ${a.repo}` : ""} · model ${a.model}${a.modelPinned ? ` (pinned by ${a.modelPinned.by === "human" ? "the human" : "you"})` : ""}${effortText(project, a)}${skillsText(team, project, a)}`,
+          `- ${a.name} (${a.role}${a.status === "stopped" ? ", stopped" : `, ${a.status}`}) — ${a.purpose ?? "coordinates the project"}${a.repo ? ` · repository ${a.repo}` : ""} · model ${a.model}${a.modelPinned ? ` (pinned by ${a.modelPinned.by === "human" ? "the human" : "you"})` : ""}${effortText(project, a)}${skillsText(team, project, a)}` +
+          (a.status === "busy" ? `\n  ${workingText(project, a, programs)}` : ""),
       )
       .join("\n");
   },
@@ -1224,6 +1228,17 @@ function planGuard(tool: Tool): Tool {
 
 export const workerTools: Tool[] = COMMON.map(withInbox);
 export const coordinatorTools: Tool[] = [...COMMON, ...COORDINATOR_ONLY.map(coordinatorOnly)].map(planGuard).map(withInbox);
+
+/** For a working agent in list_team: how long, the last sign of life, and what it's running. */
+export function workingText(project: Project, a: Agent, programs: { pid: number; name: string; cpu: number | null; owners: { projectId: string; agentId: string }[] }[]): string {
+  const span = (ms: number) => (ms < 60_000 ? `${Math.max(1, Math.round(ms / 1000))}s` : ms < 3_600_000 ? `${Math.round(ms / 60_000)} min` : `${(ms / 3_600_000).toFixed(1)} h`);
+  const now = Date.now();
+  const running = programs.filter((p) => p.owners.some((o) => o.projectId === project.id && o.agentId === a.id));
+  return (
+    `working${a.busySince ? ` for ${span(now - a.busySince)}` : ""}, last activity ${span(now - a.lastActivity)} ago` +
+    (running.length ? `; running ${running.map((p) => `${p.name} (pid ${p.pid}${p.cpu !== null ? `, ${p.cpu}% CPU` : ""})`).join(", ")}` : "; no programs running")
+  );
+}
 
 /** An agent's skills, for list_team. */
 function skillsText(team: Team, project: Project, a: Agent): string {

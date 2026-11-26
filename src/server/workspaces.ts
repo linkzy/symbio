@@ -59,10 +59,16 @@ export async function createWorkspace(
   return { directory, branch, base, warning };
 }
 
-/** Files the worker changed: commits on its branch since the base, plus uncommitted edits. */
-export async function changedFiles(agent: Agent): Promise<{ committed: string[]; uncommitted: string[] }> {
+/**
+ * Files the worker changed: its commits that the project doesn't have yet, plus uncommitted edits.
+ * Compared from where its branch and the project last met (three dots), not from the commit it
+ * started on: a helper that brought the project's later work into its branch (`git merge main`, as
+ * asked when a merge conflicts) would otherwise count everyone's changes since then as its own.
+ */
+export async function changedFiles(project: Project, agent: Agent): Promise<{ committed: string[]; uncommitted: string[] }> {
   if (!agent.branch || !agent.base) return { committed: [], uncommitted: [] };
-  const committed = (await git(agent.directory, "diff", "--name-only", `${agent.base}..HEAD`).catch(() => ""))
+  const projectHead = await git(repoRoot(project, agent), "rev-parse", "HEAD").catch(() => agent.base!);
+  const committed = (await git(agent.directory, "diff", "--name-only", `${projectHead}...HEAD`).catch(() => ""))
     .split("\n")
     .filter(Boolean);
   // Ask git for names directly (parsing `status --porcelain` breaks once output is trimmed).
@@ -84,7 +90,7 @@ export type MergeResult =
 /** Merges a worker's branch into the project's current branch. */
 export async function mergeWorkspace(project: Project, agent: Agent): Promise<MergeResult> {
   if (!agent.branch) return { ok: false, reason: "This agent works directly in the project folder; there is nothing to merge." };
-  const { committed, uncommitted } = await changedFiles(agent);
+  const { committed, uncommitted } = await changedFiles(project, agent);
   if (uncommitted.length) {
     return {
       ok: false,
@@ -176,7 +182,7 @@ export async function removeWorkspace(project: Project, agent: Agent): Promise<v
  */
 export async function leaveWorkspace(project: Project, agent: Agent): Promise<void> {
   if (!agent.branch) return;
-  const { committed, uncommitted } = await changedFiles(agent);
+  const { committed, uncommitted } = await changedFiles(project, agent);
   if (committed.length || uncommitted.length) {
     const files = [...new Set([...committed, ...uncommitted])];
     throw new Error(

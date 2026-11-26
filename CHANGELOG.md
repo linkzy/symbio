@@ -20,6 +20,17 @@ versions follow [Semantic Versioning](https://semver.org/).
     clears the old chat.
   - **ntfy** makes up a topic nobody guesses when it's turned on, and says what to do in the app.
   - **E-mail** says that most providers want an app password, with Gmail's settings.
+- **core keeps independent work moving.** After each merge, core hears which tasks could start now (dependencies done,
+  nothing held in their way) and which helpers are free, and its brief asks it to start independent work in parallel
+  instead of queuing it behind the longest lane. Found in a long project where a whole part and the deployment waited
+  two days next to an idle helper.
+- **core can tell a long task from a stuck one:** its team list shows, for each working agent, for how long, its last
+  activity and the programs it runs.
+- **Merging a helper that brought in the project's later work** (as asked after a conflict) no longer blames it for
+  everyone else's files: only its own changes are checked against shared assets.
+- **Stopping a program** says whether it had already ended or isn't an agent's, instead of one answer for both.
+- core is told not to `git add -A` while a helper works in the project folder (it swept a helper's unfinished work
+  into its commits).
 
 ## [0.35.0]
 

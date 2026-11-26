@@ -81,6 +81,8 @@ export interface Agent {
   /** Earlier names (after a rename), still accepted when other agents address it. */
   aliases?: string[];
   lastActivity: number;
+  /** When its current turn of work began (while busy), so core can tell a long task from a stuck one. */
+  busySince?: number | null;
   createdAt: number;
 }
 

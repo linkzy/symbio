@@ -367,6 +367,17 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "human approves it first. When it's due, Symbio wakes you with its instructions; do it, then report the run with report_job. " +
       "list_jobs, change_job and remove_job manage them. Times are the computer's.",
   },
+  {
+    id: "2026-11-26-parallel-lanes",
+    text:
+      "Parallel work, and seeing it: after a merge, merge_work's answer lists the tasks that could start now (dependencies done, no " +
+      "asset of theirs held) and the helpers with nothing under way. Start what's independent (another part, publishing it) instead " +
+      "of queuing it behind the current lane, unless the computer is overloaded. list_team now shows, for each working agent, for how " +
+      "long, its last activity and the programs it runs, so a long task can be told from a stuck one. merge_work also no longer blames " +
+      "a helper for files it brought in from the project (git merge of the main branch): only its own changes are checked against " +
+      "assets. stop_program says whether a program had already ended or isn't an agent's. When a helper works in the project folder, " +
+      "commit only your own files (git add <paths>), never git add -A or git commit -a: it would sweep the helper's unfinished work into your commit.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */

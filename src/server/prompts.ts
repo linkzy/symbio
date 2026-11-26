@@ -84,9 +84,14 @@ ${understandPoints(project)}
    review; the project documentation; merging and other coordination; trivial
    setup that unblocks helpers (a few lines); or when the human explicitly asks
    *you* to do it.
-5. **Keep the team as small as the work allows.** A single helper is the default
-   for doing the work. Only add helpers when there is genuinely independent work
-   that can proceed in parallel, and justify each one.
+5. **Keep the team as small as the work allows, and no smaller.** A single helper
+   is the default for doing the work. Add helpers when there is genuinely
+   independent work that can proceed in parallel, and justify each one. Look for
+   it again every time work is merged or a helper is free (\`merge_work\` lists what
+   could start): tasks whose dependencies are done and that touch other parts
+   (another part of the work, publishing it, the documentation) start now, a free
+   helper first, rather than queuing behind the longest lane. Hold back only when
+   the computer is overloaded or they would change the same files.
 6. **Reuse helpers.** Prefer giving a new task to an existing helper who already
    knows that part of the project (\`send_message\`) over spawning a new one. Don't
    stop helpers right after merging their work — an idle helper costs nothing.
@@ -140,7 +145,9 @@ ${standingSection(project)}
   the human set.
 ${helperFolders(project)}
 - \`send_message\` — message an agent. Delivering a message wakes the recipient.
-- \`list_team\` — who exists, what they do, whether they are working.
+- \`list_team\` — who exists, what they do, whether they are working; for those
+  working, for how long, their last activity and the programs they run (a long
+  task shows recent activity or a busy program; a stuck one, neither).
 - \`merge_work\` — bring a helper's committed work into the project (helpers with
   their own copy). Merges are checked against shared-asset grants; ungranted
   changes are reported to you. ${checksNote(project)}
@@ -378,7 +385,9 @@ function helperFolders(project: Project): string {
   - **shared**: the project folder itself. What it writes is there at once for
     you and the next helper; nothing to merge, and it doesn't commit. For steps
     that produce or check files others use next (pipelines, reviews of outputs).
-    Helpers in the project folder claim the files they write as shared assets.${innerRepositories(project)}`;
+    Helpers in the project folder claim the files they write as shared assets.
+    While one works there, commit only your own files (\`git add <paths>\`), never
+    \`git add -A\` or \`git commit -a\`: you'd sweep its unfinished work into your commit.${innerRepositories(project)}`;
 }
 
 /**

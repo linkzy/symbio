@@ -469,3 +469,39 @@ test("a turn that ends before its prompt's reply arrives leaves the agent idle, 
   await team.sendFromHuman(project, writer, "again");
   assert.equal(writer.status, "busy");
 });
+
+test("list_team: a working helper shows for how long, its last activity and what it runs", async () => {
+  const { workingText } = await import("../src/server/tools.js");
+  const now = Date.now();
+  const project: any = { id: "p1" };
+  const helper: any = { id: "h1", name: "bots", busySince: now - 95 * 60_000, lastActivity: now - 20_000 };
+  const programs = [
+    { pid: 7, name: "node", cpu: 88, owners: [{ projectId: "p1", agentId: "h1" }] },
+    { pid: 8, name: "chrome", cpu: 5, owners: [{ projectId: "p2", agentId: "h1" }] },
+  ];
+  assert.equal(workingText(project, helper, programs), "working for 1.6 h, last activity 20s ago; running node (pid 7, 88% CPU)");
+  assert.equal(workingText(project, { ...helper, lastActivity: now - 40 * 60_000 }, []), "working for 1.6 h, last activity 40 min ago; no programs running");
+});
+
+test("after a merge, core hears which tasks could start now and which helpers are free", async () => {
+  const { readyNote } = await import("../src/server/team/tasks.js");
+  const task = (id: string, status: string, dependsOn: string[] = [], assets: string[] = [], assignee: string | null = null): any => ({ id, title: `task ${id}`, status, dependsOn, assets, assignee });
+  const tasks = [
+    task("T7", "done"),
+    task("T10", "in-progress", ["T7"], ["sim"], "h1"),
+    task("T11", "todo", ["T7"], ["infra"]),
+    task("T12", "todo", ["T7"], ["bot"]),
+    task("T13", "todo", ["T10"]),
+    task("T14", "todo", ["T7"], ["sim"]),
+  ];
+  const agents: any[] = [
+    { id: "h1", name: "architect", role: "worker", status: "busy" },
+    { id: "h2", name: "client", role: "worker", status: "idle" },
+  ];
+  const assets: any[] = [{ name: "sim", holder: "h1" }, { name: "infra", holder: null }];
+  const note = readyNote(tasks, agents, assets, false);
+  assert.match(note, /Ready to start, with nothing in their way: T11 \(task T11\), T12 \(task T12\)\./, "not T13 (waits on T10) nor T14 (sim is held)");
+  assert.match(note, /Helpers with nothing under way: client\./);
+  assert.match(readyNote(tasks, agents, assets, true), /overloaded now/);
+  assert.equal(readyNote([task("T1", "done")], agents, assets, false), "");
+});

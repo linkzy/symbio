@@ -46,7 +46,7 @@ test("the programs agents start are listed in the machine view and can be stoppe
   await row.waitFor({ state: "detached" });
   await until("the program to be gone", async () => !(await symbio.call("GET", "/machine/processes")).some((p: any) => p.command.includes(MARKER)), 30_000);
   // Only agents' programs can be stopped.
-  await assert.rejects(symbio.call("POST", `/machine/processes/${process.pid}/stop`), /isn't one an agent started/);
+  await assert.rejects(symbio.call("POST", `/machine/processes/${process.pid}/stop`), /isn't a program an agent started/);
   assert.deepEqual((page as any).errors, []);
 });
 
