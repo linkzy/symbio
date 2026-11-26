@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Bell, Search, Send, Shuffle } from "lucide-react";
+import { Bell, Check, Search, Send, Shuffle } from "lucide-react";
 import { api, subscribe, type NotificationSettings, type NotifyChannel, type Project } from "./api";
 import { useI18n } from "./i18n";
 import { timeAgo } from "./ui";
@@ -53,6 +53,10 @@ export function NotificationsSection() {
   const [error, setError] = useState<string | null>(null);
   const [testing, setTesting] = useState<NotifyChannel | null>(null);
   const [result, setResult] = useState<{ channel: NotifyChannel; ok: boolean; text: string } | null>(null);
+  // Where the last save was pressed: its error shows there, next to the button, not at the top.
+  const [findError, setFindError] = useState<string | null>(null);
+  const [finding, setFinding] = useState(false);
+  const [savedFrom, setSavedFrom] = useState<NotifyChannel | null>(null);
   const [permission, setPermission] = useState(supported() ? Notification.permission : "unsupported");
 
   const loaded = (s: NotificationSettings) => {
@@ -66,11 +70,27 @@ export function NotificationsSection() {
   if (!saved || !draft) return null;
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(strip(saved)) || Object.values(secrets).some((v) => v.trim());
+  // One channel's unsaved changes (its card shows Save where the test would be).
+  const channelDirty = (channel: NotifyChannel) =>
+    JSON.stringify(draft[channel]) !== JSON.stringify(strip(saved)[channel]) || Object.entries(secrets).some(([k, v]) => k.startsWith(`${channel}.`) && v.trim());
+  const tokenSaved = saved.secrets["telegram.token"];
+  const bot = saved.telegram.bot || t("notify.telegram.yourBot");
+  // What a channel still needs before a test can work, said next to the disabled button.
+  const missing = (channel: NotifyChannel): string | null => {
+    const s = saved;
+    if (channel === "browser") return permission === "granted" ? null : t("notify.need.browser");
+    if (channel === "telegram") return !tokenSaved ? t("notify.need.telegramToken") : !s.telegram.chatId ? t("notify.need.telegramChat") : null;
+    if (channel === "ntfy") return s.ntfy.topic ? null : t("notify.need.ntfy");
+    if (channel === "webhook") return s.secrets["webhook.url"] ? null : t("notify.need.webhook");
+    return s.email.host && s.email.to ? null : t("notify.need.email");
+  };
   const set = <C extends NotifyChannel>(channel: C, patch: Partial<Draft[C]>) => setDraft({ ...draft, [channel]: { ...draft[channel], ...patch } });
 
-  async function save() {
+  async function save(from: NotifyChannel | null = null) {
     setSaving(true);
     setError(null);
+    setSavedFrom(from);
+    setResult(null);
     try {
       const body: Record<string, any> = structuredClone(draft!);
       for (const [key, value] of Object.entries(secrets)) {
@@ -102,13 +122,16 @@ export function NotificationsSection() {
   }
 
   async function findChat() {
-    setError(null);
+    setFindError(null);
+    setFinding(true);
     try {
       const chat = await api.findTelegramChat();
       loaded(await api.notifications());
       setResult({ channel: "telegram", ok: true, text: t("notify.telegram.found", { name: chat.name }) });
     } catch (e) {
-      setResult({ channel: "telegram", ok: false, text: (e as Error).message });
+      setFindError((e as Error).message);
+    } finally {
+      setFinding(false);
     }
   }
 
@@ -127,13 +150,26 @@ export function NotificationsSection() {
 
   const footer = (channel: NotifyChannel) => {
     const status = saved.status[channel];
+    // Unsaved changes here: saving is the next step, so it takes the test's place.
+    if (channelDirty(channel))
+      return (
+        <div className="row notify-footer">
+          <button className="btn sm primary" disabled={saving} onClick={() => save(channel)}>
+            {saving ? t("common.saving") : t("common.save")}
+          </button>
+          {error && savedFrom === channel ? <span className="small notify-error">{error}</span> : <span className="small subtle">{t("notify.saveToContinue")}</span>}
+        </div>
+      );
+    const need = missing(channel);
     return (
       <div className="row notify-footer">
-        <button className="btn sm" disabled={dirty || testing !== null} title={dirty ? t("notify.test.saveFirst") : undefined} onClick={() => test(channel)}>
+        <button className="btn sm" disabled={!!need || dirty || testing !== null} title={dirty ? t("notify.test.saveFirst") : undefined} onClick={() => test(channel)}>
           <Send size={13} />
           {testing === channel ? t("common.testing") : t("notify.test")}
         </button>
-        {result?.channel === channel ? (
+        {need ? (
+          <span className="small subtle">{need}</span>
+        ) : result?.channel === channel ? (
           <span className={`small ${result.ok ? "notify-ok" : "notify-error"}`}>{result.text}</span>
         ) : status ? (
           <span className={`small ${status.error ? "notify-error" : "subtle"}`}>
@@ -147,7 +183,14 @@ export function NotificationsSection() {
   const card = (channel: NotifyChannel, title: string, desc: string, body: ReactNode) => (
     <div className={`notify-channel ${draft[channel].on ? "on" : ""}`} data-channel={channel}>
       <label className="choice">
-        <input type="checkbox" checked={draft[channel].on} onChange={(e) => set(channel, { on: e.target.checked } as any)} />
+        <input
+          type="checkbox"
+          checked={draft[channel].on}
+          onChange={(e) =>
+            // ntfy needs a topic nobody guesses: one is made up when it's turned on.
+            channel === "ntfy" && e.target.checked && !draft.ntfy.topic ? set("ntfy", { on: true, topic: randomTopic() }) : set(channel, { on: e.target.checked } as any)
+          }
+        />
         <span className="choice-body">
           <span className="choice-title">{title}</span>
           <span className="choice-desc">{desc}</span>
@@ -171,7 +214,7 @@ export function NotificationsSection() {
         </div>
       </div>
       <div className="stack" style={{ padding: 16, gap: 14 }}>
-        {error && <div className="error">{error}</div>}
+        {error && !savedFrom && <div className="error">{error}</div>}
         <div className="field">
           <span>{t("notify.detail.title")}</span>
           <div className="seg">
@@ -210,25 +253,37 @@ export function NotificationsSection() {
           "Telegram",
           t("notify.telegram.desc"),
           <>
-            <ol className="small notify-steps">
-              <li>{t("notify.telegram.step1")}</li>
-              <li>{t("notify.telegram.step2")}</li>
-              <li>{t("notify.telegram.step3")}</li>
+            {/* In the order it's done: the token (saved), then the chat (found), then the test (below). */}
+            <ol className="notify-flow">
+              <li className={tokenSaved ? "done" : "current"}>
+                <div className="notify-step-title">{t("notify.telegram.s1")}</div>
+                <div className="small subtle">{t("notify.telegram.s1.how")}</div>
+                {secretInput("telegram.token", t("notify.telegram.token"), "123456789:AA…")}
+                {tokenSaved && saved.telegram.bot && (
+                  <span className="small notify-ok">
+                    <Check size={12} /> {t("notify.telegram.bot", { bot: saved.telegram.bot })}
+                  </span>
+                )}
+              </li>
+              {tokenSaved && (
+                <li className={saved.telegram.chatId ? "done" : "current"}>
+                  <div className="notify-step-title">{t("notify.telegram.s2")}</div>
+                  <div className="small subtle">{t("notify.telegram.s2.how", { bot })}</div>
+                  <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
+                    <button className={`btn sm ${saved.telegram.chatId ? "" : "primary"}`} disabled={finding || channelDirty("telegram")} onClick={findChat}>
+                      <Search size={13} />
+                      {t("notify.telegram.find")}
+                    </button>
+                    {saved.telegram.chatId && (
+                      <span className="small notify-ok" data-testid="telegram-chat">
+                        <Check size={12} /> {t("notify.telegram.chatFound", { name: saved.telegram.chatName || saved.telegram.chatId })}
+                      </span>
+                    )}
+                  </div>
+                  {findError && <span className="small notify-error">{findError}</span>}
+                </li>
+              )}
             </ol>
-            {secretInput("telegram.token", t("notify.telegram.token"), "123456789:AA…")}
-            <div className="field">
-              <span>{t("notify.telegram.chat")}</span>
-              {/* Found from the message sent to the bot, not typed: a text box here invited a message. */}
-              <div className="input-row">
-                <div className={`notify-chat ${draft.telegram.chatId ? "" : "subtle"}`} data-testid="telegram-chat">
-                  {draft.telegram.chatId ? draft.telegram.chatName || draft.telegram.chatId : t("notify.telegram.chatNone")}
-                </div>
-                <button className={`btn sm ${draft.telegram.chatId ? "" : "primary"}`} disabled={dirty || !saved.secrets["telegram.token"]} title={dirty ? t("notify.test.saveFirst") : undefined} onClick={findChat}>
-                  <Search size={13} />
-                  {t("notify.telegram.find")}
-                </button>
-              </div>
-            </div>
           </>,
         )}
 
@@ -237,6 +292,11 @@ export function NotificationsSection() {
           "ntfy",
           t("notify.ntfy.desc"),
           <>
+            <ol className="small notify-steps">
+              <li>{t("notify.ntfy.step1")}</li>
+              <li>{t("notify.ntfy.step2")}</li>
+              <li>{t("notify.ntfy.step3")}</li>
+            </ol>
             <div className="field-row">
               <label className="field">
                 <span>{t("notify.ntfy.server")}</span>
@@ -295,6 +355,7 @@ export function NotificationsSection() {
               </label>
               {secretInput("email.password", t("notify.email.password"))}
             </div>
+            <span className="small subtle">{t("notify.email.hint")}</span>
             <div className="field-row">
               <label className="field">
                 <span>{t("notify.email.from")}</span>
@@ -308,12 +369,13 @@ export function NotificationsSection() {
           </>,
         )}
       </div>
-      {dirty && (
+      {/* Changes a channel's own Save doesn't show (the detail, a channel turned off). */}
+      {dirty && !(["browser", "telegram", "ntfy", "webhook", "email"] as NotifyChannel[]).some((c) => draft[c].on && channelDirty(c)) && (
         <div className="row" style={{ justifyContent: "flex-end", padding: "0 16px 14px", gap: 8 }}>
           <button className="btn ghost sm" disabled={saving} onClick={() => loaded(saved)}>
             {t("common.discard")}
           </button>
-          <button className="btn primary sm" disabled={saving} onClick={save}>
+          <button className="btn primary sm" disabled={saving} onClick={() => save()}>
             {saving ? t("common.saving") : t("common.save")}
           </button>
         </div>

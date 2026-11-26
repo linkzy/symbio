@@ -10,15 +10,16 @@ versions follow [Semantic Versioning](https://semver.org/).
   installs it for you (with winget; Windows may ask for permission), and there's **Download git** for its website.
   **Check again** also finds a git installed while Symbio was running, without restarting Symbio.
 
-- **Telegram: the chat is found, not typed.** The Chat field was a text box, and people typed a test message in it,
-  which Telegram then answered with "chat not found". It's now shown, not typed: "Not found yet: send /start to your bot,
-  then press Find my chat", then the chat's name. **Send a test** right after /start finds the chat by itself. A chat
-  saved by an earlier version that isn't a chat id is dropped, to be found again.
-
-- **Telegram: "chat not found" explained.** When the bot can't write to the chat (it was found for another bot, or the
-  chat never wrote to this one), the test and the notifications now say which bot to open (`@its_name`) and to send it
-  /start, instead of Telegram's "Bad Request: chat not found". Saving a different bot token clears the chat, so
-  **Find my chat** finds it again for the new bot.
+- **Notifications are set up in order.** Each channel shows its next step where you are: after a change, its own
+  **Save** takes the place of the test; **Send a test** stays off until the channel can work, with what's missing next to
+  it ("Connect your chat first (step 2)").
+  - **Telegram**, step by step: 1. create the bot and save its token (checked at once: a wrong token is said there, and
+    the bot's name shows); 2. open that bot, send /start, **Find my chat**; then the test. The chat used to be a text
+    box, where people typed a test message, which Telegram answered with "chat not found"; a chat like that saved by an
+    earlier version is dropped. When the bot can't reach the chat, the error names the bot to open, and a new token
+    clears the old chat.
+  - **ntfy** makes up a topic nobody guesses when it's turned on, and says what to do in the app.
+  - **E-mail** says that most providers want an app password, with Gmail's settings.
 
 ## [0.35.0]
 

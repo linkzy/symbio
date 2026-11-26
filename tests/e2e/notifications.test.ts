@@ -27,6 +27,7 @@ before(async () => {
     req.on("data", (c) => (body += c));
     req.on("end", () => {
       const method = req.url!.split("/").pop();
+      if (req.url!.includes("/bot999:")) return res.writeHead(401, { "content-type": "application/json" }).end(JSON.stringify({ ok: false, description: "Unauthorized" }));
       const result = method === "getUpdates" ? [{ message: { chat: { id: 42, first_name: "Danilo" } } }] : method === "getMe" ? { username: "my_bot" } : {};
       if (method === "sendMessage") telegramSent.push(JSON.parse(body));
       res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ ok: true, result }));
@@ -74,7 +75,7 @@ test("a webhook set up in Settings gets a test, then what waits on the human; th
   const webhook = section.locator('[data-channel="webhook"]');
   await webhook.locator(".choice").click();
   await webhook.locator('input[type="password"]').fill(url);
-  await section.getByRole("button", { name: "Save", exact: true }).click();
+  await webhook.getByRole("button", { name: "Save", exact: true }).click();
   // The address went to the vault: the page only learns that one is saved.
   await webhook.locator('input[placeholder="Saved (type to replace)"]').waitFor();
   assert.ok(!JSON.stringify(await symbio.call("GET", "/notifications")).includes("/hook"));
@@ -106,20 +107,27 @@ test("a webhook set up in Settings gets a test, then what waits on the human; th
   assert.deepEqual((page as any).errors, []);
 });
 
-test("Telegram: the chat is found from the bot, not typed; a test right after /start finds it and arrives", async () => {
+test("Telegram: set up in order (token, then chat, then test), each step shown when the one before is done", async () => {
   const { page } = await openPage(symbio);
   await page.goto(`${symbio.base}/#/settings/notifications`);
-  const section = page.locator("#notifications");
-  const card = section.locator('[data-channel="telegram"]');
+  const card = page.locator('#notifications [data-channel="telegram"]');
   await card.locator(".choice").click();
+  // Only the first step until a token is saved: no chat to find, no test to send.
+  assert.equal(await card.getByRole("button", { name: "Find my chat" }).count(), 0);
+  // A token Telegram doesn't know is said at once, where it was saved.
+  await card.locator('input[type="password"]').fill("999:wrong");
+  await card.getByRole("button", { name: "Save", exact: true }).click();
+  await card.locator(".notify-error", { hasText: "Telegram doesn't know this token" }).waitFor();
   await card.locator('input[type="password"]').fill("123456:ABC-def");
-  await section.getByRole("button", { name: "Save", exact: true }).click();
-  // No text box for the chat (people typed a message there): it says how it's found.
-  const chat = card.locator('[data-testid="telegram-chat"]');
-  await chat.filter({ hasText: "Not found yet: send /start to your bot, then press Find my chat." }).waitFor();
-  assert.equal(await card.locator(".input-row input").count(), 0);
+  await card.getByRole("button", { name: "Save", exact: true }).click();
+  await card.locator(".notify-ok", { hasText: "Your bot: @my_bot" }).waitFor();
+  // Then the chat: open that bot, /start, Find my chat. The test waits for it, and says so.
+  await card.locator(".small", { hasText: "Open @my_bot in Telegram and send it /start" }).waitFor();
+  assert.equal(await card.getByRole("button", { name: "Send a test" }).isDisabled(), true);
+  await card.locator(".small", { hasText: "Connect your chat first (step 2)." }).waitFor();
+  await card.getByRole("button", { name: "Find my chat" }).click();
+  await card.locator('[data-testid="telegram-chat"]', { hasText: "Chat: Danilo" }).waitFor();
   await card.getByRole("button", { name: "Send a test" }).click();
   await card.locator(".notify-ok", { hasText: "Sent" }).waitFor();
   assert.ok(telegramSent.some((m) => m.chat_id === "42" && /Symbio: test notification/.test(m.text)));
-  await chat.filter({ hasText: "Danilo" }).waitFor();
 });

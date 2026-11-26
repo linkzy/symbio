@@ -18,7 +18,7 @@ export interface NotificationSettings {
   detail: "full" | "short";
   browser: { on: boolean };
   /** The chat is found from a message sent to the bot (Find my chat), with its name to show. */
-  telegram: { on: boolean; chatId: string; chatName: string };
+  telegram: { on: boolean; chatId: string; chatName: string; bot: string };
   ntfy: { on: boolean; server: string; topic: string };
   webhook: { on: boolean };
   email: { on: boolean; host: string; port: number; secure: boolean; user: string; from: string; to: string };
@@ -52,13 +52,25 @@ export interface NotificationSettingsView extends NotificationSettings {
 const defaults = (): NotificationSettings => ({
   detail: "full",
   browser: { on: true },
-  telegram: { on: false, chatId: "", chatName: "" },
+  telegram: { on: false, chatId: "", chatName: "", bot: "" },
   ntfy: { on: false, server: "https://ntfy.sh", topic: "" },
   webhook: { on: false },
   email: { on: false, host: "", port: 587, secure: false, user: "", from: "", to: "" },
 });
 
 const SEND_TIMEOUT_MS = 15_000;
+/** The bot's @username for a token being saved; a token Telegram doesn't know is refused. */
+async function checkBot(token: string): Promise<string> {
+  try {
+    const me = await telegram(token, "getMe", {});
+    return me?.result?.username ? `@${me.result.username}` : "";
+  } catch (err) {
+    const message = (err as Error).message;
+    if (/Unauthorized|Not Found|doesn't look like/i.test(message)) throw new Error("Telegram doesn't know this token: copy it again from @BotFather (it reads like 123456789:AA…).");
+    return ""; // Telegram out of reach: the token is kept, and the test will say what's wrong.
+  }
+}
+
 /** The bot's @username, so the human opens the right one (people often have several). */
 async function botName(token: string): Promise<string> {
   const me = await telegram(token, "getMe", {}).catch(() => null);
@@ -152,7 +164,10 @@ export class Notifications {
       }
       for (const field of SECRET_FIELDS[channel]) {
         const value = given[field];
-        if (value === null) await this.vault.deletePrefix(`notify:${channel}:${field}`);
+        if (value === null) {
+          await this.vault.deletePrefix(`notify:${channel}:${field}`);
+          if (channel === "telegram") next.telegram = { ...next.telegram, chatId: "", chatName: "", bot: "" };
+        }
         else if (typeof value === "string" && value.trim()) {
           if (channel === "webhook") checkWebhook(value.trim());
           // Another bot: the chat found for the old one may never have talked to it, so it's found again.
@@ -160,6 +175,8 @@ export class Notifications {
             next.telegram.chatId = "";
             next.telegram.chatName = "";
           }
+          // Checked when saved, so a wrong token is said at once, and the page can name the bot to open.
+          if (channel === "telegram") next.telegram.bot = await checkBot(value.trim());
           await this.vault.set(`notify:${channel}:${field}`, value.trim());
         }
       }

@@ -1183,7 +1183,13 @@ body.resizing iframe { pointer-events: none; }
 .notify-channel.on > .choice { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .notify-body { gap: 12px; padding: 12px; border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent); border-top: none; border-radius: 0 0 var(--r) var(--r); }
 .notify-footer { gap: 10px; flex-wrap: wrap; }
-.notify-chat { flex: 1; min-width: 0; display: flex; align-items: center; min-height: 30px; padding: 0 10px; border: 1px dashed var(--border-strong); border-radius: var(--r); font-size: 13px; }
+/* Telegram's setup, one step after the other: the next one shows when the previous is done. */
+.notify-flow { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.notify-flow > li { display: flex; flex-direction: column; gap: 6px; padding-left: 12px; border-left: 2px solid var(--border-strong); }
+.notify-flow > li.current { border-left-color: var(--accent); }
+.notify-flow > li.done { border-left-color: var(--green); }
+.notify-step-title { font-size: 13px; font-weight: 600; }
+.notify-ok svg, .notify-error svg { vertical-align: -2px; }
 .notify-ok { color: var(--green); }
 .notify-error { color: var(--red); }
 .notify-steps { margin: 0; padding-left: 18px; color: var(--text-2); line-height: 1.6; }
