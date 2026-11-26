@@ -1426,6 +1426,10 @@ export const en = {
   "app.version.dev": "Symbio version (development copy)",
   "chat.turnFailed": "The agent's turn failed.",
   "chat.providerError": "provider error",
+  "usage.updates.installId.title": "Send an anonymous install id with update checks",
+  "usage.updates.installId.desc": "A random number, so we can tell how many people use Symbio and whether they keep using it. Nothing about your projects or your computer is sent. Off: Symbio still checks for updates, without it.",
+  "usage.updates.installId.more": "What's sent",
+  "usage.updates.installId.yours": "This copy's id:",
 };
 
 export type MessageKey = keyof typeof en;

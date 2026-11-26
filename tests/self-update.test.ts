@@ -170,3 +170,58 @@ test("installed copies ask Symbio's update endpoint; development folders, tests 
   assert.equal(parseEndpointRelease({ version: "0.34.0; rm -rf /" }), null);
   assert.equal(parseEndpointRelease(null), null);
 });
+
+test("the anonymous install id: made once, sent as a header, gone when turned off, a new one when back on; told once", async () => {
+  const { SelfUpdate: Updater, endpointRelease } = await import("../src/server/self-update.js");
+  const { createServer } = await import("node:http");
+  const { readFileSync } = await import("node:fs");
+  const home = mkdtempSync(path.join(os.tmpdir(), "sym-id-"));
+  const announced: string[] = [];
+  const host = { version: "0.35.0", home, port: 1, busy: () => null, remoteActive: () => false, backup: async () => {}, announce: async (t: string) => void announced.push(t), shutdown: async () => {} };
+  const npm = { kind: "npm" as const, root: "x", prefix: "y" };
+  const updates = new Updater(host, npm);
+  await updates.load();
+  const id = updates.state().installId!;
+  assert.match(id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  assert.equal(announced.length, 1);
+  assert.match(announced[0], /anonymous install id.*Settings → This computer → Updates/);
+
+  // The same id after a restart, and the note isn't repeated.
+  const again = new Updater(host, npm);
+  await again.load();
+  assert.equal(again.state().installId, id);
+  assert.equal(announced.length, 1);
+
+  // Sent as a header with the version.
+  const seen: Record<string, string | undefined>[] = [];
+  const server = createServer((req, res) => {
+    seen.push({ id: req.headers["x-symbio-install"] as string | undefined, agent: req.headers["user-agent"] });
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ version: "0.36.0", node: ">=22" }));
+  });
+  await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+  const url = `http://127.0.0.1:${(server.address() as { port: number }).port}/update`;
+  try {
+    assert.deepEqual(await endpointRelease("0.35.0", id, url), { version: "0.36.0", node: ">=22" });
+    await endpointRelease("0.35.0", null, url);
+    await endpointRelease("0.35.0", "not-an-id", url);
+    assert.deepEqual(seen, [
+      { id, agent: "symbio/0.35.0" },
+      { id: undefined, agent: "symbio/0.35.0" },
+      { id: undefined, agent: "symbio/0.35.0" },
+    ]);
+  } finally {
+    server.close();
+  }
+
+  // Off: gone (and stays off after a restart); on again: a different id.
+  await again.setInstallId(false);
+  assert.equal(again.state().installId, null);
+  assert.equal(JSON.parse(readFileSync(path.join(home, "updates.json"), "utf8")).installId, false);
+  const off = new Updater(host, npm);
+  await off.load();
+  assert.equal(off.state().installId, null);
+  await off.setInstallId(true);
+  assert.notEqual(off.state().installId, id);
+  assert.ok(off.state().installId);
+});

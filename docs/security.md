@@ -170,13 +170,8 @@ project the connections it needs.
   images, PDFs and plain text are shown inline, everything else downloads.
 - **Updates** come from the npm registry, installed by npm like any global package; releases are
   built and published by GitHub Actions with provenance. Which version to update to comes from
-  Symbio's update endpoint, `https://symbio.linkzy.dev/update` (at start and every hour): it answers
-  npm's latest version (the maintainers can hold a release back) and the Node.js it needs. The
-  request carries nothing about the projects or the computer and no id, only Symbio's version in
-  its user agent; the endpoint counts the checks, which is how many copies of Symbio are in use is
-  estimated, and keeps no addresses. Only installed copies use it (development folders, the tests
-  and CI ask npm), npm is asked when it doesn't answer, and `SYMBIO_UPDATE_URL=off` turns it off.
-  Its answer is only a version number, checked before it's used. Applying an update
+  Symbio's update endpoint (see *Update checks* below). Its answer is only a version number,
+  checked before it's used. Applying an update
   restarts Symbio, so it's never possible through remote access.
 - **Agent runtimes** (OpenCode, the Copilot SDK) also come from the npm registry, by npm, at the
   exact versions Symbio is tested with, into `~/.symbio/runtimes`, when the human asks for one in
@@ -188,6 +183,24 @@ project the connections it needs.
   so keep the PATH free of folders others can write to. An npm shim (`opencode.cmd`) is started
   through `cmd.exe`, which keeps the server password in its own environment (OpenCode itself removes
   it); programs running as you could read it from there.
+
+## Update checks
+
+Installed copies ask `https://symbio.linkzy.dev/update` which version to update to, at start and
+every hour while they run (npm when it doesn't answer). The request carries:
+
+- Symbio's version, in its user agent (`symbio/0.35.0`);
+- an **anonymous install id** (`x-symbio-install`): a random UUID made on this computer the first
+  time Symbio runs, kept in `~/.symbio/updates.json`. It says nothing about you, your projects or
+  the computer; it lets us count copies in use (per day, week and month), new installs, and
+  whether people keep using Symbio.
+
+Nothing else: no project data, no names, no paths. The endpoint keeps, per id, the days it was seen
+and the version, for 90 days after the last check, and no IP addresses. Installed copies tell the
+human about the id once, in Messages. **Turn it off** in Settings → This computer → Updates (the id
+is deleted; turning it on again makes a new one, which can't be linked to the old). Update checks
+keep working without it. Development folders, the tests and CI ask npm directly and send nothing,
+and `SYMBIO_UPDATE_URL=off` skips the endpoint altogether.
 
 ## Notifications
 

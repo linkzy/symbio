@@ -186,9 +186,11 @@ const installer = new RuntimeInstaller();
   app.get("/api/update", (c) => c.json(updates.state()));
   app.post("/api/update/check", async (c) => c.json(await updates.check()));
   app.put("/api/update/settings", async (c) => {
-    const { mode } = await c.req.json<{ mode?: UpdateMode }>();
-    if (mode !== "auto" && mode !== "notify" && mode !== "off") return c.json({ error: "mode must be auto, notify or off" }, 400);
-    await updates.setMode(mode);
+    const { mode, installId } = await c.req.json<{ mode?: UpdateMode; installId?: boolean }>();
+    if (mode === undefined && typeof installId !== "boolean") return c.json({ error: "mode (auto, notify or off) or installId (true/false) is required" }, 400);
+    if (mode !== undefined && mode !== "auto" && mode !== "notify" && mode !== "off") return c.json({ error: "mode must be auto, notify or off" }, 400);
+    if (mode) await updates.setMode(mode);
+    if (typeof installId === "boolean") await updates.setInstallId(installId);
     return c.json(updates.state());
   });
   app.post("/api/update/apply", async (c) => {

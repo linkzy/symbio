@@ -4,6 +4,7 @@
 // running on Windows), installs, puts the old version back if that fails, and starts Symbio again.
 
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { existsSync, promises as fs, readFileSync, realpathSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -40,6 +41,8 @@ export interface UpdateState {
   busy: string | null;
   /** Why an available update isn't being applied right now, if it isn't. */
   waiting: string | null;
+  /** The anonymous id sent with update checks (null when the human turned it off). */
+  installId: string | null;
   /** What's new between the current and the latest version (from the changelog). */
   notes: { version: string; items: string[] }[];
   lastResult: UpdateResult | null;
@@ -82,10 +85,11 @@ const REGISTRY = (process.env.SYMBIO_UPDATE_REGISTRY ?? "https://registry.npmjs.
 
 /**
  * Symbio's update endpoint: the version to update to (npm's latest, which the maintainers can hold
- * back while a release is checked) and the Node.js it needs. It counts the checks it gets, which is
- * how many copies of Symbio are in use is estimated; it receives no project data, no id and no
- * address it keeps (docs/security.md). Only installed copies use it: development folders, the tests
- * and CI ask npm directly, so they aren't counted. "off" turns it off (npm only).
+ * back while a release is checked) and the Node.js it needs. It counts copies in use from the
+ * anonymous install id sent with the checks (a random id the human can turn off in Settings →
+ * Updates); it receives nothing about projects or the computer and keeps no addresses
+ * (docs/security.md). Only installed copies use it: development folders, the tests and CI ask npm
+ * directly, so they aren't counted. "off" turns it off (npm only).
  */
 const UPDATE_URL = process.env.SYMBIO_UPDATE_URL ?? "https://symbio.linkzy.dev/update";
 
@@ -101,11 +105,14 @@ export function parseEndpointRelease(data: unknown): { version: string; node: st
   return { version: d.version, node: typeof d.node === "string" && d.node.trim() ? d.node.trim() : null };
 }
 
-async function endpointRelease(version: string): Promise<{ version: string; node: string | null } | null> {
+export const isInstallId = (id: unknown): id is string => typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id);
+
+/** The endpoint's answer for this copy (null when it doesn't answer, or not usably). */
+export async function endpointRelease(version: string, installId: string | null, url = UPDATE_URL): Promise<{ version: string; node: string | null } | null> {
   try {
-    const res = await fetch(UPDATE_URL, {
+    const res = await fetch(url, {
       signal: AbortSignal.timeout(10_000),
-      headers: { accept: "application/json", "user-agent": `symbio/${version}` },
+      headers: { accept: "application/json", "user-agent": `symbio/${version}`, ...(isInstallId(installId) ? { "x-symbio-install": installId } : {}) },
     });
     return res.ok ? parseEndpointRelease(await res.json()) : null;
   } catch {
@@ -117,9 +124,9 @@ async function endpointRelease(version: string): Promise<{ version: string; node
  * The version to update to, and the Node.js it needs: from Symbio's update endpoint for installed
  * copies, with npm (`symbio@latest`) when it doesn't answer, and for everything else.
  */
-export async function latestRelease(current = installedVersion()): Promise<{ version: string; node: string | null }> {
+export async function latestRelease(current = installedVersion(), installId: string | null = null): Promise<{ version: string; node: string | null }> {
   if (usesUpdateEndpoint()) {
-    const answer = await endpointRelease(current);
+    const answer = await endpointRelease(current, installId);
     if (answer) return answer;
   }
   return release("latest");
@@ -228,6 +235,10 @@ export class SelfUpdate {
   /** A version automatic updates leave alone: it failed to install, or the human went back from it. */
   private skip: { version: string; until: number; reason?: "failed" | "went-back" } | null = null;
   private lastResult: UpdateResult | null = null;
+  /** The anonymous install id (null: turned off), and whether the human was told about it. */
+  private installId: string | null = null;
+  private installIdOff = false;
+  private installIdTold = false;
   private applying = false;
   private timer: NodeJS.Timeout | null = null;
   private readonly settingsFile: string;
@@ -244,6 +255,26 @@ export class SelfUpdate {
     const settings = JSON.parse(await fs.readFile(this.settingsFile, "utf8").catch(() => "{}"));
     if (settings.mode === "auto" || settings.mode === "notify" || settings.mode === "off") this.mode = settings.mode;
     this.skip = settings.skip ?? null;
+    this.installIdOff = settings.installId === false;
+    this.installId = isInstallId(settings.installId) ? settings.installId : null;
+    this.installIdTold = settings.installIdTold === true;
+    // Created on the first start (or the first after updating to a version that has it), unless turned off.
+    if (!this.installIdOff && !this.installId) {
+      this.installId = randomUUID();
+      await this.saveSettings();
+    }
+    // Once, on copies that send it: what it is and where to turn it off.
+    if (!this.installIdTold && usesUpdateEndpoint(this.install)) {
+      await this.host
+        .announce(
+          "Symbio's update checks now include an anonymous install id: a random number, so we can tell how many people use Symbio " +
+            "and whether they keep using it. Nothing about your projects or your computer is sent. Turn it off in Settings → " +
+            "This computer → Updates.",
+        )
+        .catch(() => {});
+      this.installIdTold = true;
+      await this.saveSettings();
+    }
     this.lastResult = JSON.parse(await fs.readFile(this.resultFile, "utf8").catch(() => "null"));
     // The runner wrote this before starting us again: tell the humans once.
     if (this.lastResult && !this.lastResult.seen) {
@@ -279,6 +310,7 @@ export class SelfUpdate {
       error: this.error,
       mode: this.mode,
       install: this.install.kind,
+      installId: this.installId,
       busy: this.host.busy(),
       waiting: available ? this.blocker(false) : null,
       notes: this.notes,
@@ -291,10 +323,17 @@ export class SelfUpdate {
     await this.saveSettings();
   }
 
+  /** Off deletes the id; on again makes a new one (the old one can't be linked to it). */
+  async setInstallId(on: boolean) {
+    this.installIdOff = !on;
+    this.installId = on ? (this.installId ?? randomUUID()) : null;
+    await this.saveSettings();
+  }
+
   async check(): Promise<UpdateState> {
     if (this.mode === "off" && this.checkedAt) return this.state();
     try {
-      const release = await latestRelease();
+      const release = await latestRelease(this.host.version, this.installId);
       this.latest = release.version;
       this.latestNode = release.node;
       this.error = null;
@@ -413,6 +452,7 @@ export class SelfUpdate {
 
   private async saveSettings() {
     await fs.mkdir(path.dirname(this.settingsFile), { recursive: true });
-    await fs.writeFile(this.settingsFile, JSON.stringify({ mode: this.mode, skip: this.skip }, null, 2));
+    const installId = this.installIdOff ? false : this.installId;
+    await fs.writeFile(this.settingsFile, JSON.stringify({ mode: this.mode, skip: this.skip, installId, installIdTold: this.installIdTold }, null, 2));
   }
 }

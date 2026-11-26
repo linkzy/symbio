@@ -1427,4 +1427,8 @@ export const ptBR: Partial<Record<MessageKey, string>> = {
   "app.version.dev": "Versão do Symbio (cópia de desenvolvimento)",
   "chat.turnFailed": "O turno do agente falhou.",
   "chat.providerError": "erro do provedor",
+  "usage.updates.installId.title": "Enviar um id de instalação anônimo com as verificações de atualização",
+  "usage.updates.installId.desc": "Um número aleatório, para sabermos quantas pessoas usam o Symbio e se continuam usando. Nada sobre seus projetos ou seu computador é enviado. Desligado: o Symbio continua verificando atualizações, sem ele.",
+  "usage.updates.installId.more": "O que é enviado",
+  "usage.updates.installId.yours": "O id desta cópia:",
 };

@@ -45,7 +45,7 @@ All optional, set as environment variables:
 | `~/.symbio/prices.json` | Model prices used for cost estimates |
 | `~/.symbio/ui-token` | The key that unlocks the UI (it's in the link Symbio opens) |
 | `~/.symbio/logs/symbio.log` | Symbio's log when started in the background (`sym logs`); `update.log` next to it for updates |
-| `~/.symbio/updates.json` | Your update setting (automatic, tell me, off) |
+| `~/.symbio/updates.json` | Your update setting (automatic, tell me, off), and the anonymous install id sent with update checks (`false` when turned off) |
 | `~/.symbio/machine.json` | What happens when the computer is overloaded |
 | `<project>/.symbio/` | Project state: agents and settings (`project.json`, including its checks), plan, message log, shared assets, questions and briefings, files agents shared, and the files attached in chats (`attachments/`) — git-ignored automatically |
 | `<project>/AGENTS.md`, `<project>/docs/` | Project documentation for agents (unless you chose *private*), `docs/glossary.md` (the project's glossary), `docs/specs/` (features' specs, from briefings), and `docs/rules.json` if the rules register is on |

@@ -782,6 +782,8 @@ export interface UpdateState {
   waiting: string | null;
   notes: { version: string; items: string[] }[];
   lastResult: { from: string; to: string; ok: boolean; error: string | null; finishedAt: number } | null;
+  /** The anonymous id sent with update checks; null when turned off. */
+  installId: string | null;
 }
 
 export interface RemoteStatus {
@@ -918,6 +920,7 @@ export const api = {
   update: () => call<UpdateState>("GET", "/update"),
   checkUpdate: () => call<UpdateState>("POST", "/update/check"),
   setUpdateMode: (mode: UpdateMode) => call<UpdateState>("PUT", "/update/settings", { mode }),
+  setInstallId: (on: boolean) => call<UpdateState>("PUT", "/update/settings", { installId: on }),
   applyUpdate: () => call<{ message: string }>("POST", "/update/apply", { force: true }),
   jobs: (projectId: string) => call<Job[]>("GET", `/projects/${projectId}/jobs`),
   jobAction: (projectId: string, jobId: string, action: "approve" | "pause" | "resume" | "run") => call<Job[]>("POST", `/projects/${projectId}/jobs/${jobId}/${action}`),

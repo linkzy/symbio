@@ -5,6 +5,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.35.0]
+
+- **An anonymous install id with update checks**, so we can tell how many people use Symbio and whether they keep using
+  it (counting checks couldn't: one copy left on all day looked like many). It's a random number made on your computer,
+  sent with the version; nothing about your projects or your computer. Symbio says so once in Messages, and you can turn
+  it off in Settings → This computer → Updates (where it's shown). Details in `docs/security.md` → *Update checks*.
+
 ## [0.34.0]
 
 - **Update checks go to Symbio's update endpoint** (`symbio.linkzy.dev/update`) instead of npm, which still answers when
