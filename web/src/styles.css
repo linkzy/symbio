@@ -1183,6 +1183,7 @@ body.resizing iframe { pointer-events: none; }
 .notify-channel.on > .choice { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .notify-body { gap: 12px; padding: 12px; border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent); border-top: none; border-radius: 0 0 var(--r) var(--r); }
 .notify-footer { gap: 10px; flex-wrap: wrap; }
+.notify-chat { flex: 1; min-width: 0; display: flex; align-items: center; min-height: 30px; padding: 0 10px; border: 1px dashed var(--border-strong); border-radius: var(--r); font-size: 13px; }
 .notify-ok { color: var(--green); }
 .notify-error { color: var(--red); }
 .notify-steps { margin: 0; padding-left: 18px; color: var(--text-2); line-height: 1.6; }

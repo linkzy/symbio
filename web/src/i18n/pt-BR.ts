@@ -127,7 +127,7 @@ export const ptBR: Partial<Record<MessageKey, string>> = {
   "notify.telegram.step3": "Abra o novo bot, envie /start e clique em Encontrar meu chat.",
   "notify.telegram.token": "Token do bot",
   "notify.telegram.chat": "Chat",
-  "notify.telegram.chatPlaceholder": "Encontrado com o botão",
+  "notify.telegram.chatNone": "Ainda não encontrado: envie /start para o seu bot e clique em Encontrar meu chat.",
   "notify.telegram.find": "Encontrar meu chat",
   "notify.telegram.found": "Encontrado: {name}. Envie um teste.",
   "notify.ntfy.desc": "Notificações push pelo app ntfy (Android, iPhone, desktop), sem conta.",

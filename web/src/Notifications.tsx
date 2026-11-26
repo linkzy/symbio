@@ -96,7 +96,8 @@ export function NotificationsSection() {
       setResult({ channel, ok: false, text: (e as Error).message });
     } finally {
       setTesting(null);
-      api.notifications().then((s) => setSaved({ ...saved!, status: s.status })).catch(() => {});
+      // Tests only run with nothing unsaved, so reloading loses nothing; it shows a chat a Telegram test found.
+      api.notifications().then(loaded).catch(() => {});
     }
   }
 
@@ -217,9 +218,12 @@ export function NotificationsSection() {
             {secretInput("telegram.token", t("notify.telegram.token"), "123456789:AA…")}
             <div className="field">
               <span>{t("notify.telegram.chat")}</span>
+              {/* Found from the message sent to the bot, not typed: a text box here invited a message. */}
               <div className="input-row">
-                <input value={draft.telegram.chatId} onChange={(e) => set("telegram", { chatId: e.target.value })} placeholder={t("notify.telegram.chatPlaceholder")} />
-                <button className="btn sm" disabled={dirty || !saved.secrets["telegram.token"]} title={dirty ? t("notify.test.saveFirst") : undefined} onClick={findChat}>
+                <div className={`notify-chat ${draft.telegram.chatId ? "" : "subtle"}`} data-testid="telegram-chat">
+                  {draft.telegram.chatId ? draft.telegram.chatName || draft.telegram.chatId : t("notify.telegram.chatNone")}
+                </div>
+                <button className={`btn sm ${draft.telegram.chatId ? "" : "primary"}`} disabled={dirty || !saved.secrets["telegram.token"]} title={dirty ? t("notify.test.saveFirst") : undefined} onClick={findChat}>
                   <Search size={13} />
                   {t("notify.telegram.find")}
                 </button>

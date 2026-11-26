@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { bus } from "../src/server/bus.js";
@@ -234,7 +234,7 @@ test("channels: the webhook and ntfy get what they read; secrets stay in the vau
   }
 });
 
-test("telegram: a chat the bot can't reach says which bot to open; another token finds the chat again", async () => {
+test("telegram: the chat is found, not typed; one the bot can't reach says which bot to open; another token finds it again", async () => {
   // A stand-in for Telegram: @home_bot knows chat 42 only after the human writes to it.
   let wrote = false;
   const server = createServer((req, res) => {
@@ -253,8 +253,14 @@ test("telegram: a chat the bot can't reach says which bot to open; another token
   });
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   process.env.SYMBIO_TELEGRAM_API = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
-  const notifications = new Notifications(mkdtempSync(path.join(os.tmpdir(), "symbio-notify-")), fakeVault() as any);
+  const dir = mkdtempSync(path.join(os.tmpdir(), "symbio-notify-"));
+  const notifications = new Notifications(dir, fakeVault() as any);
   try {
+    // A message typed where the chat goes (what happened to a human) is refused, and an old one is dropped.
+    await assert.rejects(notifications.update({ telegram: { chatId: "teste" } }), /Find my chat/);
+    writeFileSync(path.join(dir, "notifications.json"), JSON.stringify({ telegram: { on: true, chatId: "teste" } }));
+    await notifications.load();
+    assert.equal((await notifications.view()).telegram.chatId, "");
     await notifications.update({ telegram: { on: true, token: "111:old", chatId: "42" } });
     await assert.rejects(notifications.test("telegram"), /@home_bot can't write to that chat yet: open @home_bot in Telegram, send it \/start/);
     // A new bot: the old chat is dropped, to be found again with this one.
@@ -262,8 +268,10 @@ test("telegram: a chat the bot can't reach says which bot to open; another token
     assert.equal((await notifications.view()).telegram.chatId, "");
     await assert.rejects(notifications.findTelegramChat(), /@home_bot hasn't received a message yet/);
     wrote = true;
-    assert.deepEqual(await notifications.findTelegramChat(), { chatId: "42", name: "Danilo" });
+    // The human sent /start and pressed Send a test without Find my chat: the test finds the chat first.
     await notifications.test("telegram");
+    assert.deepEqual([(await notifications.view()).telegram.chatId, (await notifications.view()).telegram.chatName], ["42", "Danilo"]);
+    assert.deepEqual(await notifications.findTelegramChat(), { chatId: "42", name: "Danilo" });
     // The same token again keeps the chat.
     await notifications.update({ telegram: { token: "222:new" } });
     assert.equal((await notifications.view()).telegram.chatId, "42");

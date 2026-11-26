@@ -539,7 +539,7 @@ export type NotifyChannel = "browser" | "telegram" | "ntfy" | "webhook" | "email
 export interface NotificationSettings {
   detail: "full" | "short";
   browser: { on: boolean };
-  telegram: { on: boolean; chatId: string };
+  telegram: { on: boolean; chatId: string; chatName: string };
   ntfy: { on: boolean; server: string; topic: string };
   webhook: { on: boolean };
   email: { on: boolean; host: string; port: number; secure: boolean; user: string; from: string; to: string };

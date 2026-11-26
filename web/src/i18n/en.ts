@@ -126,7 +126,7 @@ export const en = {
   "notify.telegram.step3": "Open your new bot, send it /start, then press Find my chat.",
   "notify.telegram.token": "Bot token",
   "notify.telegram.chat": "Chat",
-  "notify.telegram.chatPlaceholder": "Found with the button",
+  "notify.telegram.chatNone": "Not found yet: send /start to your bot, then press Find my chat.",
   "notify.telegram.find": "Find my chat",
   "notify.telegram.found": "Found: {name}. Send a test.",
   "notify.ntfy.desc": "Push notifications through the ntfy app (Android, iPhone, desktop), without an account.",

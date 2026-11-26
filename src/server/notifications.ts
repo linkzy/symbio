@@ -17,7 +17,8 @@ export interface NotificationSettings {
   /** "full": what happened ("core asks: …"); "short": only the project and that it needs the human. */
   detail: "full" | "short";
   browser: { on: boolean };
-  telegram: { on: boolean; chatId: string };
+  /** The chat is found from a message sent to the bot (Find my chat), with its name to show. */
+  telegram: { on: boolean; chatId: string; chatName: string };
   ntfy: { on: boolean; server: string; topic: string };
   webhook: { on: boolean };
   email: { on: boolean; host: string; port: number; secure: boolean; user: string; from: string; to: string };
@@ -51,7 +52,7 @@ export interface NotificationSettingsView extends NotificationSettings {
 const defaults = (): NotificationSettings => ({
   detail: "full",
   browser: { on: true },
-  telegram: { on: false, chatId: "" },
+  telegram: { on: false, chatId: "", chatName: "" },
   ntfy: { on: false, server: "https://ntfy.sh", topic: "" },
   webhook: { on: false },
   email: { on: false, host: "", port: 587, secure: false, user: "", from: "", to: "" },
@@ -63,6 +64,9 @@ async function botName(token: string): Promise<string> {
   const me = await telegram(token, "getMe", {}).catch(() => null);
   return me?.result?.username ? `@${me.result.username}` : "The bot";
 }
+// A chat id is a number (negative for groups), or a public channel's @name; anything else is a mistake
+// (someone typed a message there), and Telegram would only answer "chat not found".
+const isChatId = (v: string) => /^-?\d{1,20}$/.test(v) || /^@\w{5,32}$/.test(v);
 const str = (v: unknown, max = 500) => (typeof v === "string" ? v.trim().slice(0, max) : undefined);
 
 export class Notifications {
@@ -90,6 +94,8 @@ export class Notifications {
         webhook: { ...base.webhook, ...saved.webhook },
         email: { ...base.email, ...saved.email },
       };
+      // Earlier versions took any text as the chat (people typed a message there): found again instead.
+      if (this.settings.telegram.chatId && !isChatId(this.settings.telegram.chatId)) this.settings.telegram = { ...this.settings.telegram, chatId: "", chatName: "" };
     } catch (err: any) {
       if (err.code !== "ENOENT") console.error("[notifications] couldn't read the settings:", err.message);
     }
@@ -117,7 +123,12 @@ export class Notifications {
       if (!given || typeof given !== "object") continue;
       const target = next[channel] as Record<string, unknown>;
       if (typeof given.on === "boolean") target.on = given.on;
-      if (channel === "telegram" && str(given.chatId, 100) !== undefined) next.telegram.chatId = str(given.chatId, 100)!;
+      const chatId = channel === "telegram" ? str(given.chatId, 100) : undefined;
+      if (chatId !== undefined && chatId !== next.telegram.chatId) {
+        if (chatId && !isChatId(chatId)) throw new Error("The chat is found with Find my chat, after you send /start to your bot (it's a number, not a message).");
+        next.telegram.chatId = chatId;
+        next.telegram.chatName = typeof given.chatName === "string" ? given.chatName.slice(0, 100) : "";
+      }
       if (channel === "ntfy") {
         const server = str(given.server, 300);
         if (server !== undefined) next.ntfy.server = server.replace(/\/+$/, "");
@@ -145,7 +156,10 @@ export class Notifications {
         else if (typeof value === "string" && value.trim()) {
           if (channel === "webhook") checkWebhook(value.trim());
           // Another bot: the chat found for the old one may never have talked to it, so it's found again.
-          if (channel === "telegram" && given.chatId === undefined && value.trim() !== (await this.vault.get("notify:telegram:token"))) next.telegram.chatId = "";
+          if (channel === "telegram" && given.chatId === undefined && value.trim() !== (await this.vault.get("notify:telegram:token"))) {
+            next.telegram.chatId = "";
+            next.telegram.chatName = "";
+          }
           await this.vault.set(`notify:${channel}:${field}`, value.trim());
         }
       }
@@ -171,6 +185,8 @@ export class Notifications {
       important: false,
       at: Date.now(),
     };
+    // Telegram without a chat yet: the human just sent /start, so find it first instead of failing.
+    if (channel === "telegram" && !this.settings.telegram.chatId && (await this.vault.has("notify:telegram:token"))) await this.findTelegramChat();
     await this.sendTo(channel, n);
   }
 
@@ -189,7 +205,7 @@ export class Notifications {
       throw new Error(`${bot} hasn't received a message yet: open ${bot} in Telegram, send it /start, then press Find my chat again.`);
     }
     const name = chat.title ?? chat.first_name ?? chat.username ?? String(chat.id);
-    await this.update({ telegram: { chatId: String(chat.id) } });
+    await this.update({ telegram: { chatId: String(chat.id), chatName: name } });
     return { chatId: String(chat.id), name };
   }
 
