@@ -33,7 +33,10 @@ main() {
     rm -rf "$APP_DIR" "$NODE_DIR"
     for rc in "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.zshrc" "$HOME/.profile"; do
       if [ -f "$rc" ] && grep -qF "$MARK" "$rc"; then
-        grep -vF "$MARK" "$rc" > "$rc.symbio-tmp" && cat "$rc.symbio-tmp" > "$rc" && rm -f "$rc.symbio-tmp"
+        # grep finds no other line when ours was the file's only one: that's not an error here.
+        { grep -vF "$MARK" "$rc" || true; } > "$rc.symbio-tmp"
+        cat "$rc.symbio-tmp" > "$rc"
+        rm -f "$rc.symbio-tmp"
         say "Removed sym from your PATH in $rc"
       fi
     done
@@ -72,8 +75,9 @@ main() {
     esac
     # index.tab: version, date, files, npm, v8, uv, zlib, openssl, modules, lts, security. Newest first.
     files="$( [ "$os" = darwin ] && echo "osx-$arch-tar" || echo "linux-$arch" )"
-    v="$(curl -fsSL https://nodejs.org/dist/index.tab | awk -F '\t' -v min="$min_node" -v want="$files" '
-      NR > 1 && $10 != "-" { major = substr($1, 2) + 0; if (major >= min && index("," $3 ",", "," want ",")) { print $1; exit } }')"
+    tab="$(curl -fsSL https://nodejs.org/dist/index.tab)" || fail "Couldn't reach nodejs.org."
+    v="$(printf '%s\n' "$tab" | awk -F '\t' -v min="$min_node" -v want="$files" '
+      NR > 1 && $10 != "-" && !found { major = substr($1, 2) + 0; if (major >= min && index("," $3 ",", "," want ",")) { print $1; found = 1 } }')"
     [ -n "$v" ] || fail "No Node.js $min_node+ build for $os-$arch was found on nodejs.org."
     name="node-$v-$os-$arch"
     say "Downloading Node.js $v (a private copy for Symbio, about 50 MB)"
