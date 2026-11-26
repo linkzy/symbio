@@ -249,7 +249,12 @@ export const en = {
     "This folder is a git repository that contains other repositories ({repos}) without tracking their files{created}. Agents would commit to the outer one. core can switch the project to work in each inner repository instead (nothing on disk changes), and Settings → Team switches it back.",
   "newProject.swallowed.createdBySymbio":
     ", created on top of them by an earlier version of Symbio",
-  "newProject.noGit": "Git isn't installed, so agents will share the folder directly.",
+  "newProject.noGit": "Git isn't installed. Without it, helpers share the project folder instead of working in parallel in their own copies.",
+  "newProject.noGit.install.before": "To use it, install it from ",
+  "newProject.noGit.install.after": " (on Windows: ",
+  "newProject.noGit.install.end": "), then check again.",
+  "newProject.noGit.check": "Check again",
+  "newProject.gitFailed": "Couldn't set up git in the project folder ({error}). The project works without it: helpers share the folder instead of working in their own copies.",
   "newProject.docs.title": "Project documentation",
   "newProject.docs.project.title": "In the project",
   "newProject.docs.project.recommended": "Recommended",

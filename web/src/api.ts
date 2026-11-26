@@ -875,7 +875,7 @@ export const api = {
     initGit: boolean;
     connections: ProjectConnection[];
     rulesRegister?: boolean;
-  }) => call<Project>("POST", "/projects", input),
+  }) => call<Project & { gitError?: string }>("POST", "/projects", input),
   permissions: (projectId: string) => call<PermissionRequest[]>("GET", `/projects/${projectId}/permissions`),
   answerPermission: (projectId: string, requestId: string, decision: "once" | "always" | "reject", note?: string) =>
     call<{ ok: true }>("POST", `/projects/${projectId}/permissions/${requestId}`, { decision, note }),

@@ -250,7 +250,12 @@ export const ptBR: Partial<Record<MessageKey, string>> = {
     "Esta pasta é um repositório git que contém outros repositórios ({repos}) sem rastrear seus arquivos{created}. Os agentes fariam commits no repositório externo. O core pode mudar o projeto para trabalhar em cada repositório interno (nada no disco muda), e Configurações → Equipe volta atrás.",
   "newProject.swallowed.createdBySymbio":
     ", criado sobre eles por uma versão anterior do Symbio",
-  "newProject.noGit": "O Git não está instalado, então os agentes compartilharão a pasta diretamente.",
+  "newProject.noGit": "O git não está instalado. Sem ele, os auxiliares compartilham a pasta do projeto em vez de trabalhar em paralelo, cada um na sua cópia.",
+  "newProject.noGit.install.before": "Para usá-lo, instale pelo ",
+  "newProject.noGit.install.after": " (no Windows: ",
+  "newProject.noGit.install.end": ") e verifique de novo.",
+  "newProject.noGit.check": "Verificar de novo",
+  "newProject.gitFailed": "Não foi possível configurar o git na pasta do projeto ({error}). O projeto funciona sem ele: os auxiliares compartilham a pasta em vez de trabalhar cada um na sua cópia.",
   "newProject.docs.title": "Documentação do projeto",
   "newProject.docs.project.title": "No projeto",
   "newProject.docs.project.recommended": "Recomendado",

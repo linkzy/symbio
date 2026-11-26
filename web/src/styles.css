@@ -1217,3 +1217,7 @@ body.resizing iframe { pointer-events: none; }
 .settings-tab.on::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--text); }
 .settings-inner > .settings-tabs { margin-top: 0; margin-bottom: 4px; }
 .settings-tabs { position: relative; }
+
+/* New project: git isn't installed */
+.notice.no-git { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+

@@ -211,10 +211,11 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
   }, []);
   const [error, setError] = useState<string | null>(null);
 
-  // Inspect the folder as the user types (debounced).
+  // Inspect the folder as the user types (debounced); "Check again" (after installing git) repeats it.
+  const [recheck, setRecheck] = useState(0);
   useEffect(() => {
     const dir = directory.trim();
-    setInspection(null);
+    if (!recheck) setInspection(null);
     setInspectError(null);
     if (!dir) return;
     const timer = setTimeout(() => {
@@ -225,9 +226,9 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
           if (!nameTouched) setName(baseName(i.directory));
         })
         .catch((e) => setInspectError(e.message));
-    }, 400);
+    }, recheck ? 0 : 400);
     return () => clearTimeout(timer);
-  }, [directory]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [directory, recheck]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const conflict = inspection?.existingProject;
   // A folder of repositories keeps them as they are; helpers work inside each one.
@@ -263,6 +264,8 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
         initGit: !!offerGit && initGit,
         connections: projectConnections,
       });
+      // Git couldn't be set up: the project works without it, and the human should know why.
+      if (project.gitError) alert(t("newProject.gitFailed", { error: project.gitError }));
       await api.start(project.id);
       location.hash = `#/p/${project.id}`;
     } catch (err) {
@@ -383,7 +386,21 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
             </div>
           )}
           {inspection && !inspection.isGit && !inspection.repos.length && !inspection.gitAvailable && (
-            <div className="notice">{t("newProject.noGit")}</div>
+            <div className="notice no-git" data-testid="no-git">
+              <div>{t("newProject.noGit")}</div>
+              <div className="small subtle">
+                {t("newProject.noGit.install.before")}
+                <a href="https://git-scm.com/downloads" target="_blank" rel="noreferrer">
+                  git-scm.com
+                </a>
+                {t("newProject.noGit.install.after")}
+                <code>winget install Git.Git</code>
+                {t("newProject.noGit.install.end")}
+              </div>
+              <button type="button" className="btn sm" onClick={() => setRecheck((n) => n + 1)}>
+                {t("newProject.noGit.check")}
+              </button>
+            </div>
           )}
         </>
       )}

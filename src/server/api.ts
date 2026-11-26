@@ -538,9 +538,17 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     await fs.mkdir(directory, { recursive: true });
     let inspection = await inspectFolder(directory);
     // A folder of repositories keeps them as they are: one on top would swallow them.
+    // Git is optional: when setting it up fails (git missing or broken), the project is created
+    // without it, and the human is told why. A half-made repository is taken away again.
+    let gitError: string | null = null;
     if (body.initGit && !inspection.isGit && !inspection.repos.length) {
-      await initRepository(directory);
-      inspection = { ...inspection, isGit: true };
+      try {
+        await initRepository(directory);
+        inspection = { ...inspection, isGit: true };
+      } catch (err) {
+        gitError = ((err as { stderr?: string }).stderr?.trim() || (err as Error).message).split("\n")[0].slice(0, 300);
+        await fs.rm(path.join(directory, ".git"), { recursive: true, force: true }).catch(() => {});
+      }
     }
 
     const project = await store.create({
@@ -571,7 +579,15 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       if (!modelsFor(project, "coordinator").includes(project.coordinatorModel)) project.coordinatorModel = defaultModel(project, "coordinator");
       await store.update(project);
     }
-    return c.json(project, 201);
+    if (gitError) {
+      await team.log(project, {
+        from: "symbio",
+        to: "human",
+        kind: "alert",
+        text: `Couldn't set up git in the project folder (${gitError}). The project works without it: helpers share the folder instead of working in their own copies.`,
+      });
+    }
+    return c.json({ ...project, ...(gitError ? { gitError } : {}) }, 201);
   });
 
   /**
