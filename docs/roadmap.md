@@ -131,9 +131,8 @@ Collected, not sorted or promised yet.
   problem / Send feedback** button: a form with what they write plus Symbio's version and the
   operating system, nothing about their projects, shown to them before it's sent; it becomes a
   GitHub issue, or goes to a small form service for people without a GitHub account. No telemetry:
-  the only sign that someone uses Symbio is what they choose to send. Maybe also one anonymous
-  "hello" (the version, nothing else) when someone opts in, as the one count of real users: npm
-  download numbers are mostly mirrors and bots.
+  the only sign that someone uses Symbio is what they choose to send (copies in use are already
+  counted by the anonymous install id, since 0.35.0).
 - **A first-run experience.** A sample project and templates, so a new user sees the team at work in
   five minutes instead of starting from an empty folder.
 - **Stronger isolation.** Optionally run agents in a container or sandbox (today they run with the
