@@ -121,8 +121,10 @@ const SECRET_SHELL = [
 // executables are covered by name too, so none can be planted on the PATH. Shell commands are
 // matched on their text, so like the secrets above this is best effort for shell writes. A project's
 // own settings (.symbio/project.json in its folder) are covered too: they hold the checks Symbio runs.
+// So are the Node.js and the Symbio package the one-line installer puts in ~/.symbio (node, app):
+// Symbio itself runs from them.
 const SYMBIO_FILES = ["runtime-settings.json", "config.json", "connections.json", "machine.json", "updates.json", "notifications.json", "opencode.pid", "project.json"];
-const SYMBIO_FOLDERS = ["runtimes", "bin", "copilot", "skills"];
+const SYMBIO_FOLDERS = ["runtimes", "bin", "copilot", "skills", "node", "app"];
 const RUNTIME_EXECUTABLES = ["opencode.cmd", "opencode.exe", "opencode.ps1", "opencode.bat"];
 const SYMBIO_CONTROL_PATHS = [
   ...SYMBIO_FILES.flatMap((f) => [`*\\.symbio\\${f}`, `*/.symbio/${f}`]),

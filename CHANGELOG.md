@@ -5,6 +5,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Install with one line, without Node.js** (#71): `irm https://symbio.linkzy.dev/install.ps1 | iex` on Windows, and
+  `curl -fsSL https://symbio.linkzy.dev/install | sh` on macOS and Linux (still being tested there). It puts a private
+  Node.js (checked against nodejs.org's checksums) and Symbio in `~/.symbio`, `sym` on your PATH and, on Windows, Symbio
+  in the Start menu and on the desktop, and installs git if it's missing. Symbio keeps updating itself from npm; running
+  the line again repairs the install, and `SYMBIO_UNINSTALL=1` removes it. A copy installed with npm is updated in place.
+
 ## [0.36.0]
 
 - **Fixed: a server connection that failed could stop Symbio.** When an SSH server didn't answer and then hung up,

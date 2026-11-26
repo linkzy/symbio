@@ -398,7 +398,14 @@ export class SelfUpdate {
     const target = await release(version);
     if (compareVersions(target.version, this.host.version) === 0) throw new Error(`Symbio ${target.version} is already the one running.`);
     if (!nodeSatisfies(target.node)) {
-      throw new Error(`Symbio ${target.version} needs Node.js ${target.node}, and this machine has ${process.versions.node}.`);
+      // Installed with the one-line installer: running it again brings the Node.js the release needs.
+      const own = path.resolve(process.execPath).toLowerCase().startsWith(path.resolve(this.host.home, "node").toLowerCase());
+      const again =
+        process.platform === "win32" ? "irm https://symbio.linkzy.dev/install.ps1 | iex" : "curl -fsSL https://symbio.linkzy.dev/install | sh";
+      throw new Error(
+        `Symbio ${target.version} needs Node.js ${target.node}, and this machine has ${process.versions.node}.` +
+          (own ? ` Run the installer again to get it: ${again}` : ""),
+      );
     }
     const back = compareVersions(target.version, this.host.version) < 0;
     if (back) {

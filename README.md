@@ -47,15 +47,22 @@ a goal and a folder.
 
 ## Quick start
 
-```sh
-npm install -g symbio
-sym
+One line, with nothing installed first (not even Node.js):
+
+```powershell
+irm https://symbio.linkzy.dev/install.ps1 | iex     # Windows (PowerShell)
 ```
 
+```sh
+curl -fsSL https://symbio.linkzy.dev/install | sh   # macOS and Linux (still being tested)
+```
+
+Or, with Node.js 22+ already there: `npm install -g symbio`, then `sym`.
+
 Symbio opens in your browser. The first time, install an agent runtime from the Projects page
-(OpenCode or GitHub Copilot CLI), then click **New project** and tell core what you want. Node.js 22+
-is required, and git is recommended. All the commands, updates and remote access are in
-[docs/usage.md](docs/usage.md).
+(OpenCode or GitHub Copilot CLI), then click **New project** and tell core what you want. git is
+recommended (the Windows installer adds it). Installing, updating, removing, all the commands and
+remote access are in [docs/usage.md](docs/usage.md).
 
 ## A quick tour
 

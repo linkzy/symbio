@@ -28,6 +28,7 @@
     "sym": "bin/symbio.js"
   },
   "files": [
+    "assets",
     "bin",
     "dist",
     "skills",

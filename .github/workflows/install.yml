@@ -1,0 +1,95 @@
+# The one-line installers (scripts/install/), on clean runners: install the published Symbio with
+# a private Node.js, run `sym`, start it where the platform allows, and uninstall.
+name: Installers
+
+on:
+  push:
+    paths: ["scripts/install/**", ".github/workflows/install.yml"]
+  pull_request:
+    paths: ["scripts/install/**", ".github/workflows/install.yml"]
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shell: [powershell, pwsh] # Windows PowerShell 5.1 (a new Windows) and PowerShell 7
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    env:
+      SYMBIO_HOME: ${{ runner.temp }}\symbio-home
+      SYMBIO_PORT: "4399"
+      SYMBIO_NO_OPEN: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install (as `irm … | iex` runs it)
+        run: |
+          $env:SYMBIO_NO_START = "1"
+          Get-Content -Raw scripts/install/install.ps1 | iex
+          if (-not $global:SymbioInstallOk) { throw "the installer failed" }
+      - name: sym works with the private Node.js only
+        run: |
+          $sym = "$env:SYMBIO_HOME\app\launcher\sym.cmd"
+          & $sym --version
+          if ($LASTEXITCODE -ne 0) { throw "sym --version failed" }
+          & $sym
+          try {
+            Start-Sleep 3
+            $code = try { (Invoke-WebRequest "http://127.0.0.1:4399/api/runtime" -UseBasicParsing).StatusCode } catch { $_.Exception.Response.StatusCode.value__ }
+            if ($code -ne 401 -and $code -ne 200) { throw "Symbio didn't answer ($code)" }
+          } finally {
+            & $sym stop
+          }
+      - name: Running it again updates in place
+        run: |
+          $env:SYMBIO_NO_START = "1"
+          Get-Content -Raw scripts/install/install.ps1 | iex
+          if (-not $global:SymbioInstallOk) { throw "the second run failed" }
+      - name: Uninstall
+        run: |
+          $env:SYMBIO_UNINSTALL = "1"
+          Get-Content -Raw scripts/install/install.ps1 | iex
+          if (-not $global:SymbioInstallOk) { throw "uninstall failed" }
+          if (Test-Path "$env:SYMBIO_HOME\app") { throw "app is still there" }
+          if (Test-Path "$env:SYMBIO_HOME\node") { throw "node is still there" }
+
+  unix:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      SYMBIO_HOME: ${{ runner.temp }}/symbio-home
+      SYMBIO_PORT: "4399"
+      SYMBIO_NO_OPEN: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install (as `curl … | sh` runs it)
+        run: SYMBIO_NO_START=1 sh < scripts/install/install.sh
+      - name: sym works with the private Node.js only
+        run: |
+          "$SYMBIO_HOME/app/launcher/sym" --version
+          grep -q "Symbio (added by its installer)" ~/.profile
+      - name: Start (Linux and macOS support is still being tested, #9)
+        continue-on-error: true
+        run: |
+          trap '"$SYMBIO_HOME/app/launcher/sym" stop || true; tail -n 30 "$SYMBIO_HOME/logs/symbio.log" || true' EXIT
+          "$SYMBIO_HOME/app/launcher/sym"
+          sleep 3
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:4399/api/runtime)
+          echo "Symbio answered $code"
+          [ "$code" = 401 ] || [ "$code" = 200 ]
+      - name: Running it again updates in place
+        run: SYMBIO_NO_START=1 sh < scripts/install/install.sh
+      - name: Uninstall
+        run: |
+          SYMBIO_UNINSTALL=1 sh < scripts/install/install.sh
+          test ! -e "$SYMBIO_HOME/app"
+          test ! -e "$SYMBIO_HOME/node"
+          ! grep -q "Symbio (added by its installer)" ~/.profile

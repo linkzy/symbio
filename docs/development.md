@@ -60,6 +60,8 @@ web/src/               React UI (Vite); styles.css is the whole design system
 skills/                The skills Symbio ships (its own and vetted third-party copies; catalog.json)
 tests/                 Unit tests; tests/e2e/ end-to-end, tests/contract/ the real runtimes
 scripts/               Dev helpers (dev runner, screenshots, a local SSH test server)
+scripts/install/       The one-line installers (install.ps1, install.sh), served by the website
+assets/                Shipped with the package: the icon the Windows installer's shortcuts use
 docs/                  This documentation
 ```
 
@@ -154,6 +156,12 @@ browser's. To add a language:
 
 - To test server connections without a real server, `node scripts/ssh-test-server.mjs <folder>`
   starts a local SSH server (127.0.0.1:2222, user `deploy`, password `s3cret`).
+- The one-line installers (`scripts/install/`) are tested on clean GitHub runners by
+  `.github/workflows/install.yml` (Windows PowerShell 5.1 and 7, Ubuntu, macOS) whenever they change:
+  install, `sym`, start, a second run, uninstall. To try one on your machine without touching your
+  own install, use a temporary `SYMBIO_HOME`, another `SYMBIO_PORT`, and `SYMBIO_NO_PATH=1`,
+  `SYMBIO_NO_SHORTCUT=1`, `SYMBIO_NO_GIT=1` (the installer otherwise edits your PATH and shortcuts).
+  The website serves them from `main`, so a change reaches people when it's pushed there.
 - Files matching `scripts/_*` are git-ignored, which is handy for throwaway scripts.
 
 ## Releasing

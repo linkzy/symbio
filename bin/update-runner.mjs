@@ -24,6 +24,15 @@ const alive = (pid) => {
   }
 };
 
+/**
+ * The environment with the folder of the Node.js running this first on the PATH, so `npm` is the
+ * one beside it: the one-line installer's private Node.js isn't on the PATH at all.
+ */
+function withOwnNode(env) {
+  const key = Object.keys(env).find((k) => k.toUpperCase() === "PATH") ?? "PATH";
+  return { ...env, [key]: `${path.dirname(process.execPath)}${path.delimiter}${env[key] ?? ""}` };
+}
+
 /** npm install -g <spec> into the prefix Symbio was installed in. */
 function install(spec) {
   log(`npm install -g ${spec} (prefix ${job.prefix})`);
@@ -32,7 +41,7 @@ function install(spec) {
     shell: process.platform === "win32",
     windowsHide: true,
     timeout: 10 * 60_000,
-    env: { ...process.env, npm_config_prefix: job.prefix },
+    env: { ...withOwnNode(process.env), npm_config_prefix: job.prefix },
   });
   const output = `${res.stdout ?? ""}${res.stderr ?? ""}`.trim();
   if (output) log(output.split("\n").slice(-30).join("\n"));

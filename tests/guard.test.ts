@@ -151,6 +151,10 @@ test("agents can't change what decides which programs Symbio runs (its settings,
   assert.equal(effect("edit", `${home}\\runtimes\\opencode\\node_modules\\opencode-ai\\bin\\opencode`), "deny");
   assert.equal(effect("shell", "echo x > ~/.symbio/runtimes/opencode/bin/opencode"), "deny");
   assert.equal(effect("edit", `${home}\\bin\\cloudflared.exe`), "deny");
+  // The Node.js and Symbio package the installer put there: Symbio runs from them.
+  assert.equal(effect("edit", `${home}\\node\\node.exe`), "deny");
+  assert.equal(effect("edit", `${home}\\app\\node_modules\\symbio\\dist\\server\\index.js`), "deny");
+  assert.equal(effect("shell", "echo x > ~/.symbio/app/bin/sym"), "deny");
   assert.equal(effect("edit", `${home}\\config.json`), "deny");
   assert.equal(effect("edit", "/home/me/.symbio/machine.json"), "deny");
   // Where notifications go: an agent could send the human's to itself.

@@ -263,6 +263,15 @@ export class RuntimeInstaller extends EventEmitter<{ change: [RuntimeKind] }> {
   }
 }
 
+/**
+ * The environment with the Node.js running Symbio first on the PATH, so `npm` is the one beside
+ * it: the one-line installer's private Node.js isn't on the PATH at all.
+ */
+export function withOwnNode(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const key = Object.keys(env).find((k) => k.toUpperCase() === "PATH") ?? "PATH";
+  return { ...env, [key]: `${path.dirname(process.execPath)}${path.delimiter}${env[key] ?? ""}` };
+}
+
 /** `npm install <spec>` in a folder, with npm's output line by line. */
 function npmInstall(dir: string, spec: string, onLine: (line: string) => void): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -272,7 +281,7 @@ function npmInstall(dir: string, spec: string, onLine: (line: string) => void): 
       cwd: dir,
       shell: win,
       windowsHide: true,
-      env: { ...process.env, npm_config_update_notifier: "false" },
+      env: { ...withOwnNode(process.env), npm_config_update_notifier: "false" },
     });
     let tail = "";
     const read = (chunk: Buffer) => {

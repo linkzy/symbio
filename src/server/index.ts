@@ -30,6 +30,16 @@ import { Notifier } from "./notifier.js";
 // (e.g. OpenCode restarting mid-call) is logged and the next tick tries again.
 process.on("unhandledRejection", (err) => console.error("[unhandled]", err instanceof Error ? err.stack ?? err.message : err));
 
+// The Node.js running Symbio, last on the PATH: with the one-line installer's private copy (not on
+// the PATH at all), the runtimes' npm shims and agents' `node` still find one; a Node.js of the
+// user's own, earlier on the PATH, still comes first.
+{
+  const key = Object.keys(process.env).find((k) => k.toUpperCase() === "PATH") ?? "PATH";
+  const dirs = (process.env[key] ?? "").split(path.delimiter);
+  const own = path.dirname(process.execPath);
+  if (!dirs.some((d) => path.resolve(d || ".").toLowerCase() === own.toLowerCase())) process.env[key] = [...dirs.filter(Boolean), own].join(path.delimiter);
+}
+
 const PORT = Number(process.env.SYMBIO_PORT ?? 4310);
 const here = path.dirname(fileURLToPath(import.meta.url));
 // dist/server/index.js → dist/web ; src/server/index.ts → dist/web (after a build)

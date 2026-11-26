@@ -184,6 +184,17 @@ project the connections it needs.
   through `cmd.exe`, which keeps the server password in its own environment (OpenCode itself removes
   it); programs running as you could read it from there.
 
+## The installer
+
+The one-line installers (`scripts/install/`, served by the website from this repository) download
+Node.js from nodejs.org and check it against nodejs.org's published SHA-256 checksums before using
+it, then install Symbio from npm like `npm install -g` does. Everything goes in `~/.symbio` (`node`,
+`app`) without admin rights; agents can't change those folders (`guard.ts`), since Symbio runs from
+them. Only `~/.symbio/app/launcher` is added to the user's PATH, not the private Node.js. On
+Windows, git is installed with winget, or Git for Windows' installer from its GitHub releases,
+unless `SYMBIO_NO_GIT=1`; Windows asks for permission. Piping a script into a shell trusts its
+source: read it first at the address, or in this repository, if you prefer.
+
 ## Update checks
 
 Installed copies ask `https://symbio.linkzy.dev/update` which version to update to, at start and

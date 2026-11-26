@@ -3,10 +3,50 @@
 How to install, start and run Symbio, and work with a team. For every feature in detail, see
 [features.md](features.md); for settings and where data lives, [configuration.md](configuration.md).
 
-## Starting Symbio
+## Installing
+
+One line, with nothing installed first (not even Node.js):
+
+```powershell
+irm https://symbio.linkzy.dev/install.ps1 | iex     # Windows (PowerShell)
+```
+
+```sh
+curl -fsSL https://symbio.linkzy.dev/install | sh   # macOS and Linux (still being tested, #9)
+```
+
+It puts a private copy of Node.js in `~/.symbio/node` (the official one from nodejs.org, checked
+against its published checksums; other programs don't see it), Symbio in `~/.symbio/app`, and `sym`
+on your PATH. On Windows it also adds Symbio to the Start menu and the desktop, and installs git if
+it's missing (helpers then work in parallel in their own copies; Windows may ask for permission).
+Then it starts Symbio. No admin rights are needed for the rest. Symbio keeps updating itself from
+npm as usual; running the line again repairs the install, or brings a newer Node.js when a release
+needs one.
+
+Options go before the line as environment variables: `SYMBIO_VERSION` (a version instead of the
+latest), `SYMBIO_NO_GIT`, `SYMBIO_NO_SHORTCUT`, `SYMBIO_NO_PATH`, `SYMBIO_NO_START` (each `=1`), and
+`SYMBIO_UNINSTALL=1` to remove what it installed (your projects and Symbio's data stay; delete
+`~/.symbio` to remove those too):
+
+```powershell
+$env:SYMBIO_UNINSTALL = "1"; irm https://symbio.linkzy.dev/install.ps1 | iex
+```
+
+```sh
+curl -fsSL https://symbio.linkzy.dev/install | SYMBIO_UNINSTALL=1 sh
+```
+
+If you already have Node.js 22 or newer, npm works too, and `sym` updates the same way:
 
 ```sh
 npm install -g symbio
+```
+
+The installer finds a copy installed this way and updates it in place instead of adding a second one.
+
+## Starting Symbio
+
+```sh
 sym                  # starts Symbio in the background and opens it in your browser
 ```
 
