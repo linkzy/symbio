@@ -1219,5 +1219,9 @@ body.resizing iframe { pointer-events: none; }
 .settings-tabs { position: relative; }
 
 /* New project: git isn't installed */
-.notice.no-git { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+/* The git option when git is missing: shown, off, with the reason and the way to get it underneath. */
+.choice-wrap.unavailable { border: 1px solid var(--border-strong); border-radius: var(--r); }
+.choice-wrap.unavailable > .choice { border: none; cursor: default; opacity: 0.6; }
+.choice-wrap.unavailable > .choice:hover { border-color: transparent; }
+.choice-wrap .no-git { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border); font-size: 13px; }
 

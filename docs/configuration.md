@@ -23,6 +23,7 @@ All optional, set as environment variables:
 | `SYMBIO_BACKUP_DAYS` | `7` | How many daily backups of Symbio's state to keep |
 | `SYMBIO_BUILD_ALERT_GB` | `2` | Build outputs in a helper's folder above this size are reported by the daily check |
 | `SYMBIO_UPDATE_URL` | `https://symbio.linkzy.dev/update` | Where installed copies ask which version to update to; `off` asks npm directly |
+| `SYMBIO_GIT_SEARCH` | the usual install folders | Where to look for a git that isn't on Symbio's PATH (installed while it runs), separated like the PATH; empty looks nowhere (the tests use it) |
 | `SYMBIO_NOTIFY_GROUP_MS` | `20000` | How long notifications gather what happens together before sending it as one message |
 | `SYMBIO_NOTIFY_QUIET_MS` | `60000` | How long no agent works before the team counts as stopped (a notification) |
 | `SYMBIO_NOTIFY_MIN_RUN_MS` | `180000` | Shorter stretches of work (a quick reply) don't count as the team stopping |

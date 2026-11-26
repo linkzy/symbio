@@ -14,7 +14,7 @@ import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { describeInspection, inspectFolder } from "./inspect.js";
-import { gitAvailable, initRepository } from "./git.js";
+import { gitAvailable, gitInstaller, initRepository, installGit } from "./git.js";
 import { pickFolder } from "./folder-picker.js";
 import { beginOauth, cancelOauth, completeOauth, connectWithKey, listProviders, oauthStatus, removeLogin } from "./providers.js";
 import { docsRoot, listDocs, rawDoc, readDoc, searchDocs, writeDoc } from "./docs.js";
@@ -446,8 +446,21 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     if (!dir) return c.json({ error: "dir is required" }, 400);
     if (!path.isAbsolute(dir)) return c.json({ error: "Use a full path, e.g. C:\\Users\\you\\project" }, 400);
     const [inspection, hasGit] = await Promise.all([inspectFolder(dir), gitAvailable()]);
+    const installer = hasGit ? null : await gitInstaller();
     const existing = store.list().find((p) => path.resolve(p.directory).toLowerCase() === inspection.directory.toLowerCase());
-    return c.json({ ...inspection, gitAvailable: hasGit, existingProject: existing ? { id: existing.id, name: existing.name } : null });
+    return c.json({ ...inspection, gitAvailable: hasGit, gitInstaller: installer, existingProject: existing ? { id: existing.id, name: existing.name } : null });
+  });
+
+  // The human's "Install git" in the New project dialog: one installer run at a time.
+  let installingGit: Promise<void> | null = null;
+  api.post("/git/install", async (c) => {
+    installingGit ??= installGit().finally(() => (installingGit = null));
+    try {
+      await installingGit;
+      return c.json({ ok: true });
+    } catch (err) {
+      return c.json({ error: (err as Error).message }, 500);
+    }
   });
 
   // Folder browser inside the page (works through remote access, where the native dialog

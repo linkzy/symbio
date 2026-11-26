@@ -232,7 +232,24 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
 
   const conflict = inspection?.existingProject;
   // A folder of repositories keeps them as they are; helpers work inside each one.
-  const offerGit = inspection && !inspection.isGit && !inspection.repos.length && inspection.gitAvailable;
+  const gitChoice = inspection && !inspection.isGit && !inspection.repos.length;
+  const offerGit = gitChoice && inspection.gitAvailable;
+  const [installingGit, setInstallingGit] = useState(false);
+  const [gitInstallError, setGitInstallError] = useState<string | null>(null);
+
+  async function installGit() {
+    setInstallingGit(true);
+    setGitInstallError(null);
+    try {
+      await api.installGit();
+      setInitGit(true);
+      setRecheck((n) => n + 1);
+    } catch (err) {
+      setGitInstallError((err as Error).message);
+    } finally {
+      setInstallingGit(false);
+    }
+  }
   const stepValid = [!!(name.trim() && inspection && !conflict), true, !!coordinator][step];
 
   // The dialog opens on the machine running Symbio (browsers can't reveal full paths).
@@ -360,14 +377,38 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
             </div>
           )}
           {inspection && !conflict && <FolderSummary inspection={inspection} />}
-          {offerGit && (
-            <label className="choice">
-              <input type="checkbox" checked={initGit} onChange={(e) => setInitGit(e.target.checked)} />
-              <span className="choice-body">
-                <span className="choice-title">{t("newProject.initGit.title")}</span>
-                <span className="choice-desc">{t("newProject.initGit.desc")}</span>
-              </span>
-            </label>
+          {gitChoice && (
+            <div className={`choice-wrap${offerGit ? "" : " unavailable"}`}>
+              <label className="choice">
+                <input type="checkbox" checked={!!offerGit && initGit} disabled={!offerGit} onChange={(e) => setInitGit(e.target.checked)} />
+                <span className="choice-body">
+                  <span className="choice-title">{t("newProject.initGit.title")}</span>
+                  <span className="choice-desc">{t("newProject.initGit.desc")}</span>
+                </span>
+              </label>
+              {!offerGit && (
+                // Without git the option can't work: say why, and how to get it.
+                <div className="no-git" data-testid="no-git">
+                  <div>{t("newProject.noGit")}</div>
+                  <div className="small subtle">{inspection.gitInstaller ? t("newProject.noGit.howWinget") : t("newProject.noGit.how")}</div>
+                  <div className="row">
+                    {inspection.gitInstaller && (
+                      <button type="button" className="btn sm primary" disabled={installingGit} onClick={installGit}>
+                        {installingGit ? t("newProject.noGit.installing") : t("newProject.noGit.install")}
+                      </button>
+                    )}
+                    <a className="btn sm" href="https://git-scm.com/downloads" target="_blank" rel="noreferrer">
+                      {t("newProject.noGit.download")}
+                    </a>
+                    <button type="button" className="btn sm" disabled={installingGit} onClick={() => setRecheck((n) => n + 1)}>
+                      {t("newProject.noGit.check")}
+                    </button>
+                  </div>
+                  {installingGit && <div className="small subtle">{t("newProject.noGit.installingHint")}</div>}
+                  {gitInstallError && <div className="error">{t("newProject.noGit.installFailed", { error: gitInstallError })}</div>}
+                </div>
+              )}
+            </div>
           )}
           {inspection && !conflict && inspection.repos.length > 0 && (
             <div className="notice">
@@ -383,23 +424,6 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
                 repos: inspection.swallowed.inner.join(", "),
                 created: inspection.swallowed.createdBySymbio ? t("newProject.swallowed.created") : "",
               })}
-            </div>
-          )}
-          {inspection && !inspection.isGit && !inspection.repos.length && !inspection.gitAvailable && (
-            <div className="notice no-git" data-testid="no-git">
-              <div>{t("newProject.noGit")}</div>
-              <div className="small subtle">
-                {t("newProject.noGit.install.before")}
-                <a href="https://git-scm.com/downloads" target="_blank" rel="noreferrer">
-                  git-scm.com
-                </a>
-                {t("newProject.noGit.install.after")}
-                <code>winget install Git.Git</code>
-                {t("newProject.noGit.install.end")}
-              </div>
-              <button type="button" className="btn sm" onClick={() => setRecheck((n) => n + 1)}>
-                {t("newProject.noGit.check")}
-              </button>
             </div>
           )}
         </>

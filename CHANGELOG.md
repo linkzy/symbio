@@ -5,6 +5,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Git missing, shown where you choose it.** In the New project dialog, the "Set up version history (git)" option now
+  stays visible when git isn't installed: off, disabled, and with the reason underneath. On Windows, **Install git**
+  installs it for you (with winget; Windows may ask for permission), and there's **Download git** for its website.
+  **Check again** also finds a git installed while Symbio was running, without restarting Symbio.
+
 ## [0.35.0]
 
 - **Projects without git** (#72): creating a project no longer fails when git is there but doesn't work; the project is

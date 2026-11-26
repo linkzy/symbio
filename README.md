@@ -216,7 +216,8 @@ needs you".
 
 **Do I need git?**
 It's recommended: helpers then work in parallel in their own copies. Without git they share the
-project folder, coordinated by shared-asset grants.
+project folder, coordinated by shared-asset grants. If git isn't installed, the New project dialog
+says so where you'd turn it on, and on Windows can install it for you.
 
 **Can I use it from my phone?**
 Yes: `sym remote` gives you a temporary link and access code, and the interface adapts to small

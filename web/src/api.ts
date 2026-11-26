@@ -326,6 +326,8 @@ export interface Inspection {
   topLevel: string[];
   guidance: string[];
   gitAvailable: boolean;
+  /** How Symbio can install git here when it's missing (winget on Windows), or null. */
+  gitInstaller: "winget" | null;
   existingProject: { id: string; name: string } | null;
 }
 
@@ -843,6 +845,7 @@ export const api = {
   projects: () => call<Project[]>("GET", "/projects"),
   project: (id: string) => call<Project>("GET", `/projects/${id}`),
   inspect: (dir: string) => call<Inspection>("GET", `/inspect?dir=${encodeURIComponent(dir)}`),
+  installGit: () => call<{ ok: true }>("POST", "/git/install"),
   pickFolder: (initial?: string) => call<{ path: string | null }>("POST", "/pick-folder", { initial }),
   makeDir: (parent: string, name: string) => call<{ path: string }>("POST", "/fs/mkdir", { parent, name }),
   listDirs: (path?: string) =>

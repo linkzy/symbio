@@ -228,6 +228,10 @@ and `SYMBIO_UPDATE_URL=off` skips the endpoint altogether.
   Don't share it. Deleting the file and restarting Symbio creates a new key (open tabs then need the
   new link).
 
+- **Installing git** from the New project dialog runs `winget install --id Git.Git` on this computer,
+  only when you press *Install git* (Windows, with winget). Windows may ask for permission on this
+  computer's screen. Agents can't reach this: they don't have the UI key.
+
 ## Skills
 
 A skill is instructions agents follow, sometimes with scripts they run, often written by someone

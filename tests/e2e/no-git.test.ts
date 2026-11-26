@@ -1,6 +1,7 @@
-// Projects without git: with git missing, the New project dialog says what that means and how to
-// get it (and checks again); with git there but broken, creating a project still works, without
-// git, and the human is told why.
+// Projects without git: with git missing, the New project dialog shows the git option off and
+// disabled, says why and how to get it (install, download, check again, which finds a git installed
+// meanwhile); with git there but broken, creating a project still works, without git, and the
+// human is told why.
 import assert from "node:assert/strict";
 import { copyFileSync, mkdirSync } from "node:fs";
 import os from "node:os";
@@ -21,31 +22,54 @@ const withoutGit = (process.env.PATH ?? process.env.Path ?? "")
   .filter((dir) => !/[\\/]git([\\/]|$)/i.test(dir) && !/[\\/]Git[\\/]/.test(dir))
   .join(sep);
 
-async function symbioWithPath(dirs: string) {
-  const symbio = await startSymbio({ PATH: dirs, Path: dirs });
+// A program that answers --version and fails at everything else: Node, renamed.
+const exe = (name: string) => (process.platform === "win32" ? `${name}.exe` : name);
+function fakeProgram(name: string): string {
+  const bin = path.join(os.tmpdir(), `symbio-fake-${name}-${process.pid}-${Date.now()}`);
+  mkdirSync(bin, { recursive: true });
+  copyFileSync(process.execPath, path.join(bin, exe(name)));
+  return bin;
+}
+
+// SYMBIO_GIT_SEARCH: where Symbio looks for a git installed while it runs (none, unless given).
+async function symbioWithPath(dirs: string, gitSearch = "") {
+  const symbio = await startSymbio({ PATH: dirs, Path: dirs, SYMBIO_GIT_SEARCH: gitSearch });
   running.push(symbio);
   return symbio;
 }
 
-test("git missing: the dialog says what it changes and how to install it; the project works without it", async () => {
-  const symbio = await symbioWithPath(withoutGit);
+test("git missing: the option is off and disabled, with why and how to get it; a git installed meanwhile is found", async () => {
+  // A winget that fails, so "Install git" shows its error instead of installing anything.
+  const winget = fakeProgram("winget");
+  const installed = path.join(os.tmpdir(), `symbio-git-later-${process.pid}-${Date.now()}`);
+  mkdirSync(installed, { recursive: true });
+  const symbio = await symbioWithPath(`${winget}${sep}${withoutGit}`, installed);
   const { page } = await openPage(symbio);
   await page.locator("button", { hasText: "New project" }).first().click();
   await page.getByPlaceholder("C:\\Users\\you\\projects\\my-project").fill(symbio.folder("plain"));
   const notice = page.locator('[data-testid="no-git"]');
   await notice.locator("div", { hasText: "Git isn't installed. Without it, helpers share the project folder" }).first().waitFor();
-  assert.equal(await notice.locator("a", { hasText: "git-scm.com" }).getAttribute("href"), "https://git-scm.com/downloads");
-  assert.equal(await page.locator(".choice", { hasText: "git" }).count(), 0, "no git option to tick");
+  const option = page.locator(".choice", { hasText: "Set up version history (git)" }).locator("input");
+  assert.equal(await option.isDisabled(), true, "the option is shown, disabled");
+  assert.equal(await option.isChecked(), false, "and off");
+  assert.equal(await notice.locator("a", { hasText: "Download git" }).getAttribute("href"), "https://git-scm.com/downloads");
+  if (process.platform === "win32") {
+    await notice.getByRole("button", { name: "Install git" }).click();
+    await notice.locator(".error", { hasText: "Couldn't install git" }).waitFor();
+  }
   await notice.getByRole("button", { name: "Check again" }).click();
   await notice.waitFor(); // still missing, still said
+  // Installed meanwhile, where installers put it (not on Symbio's PATH): Check again finds it.
+  copyFileSync(process.execPath, path.join(installed, exe("git")));
+  await notice.getByRole("button", { name: "Check again" }).click();
+  await notice.waitFor({ state: "detached" });
+  assert.equal(await option.isDisabled(), false);
+  assert.equal(await option.isChecked(), true, "on, as for anyone with git");
   assert.deepEqual((page as any).errors, []);
 });
 
 test("git there but broken: the project is created without it, and the human is told why", async () => {
-  // A "git" that answers --version but fails at everything else: Node, renamed.
-  const bin = path.join(os.tmpdir(), `symbio-fake-git-${process.pid}`);
-  mkdirSync(bin, { recursive: true });
-  copyFileSync(process.execPath, path.join(bin, process.platform === "win32" ? "git.exe" : "git"));
+  const bin = fakeProgram("git");
   const symbio = await symbioWithPath(`${bin}${sep}${withoutGit}`);
   const directory = symbio.folder("broken-git");
   const project = await symbio.call("POST", "/projects", { name: "Broken git", directory, coordinatorModel: MODEL, allowedModels: [MODEL], runtime: RUNTIME, initGit: true });
