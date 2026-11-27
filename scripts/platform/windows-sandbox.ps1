@@ -38,7 +38,7 @@ Copy-Item (Join-Path $repo "scripts\install\install.ps1") $shared
 # What the smoke test is told, set before it runs (the logon command stays short).
 $setup = @(
   "`$env:SMOKE_DIR = 'C:\symbio-smoke'"
-  "`$env:SMOKE_RUNTIMES = '$Runtimes'"
+  "`$env:SMOKE_RUNTIMES = '$(if ($Runtimes) { $Runtimes } else { "none" })'"
   $(if ($Installer) { "`$env:SMOKE_INSTALLER = '$Installer'" })
   $(if ($Version) { "`$env:SYMBIO_VERSION = '$Version'" })
   $(if ($Keep) { "`$env:SMOKE_KEEP = '1'" })
@@ -46,10 +46,16 @@ $setup = @(
 Set-Content (Join-Path $shared "setup.ps1") $setup
 
 # As a user would: Windows PowerShell, the default execution policy, the script through iex.
-$logon = "powershell.exe -NoExit -Command `"Get-Content -Raw C:\symbio-smoke\setup.ps1 | iex; Get-Content -Raw C:\symbio-smoke\smoke.ps1 | iex`""
+# Without -Keep the Sandbox shuts itself down at the end (older Windows has no wsb CLI to stop it,
+# and the window's process isn't the one Start-Process returns).
+$run = "Get-Content -Raw C:\symbio-smoke\setup.ps1 | iex; Get-Content -Raw C:\symbio-smoke\smoke.ps1 | iex"
+$logon = if ($Keep) { "powershell.exe -NoExit -Command `"$run`"" } else { "powershell.exe -Command `"try { $run } finally { shutdown.exe /s /t 10 }`"" }
+# vGPU off: with it, the Sandbox window can stay black ("A conexão … foi perdida") and the guest
+# never logs in (seen on Windows 11 26300). Symbio needs no GPU.
 $config = @"
 <Configuration>
   <Networking>Enable</Networking>
+  <vGPU>Disable</vGPU>
   <MemoryInMB>8192</MemoryInMB>
   <MappedFolders>
     <MappedFolder><HostFolder>$shared</HostFolder><SandboxFolder>C:\symbio-smoke</SandboxFolder><ReadOnly>false</ReadOnly></MappedFolder>
@@ -60,7 +66,6 @@ $config = @"
 
 Write-Host "Starting Windows Sandbox..."
 $sandboxId = $null
-$process = $null
 if ($wsbCli) {
   # Windows 11 24H2+: a CLI that starts, and later stops, this Sandbox by id.
   $out = (& $wsbCli.Source start --config $config) -join "`n"
@@ -70,7 +75,7 @@ if ($wsbCli) {
 } else {
   $wsbFile = Join-Path $shared "symbio-smoke.wsb"
   Set-Content $wsbFile $config
-  $process = Start-Process $client.Source $wsbFile -PassThru
+  Start-Process $client.Source $wsbFile
 }
 
 $done = Join-Path $shared "done"
@@ -87,6 +92,10 @@ $header = @(
 )
 $header | Set-Content $report
 if (Test-Path (Join-Path $shared "report.txt")) { Get-Content (Join-Path $shared "report.txt") | Add-Content $report }
+foreach ($extra in "start.log", "symbio.log") {
+  $file = Join-Path $shared $extra
+  if (Test-Path $file) { "", "${extra}:" | Add-Content $report; Get-Content $file | Select-Object -Last 60 | Add-Content $report }
+}
 if (Test-Path (Join-Path $shared "installer.log")) { "", "Installer output:" | Add-Content $report; Get-Content (Join-Path $shared "installer.log") | Add-Content $report }
 $fails = if (Test-Path $done) { [int](Get-Content $done) } else { "", "TIMEOUT: no result after $TimeoutMinutes minutes" | Add-Content $report; 1 }
 Get-Content $report | Select-String "^(PASS|FAIL|INFO|RESULT|TIMEOUT)" | ForEach-Object { Write-Host $_.Line }
@@ -95,7 +104,6 @@ if ($Keep) {
   Write-Host "The Sandbox stays open; closing its window throws it away."
 } else {
   if ($sandboxId) { & $wsbCli.Source stop --id $sandboxId | Out-Null }
-  elseif ($process -and -not $process.HasExited) { Stop-Process -Id $process.Id }
   Remove-Item -Recurse -Force $shared -ErrorAction SilentlyContinue
 }
 Write-Host "Report: $report"

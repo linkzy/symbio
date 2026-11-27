@@ -113,7 +113,7 @@ main() {
   step "Installing Symbio $version"
   stop_own
   PATH="$NODE_DIR/bin:$PATH" "$NODE_DIR/bin/npm" install -g "symbio@$version" --prefix "$APP_DIR" \
-    --no-fund --no-audit --loglevel=error --registry "$REGISTRY/" || fail "npm couldn't install Symbio $version (see above)."
+    --no-fund --no-audit --no-update-notifier --loglevel=error --registry "$REGISTRY/" || fail "npm couldn't install Symbio $version (see above)."
 
   # `sym` runs Symbio with the private Node.js, which stays off the PATH. (npm's own links in
   # app/bin expect a `node` on the PATH; these don't.)

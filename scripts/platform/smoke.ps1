@@ -9,7 +9,7 @@
 #
 #   $env:SMOKE_INSTALLER   the installer: a file (default: install.ps1 next to this script) or an
 #                          https:// address (fetched with irm, as users do)
-#   $env:SMOKE_RUNTIMES    runtimes to install through Symbio (default "opencode copilot"; "" for none)
+#   $env:SMOKE_RUNTIMES    runtimes to install through Symbio (default "opencode copilot"; "none")
 #   $env:SMOKE_DIR         the folder with this script and the installer; the report, the installer's
 #                          log and a "done" file go there too (default: C:\symbio-smoke)
 #   $env:SMOKE_KEEP        "1": leave Symbio installed at the end
@@ -30,7 +30,8 @@ if (-not $env:SYMBIO_KEYRING_SERVICE) { $env:SYMBIO_KEYRING_SERVICE = "symbio-sm
 $smokeHome = if ($env:SYMBIO_HOME) { $env:SYMBIO_HOME } else { Join-Path $env:USERPROFILE ".symbio" }
 $smokeBase = "http://127.0.0.1:$($env:SYMBIO_PORT)/api"
 $smokeInstaller = if ($env:SMOKE_INSTALLER) { $env:SMOKE_INSTALLER } else { Join-Path $smokeDir "install.ps1" }
-$smokeRuntimes = if ($null -ne $env:SMOKE_RUNTIMES) { $env:SMOKE_RUNTIMES } else { "opencode copilot" }
+# "none" for none (Windows drops a variable set to "").
+$smokeRuntimes = if ($env:SMOKE_RUNTIMES -eq "none") { "" } elseif ($env:SMOKE_RUNTIMES) { $env:SMOKE_RUNTIMES } else { "opencode copilot" }
 $smokeReport = Join-Path $smokeDir "report.txt"
 $smokeSym = Join-Path $smokeHome "app\launcher\sym.cmd"
 $script:smokeFails = 0
@@ -57,12 +58,16 @@ function Invoke-Api([string]$method, [string]$path, $body = $null) {
     @{ Status = $code; Body = $_.ErrorDetails.Message }
   }
 }
-function Start-Symbio { & $smokeSym *> $null; Start-Sleep 5; $script:smokeToken = (Get-Content -Raw (Join-Path $smokeHome "ui-token") -ErrorAction SilentlyContinue).Trim() }
+function Start-Symbio { & $smokeSym *>> (Join-Path $smokeDir "start.log"); Start-Sleep 5; $script:smokeToken = "$(Get-Content -Raw (Join-Path $smokeHome "ui-token") -ErrorAction SilentlyContinue)".Trim() }
 function Stop-Symbio {
   & $smokeSym stop *> $null
   Start-Sleep 2
   if ((Invoke-Api GET "/runtime").Status -eq 0) { Pass "sym stop" } else { Fail "sym stop" "still answering" }
 }
+
+# An unexpected error is a FAIL with where it happened, and the test goes on (rather than ending
+# with no result).
+trap { Fail "smoke script" "$($_.Exception.Message) $($_.InvocationInfo.PositionMessage -replace '\s+', ' ')"; continue }
 
 $os = Get-CimInstance Win32_OperatingSystem
 Info "system: $($os.Caption) $($os.Version) ($env:PROCESSOR_ARCHITECTURE); PowerShell $($PSVersionTable.PSVersion)"
@@ -102,7 +107,7 @@ if ($script:smokeFails -eq 0 -or (Test-Path $smokeSym)) {
   Start-Symbio
   $script:smokeToken = ""
   $locked = Invoke-Api GET "/runtime"
-  $script:smokeToken = (Get-Content -Raw (Join-Path $smokeHome "ui-token") -ErrorAction SilentlyContinue).Trim()
+  $script:smokeToken = "$(Get-Content -Raw (Join-Path $smokeHome "ui-token") -ErrorAction SilentlyContinue)".Trim()
   if ($locked.Status -eq 401) { Pass "Symbio answers, locked without the key" } else { Fail "Symbio answers" "HTTP $($locked.Status)" }
   $r = Invoke-Api GET "/runtime"
   if ($r.Status -eq 200) { Pass "API with the key" } else { Fail "API with the key" "HTTP $($r.Status) $($r.Body)" }
@@ -155,6 +160,8 @@ if ($env:SMOKE_KEEP -ne "1") {
     if (($userPath -split ";") -contains (Split-Path $smokeSym)) { Fail "uninstall cleans the PATH" } else { Pass "uninstall cleans the PATH" }
   }
 }
+# Symbio's log, next to the report (the machine may be gone after this).
+Copy-Item (Join-Path $smokeHome "logs\symbio.log") (Join-Path $smokeDir "symbio.log") -ErrorAction SilentlyContinue
 # The vault key the test made (its own entry, see above).
 if ($env:SMOKE_KEEP -ne "1") { cmdkey.exe "/delete:vault-master-key.$($env:SYMBIO_KEYRING_SERVICE)" *> $null }
 Out-Smoke "RESULT $($script:smokeFails) failed"

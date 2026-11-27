@@ -39,7 +39,8 @@ desativar recursos do Windows*), turn on:
 | Virtual Machine Platform | Plataforma de Máquina Virtual | headless Linux (WSL 2) |
 | Windows Sandbox | Área Restrita do Windows | clean Windows |
 
-then restart. WSL also needs `wsl --update` once. No admin rights are needed after that: the
+then restart. WSL also needs `wsl --update` once. If the Sandbox window stays black or says the
+connection was lost, its virtual GPU is the cause: `windows-sandbox.ps1` turns it off (`<vGPU>Disable</vGPU>`). No admin rights are needed after that: the
 scripts create throwaway Linux distributions and Sandboxes and remove them when they finish.
 
 Without these (Windows Home, a Mac, a Linux machine): run `scripts/platform/smoke.sh` in any fresh
@@ -67,7 +68,8 @@ to look around (`wsl -d <name> -u tester`; the Sandbox window). `-Prepare` runs 
 it to check that the installer's advice works (install what it said was missing).
 
 Each prints one line per check and writes a report to `scripts/platform/results/` (ignored by git).
-A Linux run takes about 2 minutes with the runtimes; a Sandbox run longer (it installs git too).
+A Linux run takes about 2 minutes with the runtimes; a Sandbox run about 10 (it starts a Windows and
+installs git and the Visual C++ runtime too). Without `-Keep` the Sandbox shuts itself down at the end.
 
 The installed copies never ask the update endpoint (`SYMBIO_UPDATE_URL=off`: they'd be counted as
 users) and use port 4399, so they can't meet a Symbio running on the same computer.
@@ -107,4 +109,5 @@ becomes an issue and, if users can meet it, a line in [known-issues.md](known-is
 |---|---|---|
 | 2026-11-27 | Ubuntu 24.04, WSL 2, headless | Node.js 26 from nodejs.org needs `libatomic1`, which a minimal Ubuntu lacks: the installer now says so and how to install it. With it, everything passes but the vault after a restart: with no Secret Service, the key lands in the kernel's session keyring and is lost with the login (#9). |
 | 2026-11-27 | CI: Windows (PowerShell 5.1, 7), Ubuntu, macOS | First CI run found that a new zsh (macOS) and a bash with `~/.bash_profile` didn't find `sym`: fixed. All pass after; Ubuntu's vault after a restart passes there only because the runner keeps one session keyring for the whole job. |
-| 2026-11-27 | Windows 11 26300 (dry run on a used machine) | All pass, PowerShell 5.1. The Sandbox run is still to come. |
+| 2026-11-27 | Windows 11 26300 (dry run on a used machine) | All pass, PowerShell 5.1. |
+| 2026-11-27 | Windows Sandbox (Windows 11 Enterprise 26100, PowerShell 5.1, Restricted policy, no winget) | Found: Symbio stopped at start on a Windows without the Visual C++ runtime (the keyring module needs `VCRUNTIME140.dll`), and an npm notice could end the install. Both fixed; all pass after (git and the runtime installed by the installer, Defender flagged nothing). |

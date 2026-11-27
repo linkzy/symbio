@@ -71,6 +71,15 @@
   # errors that stop the script when it's redirected.
   function Invoke-Quiet($exe, $arguments) { cmd.exe /c "`"$exe`" $arguments >nul 2>&1" }
 
+  # npm, judged by its exit code only: what it writes to stderr (a notice that a newer npm exists)
+  # would otherwise stop the script in Windows PowerShell whenever the output is captured.
+  function Invoke-Npm($npm, $arguments) {
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try { & $npm @arguments --no-fund --no-audit --no-update-notifier --loglevel=error 2>&1 | ForEach-Object { "$_" } | Out-Host }
+    finally { $ErrorActionPreference = $previous }
+  }
+
   # Stops the Symbio this installer put here, if it runs (Windows keeps running files locked).
   function Stop-OwnSymbio {
     $sym = Join-Path $BinDir "sym.cmd"
@@ -127,7 +136,7 @@
       Step "Updating the Symbio installed with npm"
       Say "Found $($existing.Source)"
       Invoke-Quiet $existing.Source "stop"
-      & npm.cmd install -g "symbio@$version" --no-fund --no-audit --loglevel=error
+      Invoke-Npm "npm.cmd" @("install", "-g", "symbio@$version")
       if ($LASTEXITCODE -ne 0) { throw "npm couldn't install Symbio $version (see above)." }
       $sym = $existing.Source
     } else {
@@ -173,7 +182,7 @@
       $savedPath = $env:Path
       try {
         $env:Path = "$NodeDir;$env:Path" # npm and the packages' install steps use this Node.js
-        & (Join-Path $NodeDir "npm.cmd") install -g "symbio@$version" --prefix $AppDir --no-fund --no-audit --loglevel=error --registry "$Registry/"
+        Invoke-Npm (Join-Path $NodeDir "npm.cmd") @("install", "-g", "symbio@$version", "--prefix", $AppDir, "--registry", "$Registry/")
         if ($LASTEXITCODE -ne 0) { throw "npm couldn't install Symbio $version (see above)." }
       } finally {
         $env:Path = $savedPath
@@ -208,6 +217,26 @@
       }
     }
     Good "Symbio $version is installed"
+
+    # ---- the Microsoft Visual C++ runtime: the module Symbio reaches Credential Manager with (to keep
+    # stored passwords and tokens) needs it, and a new Windows may not have it.
+    if (-not (Test-Path (Join-Path $env:SystemRoot "System32\vcruntime140.dll"))) {
+      Step "Microsoft Visual C++ runtime"
+      Say "Installing it, so Symbio can keep passwords and tokens in Windows' Credential Manager (Windows may ask for permission)"
+      $vcArch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "x64" }
+      $vcExe = Join-Path ([IO.Path]::GetTempPath()) "vc_redist.$vcArch.exe"
+      try {
+        # Microsoft's own download, signed; /quiet installs it with no questions besides Windows' permission.
+        Invoke-WebRequest "https://aka.ms/vs/17/release/vc_redist.$vcArch.exe" -OutFile $vcExe -UseBasicParsing
+        $p = Start-Process $vcExe -ArgumentList "/install", "/quiet", "/norestart" -Wait -PassThru
+        if ($p.ExitCode -in 0, 1638, 3010) { Good "The Visual C++ runtime is installed" }
+        else { Warn "The Visual C++ runtime didn't install (code $($p.ExitCode)). Symbio runs without it, but can't store passwords and tokens: get it from https://aka.ms/vs/17/release/vc_redist.$vcArch.exe" }
+      } catch {
+        Warn "The Visual C++ runtime couldn't be installed ($($_.Exception.Message)). Symbio runs without it, but can't store passwords and tokens: get it from https://aka.ms/vs/17/release/vc_redist.$vcArch.exe"
+      } finally {
+        Remove-Item $vcExe -Force -ErrorAction SilentlyContinue
+      }
+    }
 
     # ---- git: lets helpers work in parallel, each in its own copy
     Step "git"

@@ -112,3 +112,13 @@ test("git credentials only go to a remote of the connection's own host and organ
   assert.throws(() => gitAuth(github, "https://dev.azure.com/contoso/Proj/_git/repo", "T"), /GitHub HTTPS URL/);
   assert.equal(gitAuth(github, "https://github.com/me/repo.git", "T").headerKey, "http.https://github.com/.extraheader");
 });
+
+test("the credential store's module failing to load says what to do", async () => {
+  const { keyringLoadError } = await import("../src/server/secrets.js");
+  // As Node reports it on a Windows without the Visual C++ runtime: the DLL error is deep in the causes.
+  const missingDll = new Error("Cannot find native binding.", {
+    cause: new Error("Cannot find module '@napi-rs/keyring-wasm32-wasi'", { cause: new Error("The specified module could not be found.") }),
+  });
+  assert.match(keyringLoadError(missingDll, "win32"), /Visual C\+\+ Redistributable/);
+  assert.match(keyringLoadError(missingDll, "linux"), /credential store.*Cannot find native binding/);
+});

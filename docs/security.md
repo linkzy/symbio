@@ -193,7 +193,10 @@ it, then install Symbio from npm like `npm install -g` does. Everything goes in 
 `app`) without admin rights; agents can't change those folders (`guard.ts`), since Symbio runs from
 them. Only `~/.symbio/app/launcher` is added to the user's PATH, not the private Node.js. On
 Windows, git is installed with winget, or Git for Windows' installer from its GitHub releases,
-unless `SYMBIO_NO_GIT=1`; Windows asks for permission. Piping a script into a shell trusts its
+unless `SYMBIO_NO_GIT=1`; Windows asks for permission. When Windows lacks the Microsoft Visual C++
+runtime (a new Windows may), the installer installs it from Microsoft (`aka.ms/vs/17/release`,
+signed): the module Symbio reaches Credential Manager with needs it. Without it Symbio still runs,
+but can't store passwords and tokens, and says how to fix it. Piping a script into a shell trusts its
 source: read it first at the address, or in this repository, if you prefer.
 
 ## Update checks

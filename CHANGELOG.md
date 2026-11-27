@@ -5,6 +5,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Symbio starts on a new Windows.** The module Symbio reaches Windows' Credential Manager with needs the Microsoft
+  Visual C++ runtime, which a new Windows may not have; Symbio then stopped at once on start. It now starts anyway and,
+  when a password or token is saved, says to install the runtime; the Windows installer installs it when it's missing
+  (Windows asks for permission). Found by the new clean-Windows test.
+- **The Windows installer doesn't stop on an npm notice.** A note from npm that a newer npm exists could end the install
+  when its output was captured; npm's exit code is what counts now.
+
 - **The Linux and macOS installer says what Node.js is missing.** On a minimal Linux (a fresh WSL Ubuntu, a slim
   server) Node.js needs `libatomic1`, which isn't there: the installer now checks that Node.js runs before going on, and
   says what to install (`sudo apt install libatomic1`) instead of failing inside npm.
