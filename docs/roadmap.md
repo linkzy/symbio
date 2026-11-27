@@ -43,8 +43,7 @@ The issues are also grouped into [milestones](https://github.com/linkzy/symbio/m
 In this order: first what lets a team run unattended (done: being told when it needs
 you, spending limits and scheduled work), then the pieces that open up small issues for anyone (done: settings in
 groups and the whole interface translatable, with a language per issue), then reaching more people (done: installing with one line, a clear first run, notifications worth reading; next:
-Linux and macOS), then features. A video and a push to the OpenCode and Copilot communities wait until
-it's time to promote it.
+Linux and macOS), then features.
 
 1. **Linux and macOS.** ([#9](https://github.com/linkzy/symbio/issues/9)) The installers pass on a fresh headless Ubuntu
    and on CI's Ubuntu and macOS ([platform-testing.md](platform-testing.md)). The vault keeps its key in a file
@@ -97,10 +96,6 @@ German (#70), three languages at a time (more once these are in). All [good firs
 
 Collected, not sorted or promised yet.
 
-- **A video, when it's time to promote Symbio** ([#10](https://github.com/linkzy/symbio/issues/10)). Two minutes of core
-  running a team on a non-coding project, for the website and the README, made when we reach out to the OpenCode and
-  GitHub Copilot CLI communities. Done already: the website, the README's animation of a real session, a social preview.
-  A sample project inside Symbio was considered and dropped: it costs tokens and teaches little a real goal doesn't.
 - **Images as before and after** in a task's changes, side by side, instead of a text diff.
 - **Claude Code and Codex (other agent CLIs).** Run teams on the agent tools people already use and
   pay for, not only OpenCode, and switch between them (e.g. from the OpenCode menu at the top).
@@ -123,8 +118,6 @@ Collected, not sorted or promised yet.
   GitHub issue, or goes to a small form service for people without a GitHub account. No telemetry:
   the only sign that someone uses Symbio is what they choose to send (copies in use are already
   counted by the anonymous install id, since 0.35.0).
-- **A first-run experience.** A sample project and templates, so a new user sees the team at work in
-  five minutes instead of starting from an empty folder.
 - **Stronger isolation.** Optionally run agents in a container or sandbox (today they run with the
   user's own permissions, with pattern-based rules), for people who can't judge what an agent may
   do on their machine.
