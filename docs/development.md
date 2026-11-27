@@ -166,7 +166,8 @@ browser's. To add a language:
   `SYMBIO_NO_SHORTCUT=1`, `SYMBIO_NO_GIT=1` (the installer otherwise edits your PATH and shortcuts).
   Also `SYMBIO_UPDATE_URL=off` before starting what it installed: an installed copy asks the update
   endpoint, which would count it as a user.
-  The website serves them from `main`, so a change reaches people when it's pushed there.
+  The website hosts copies of them (symbio.linkzy.dev/install.ps1 and /install): when they change,
+  the new files go to the website's team, which replaces its copies byte for byte.
 - Files matching `scripts/_*` are git-ignored, which is handy for throwaway scripts.
 
 ## Releasing

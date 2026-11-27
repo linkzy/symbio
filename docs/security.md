@@ -187,7 +187,7 @@ project the connections it needs.
 
 ## The installer
 
-The one-line installers (`scripts/install/`, served by the website from this repository) download
+The one-line installers (`scripts/install/`, hosted unchanged by the website) download
 Node.js from nodejs.org and check it against nodejs.org's published SHA-256 checksums before using
 it, then install Symbio from npm like `npm install -g` does. Everything goes in `~/.symbio` (`node`,
 `app`) without admin rights; agents can't change those folders (`guard.ts`), since Symbio runs from
