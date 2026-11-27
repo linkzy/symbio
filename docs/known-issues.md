@@ -16,8 +16,10 @@ Problems people ran into, to fix.
 
 ## Known limitations
 
-- Tested on Windows 11 only: macOS and Linux should work but haven't been tried
-  ([#9](https://github.com/linkzy/symbio/issues/9)).
+- Tested on Windows 11 and a headless Ubuntu; macOS only on CI. On a Linux with no Secret Service (a server, WSL),
+  the vault's key lasts only for the login: secrets saved in Settings are lost when Symbio starts from a new login,
+  and the Notifications settings fail to load ([#9](https://github.com/linkzy/symbio/issues/9)).
+- On a minimal Linux, the installer may ask for `libatomic1` (Node.js needs it): `sudo apt install libatomic1`.
 - One person per Symbio: no accounts or sharing; each person runs their own.
 - Two agent runtimes: OpenCode and GitHub Copilot CLI (preview); the roadmap's [Ideas](roadmap.md#ideas) has Claude Code and Codex.
 - Agent safety rules are pattern-based, not a sandbox (see [security.md](security.md)): agents run as

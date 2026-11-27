@@ -1,18 +1,19 @@
-# The one-line installers (scripts/install/), on clean runners: install the published Symbio with
-# a private Node.js, run `sym`, start it where the platform allows, and uninstall.
+# The one-line installers (scripts/install/) on clean runners, through the platform smoke tests
+# (scripts/platform/smoke.*; docs/platform-testing.md): install the published Symbio with a private
+# Node.js, start it, save a secret, install the runtimes, start it again, update in place, uninstall.
 name: Installers
 
 on:
   push:
-    paths: ["scripts/install/**", ".github/workflows/install.yml"]
+    paths: ["scripts/install/**", "scripts/platform/smoke.*", ".github/workflows/install.yml"]
   pull_request:
-    paths: ["scripts/install/**", ".github/workflows/install.yml"]
+    paths: ["scripts/install/**", "scripts/platform/smoke.*", ".github/workflows/install.yml"]
   workflow_dispatch:
 
 jobs:
   windows:
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -21,42 +22,16 @@ jobs:
       run:
         shell: ${{ matrix.shell }}
     env:
-      SYMBIO_HOME: ${{ github.workspace }}\.symbio-test # (the runner context isn't available here)
-      SYMBIO_PORT: "4399"
-      SYMBIO_NO_OPEN: "1"
-      SYMBIO_UPDATE_URL: "off" # an installed copy would ask (and be counted by) the update endpoint
+      SMOKE_DIR: ${{ github.workspace }}\smoke # (the runner context isn't available here)
+      SMOKE_INSTALLER: ${{ github.workspace }}\scripts\install\install.ps1
     steps:
       - uses: actions/checkout@v4
-      - name: Install (as `irm … | iex` runs it)
+      - name: Smoke test (as `irm … | iex` runs the installer)
         run: |
-          $env:SYMBIO_NO_START = "1"
-          Get-Content -Raw scripts/install/install.ps1 | iex
-          if (-not $global:SymbioInstallOk) { throw "the installer failed" }
-      - name: sym works with the private Node.js only
-        run: |
-          $sym = "$env:SYMBIO_HOME\app\launcher\sym.cmd"
-          & $sym --version
-          if ($LASTEXITCODE -ne 0) { throw "sym --version failed" }
-          & $sym
-          try {
-            Start-Sleep 3
-            $code = try { (Invoke-WebRequest "http://127.0.0.1:4399/api/runtime" -UseBasicParsing).StatusCode } catch { $_.Exception.Response.StatusCode.value__ }
-            if ($code -ne 401 -and $code -ne 200) { throw "Symbio didn't answer ($code)" }
-          } finally {
-            & $sym stop
-          }
-      - name: Running it again updates in place
-        run: |
-          $env:SYMBIO_NO_START = "1"
-          Get-Content -Raw scripts/install/install.ps1 | iex
-          if (-not $global:SymbioInstallOk) { throw "the second run failed" }
-      - name: Uninstall
-        run: |
-          $env:SYMBIO_UNINSTALL = "1"
-          Get-Content -Raw scripts/install/install.ps1 | iex
-          if (-not $global:SymbioInstallOk) { throw "uninstall failed" }
-          if (Test-Path "$env:SYMBIO_HOME\app") { throw "app is still there" }
-          if (Test-Path "$env:SYMBIO_HOME\node") { throw "node is still there" }
+          New-Item -ItemType Directory $env:SMOKE_DIR | Out-Null
+          Get-Content -Raw scripts/platform/smoke.ps1 | iex
+          Get-Content "$env:SMOKE_DIR\installer.log"
+          if ((Get-Content "$env:SMOKE_DIR\done") -ne "0") { throw "the smoke test failed" }
 
   unix:
     strategy:
@@ -64,34 +39,17 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
-    env:
-      SYMBIO_HOME: ${{ github.workspace }}/.symbio-test
-      SYMBIO_PORT: "4399"
-      SYMBIO_NO_OPEN: "1"
-      SYMBIO_UPDATE_URL: "off" # an installed copy would ask (and be counted by) the update endpoint
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Install (as `curl … | sh` runs it)
-        run: SYMBIO_NO_START=1 sh < scripts/install/install.sh
-      - name: sym works with the private Node.js only
+      - name: Smoke test (as `curl … | sh` runs the installer)
+        run: SMOKE_KEEP=1 sh scripts/platform/smoke.sh
+      - name: Started again, in a new shell
+        # Linux keeps the vault key only for the login session when there's no Secret Service (#9).
+        continue-on-error: ${{ runner.os == 'Linux' }}
+        run: sh scripts/platform/smoke.sh again
+      - name: Uninstall (if the step above stopped first)
+        if: always()
         run: |
-          "$SYMBIO_HOME/app/launcher/sym" --version
-          grep -q "Symbio (added by its installer)" ~/.profile
-      - name: Start (Linux and macOS support is still being tested, #9)
-        continue-on-error: true
-        run: |
-          trap '"$SYMBIO_HOME/app/launcher/sym" stop || true; tail -n 30 "$SYMBIO_HOME/logs/symbio.log" || true' EXIT
-          "$SYMBIO_HOME/app/launcher/sym"
-          sleep 3
-          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:4399/api/runtime)
-          echo "Symbio answered $code"
-          [ "$code" = 401 ] || [ "$code" = 200 ]
-      - name: Running it again updates in place
-        run: SYMBIO_NO_START=1 sh < scripts/install/install.sh
-      - name: Uninstall
-        run: |
-          SYMBIO_UNINSTALL=1 sh < scripts/install/install.sh
-          test ! -e "$SYMBIO_HOME/app"
-          test ! -e "$SYMBIO_HOME/node"
-          ! grep -q "Symbio (added by its installer)" ~/.profile
+          [ -e ~/.symbio/app ] && SYMBIO_UNINSTALL=1 sh < scripts/install/install.sh || true
+          test ! -e ~/.symbio/app

@@ -86,7 +86,14 @@
       $paths = @(Get-UserPath)
       $kept = @($paths | Where-Object { $_.TrimEnd("\") -ne $BinDir })
       if ($kept.Count -ne $paths.Count) { Set-UserPath $kept; Say "Removed $BinDir from your PATH" }
-      foreach ($lnk in Get-ShortcutPaths) { if (Test-Path $lnk) { Remove-Item -Force $lnk } }
+      # Only shortcuts to this copy: with SYMBIO_HOME set, another Symbio's stay.
+      $shell = New-Object -ComObject WScript.Shell
+      foreach ($lnk in Get-ShortcutPaths) {
+        if (-not (Test-Path $lnk)) { continue }
+        $target = $shell.CreateShortcut($lnk).TargetPath
+        $ours = $target.StartsWith($BinDir, [StringComparison]::OrdinalIgnoreCase) -or (-not $env:SYMBIO_HOME -and $target -like "*\sym.cmd")
+        if ($ours) { Remove-Item -Force $lnk }
+      }
       Good "Symbio is removed. Your projects weren't touched."
       Say "Symbio's own data (settings, history, backups) is still in $SymbioHome; delete that folder to remove it too."
       $global:SymbioInstallOk = $true
@@ -112,7 +119,9 @@
     Say "Symbio $version (needs Node.js $minNode or newer)"
 
     # A copy installed earlier with npm (npm install -g symbio) is updated where it is, not doubled.
-    $existing = Get-Command sym.cmd -ErrorAction SilentlyContinue | Where-Object { -not $_.Source.StartsWith($AppDir, [StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
+    # Not when SYMBIO_HOME is set: that's a separate copy (a test, a second Symbio), which must
+    # leave the usual one alone.
+    $existing = if ($env:SYMBIO_HOME) { $null } else { Get-Command sym.cmd -ErrorAction SilentlyContinue | Where-Object { -not $_.Source.StartsWith($AppDir, [StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1 }
     $systemNode = Get-Command node.exe -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($existing -and $systemNode -and ((Get-NodeMajor $systemNode.Source) -ge $minNode)) {
       Step "Updating the Symbio installed with npm"

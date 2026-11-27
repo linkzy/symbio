@@ -91,6 +91,17 @@ main() {
     [ "$actual" = "$expected" ] || fail "The Node.js download doesn't match its published checksum; nothing was installed. Try again."
     say "Checked against nodejs.org's SHA-256 checksums"
     tar -xzf "$tmp/$name.tar.gz" -C "$tmp"
+    # nodejs.org's Linux builds need a few system libraries that minimal systems (a fresh WSL
+    # Ubuntu, slim containers) leave out: say which, rather than failing later inside npm.
+    if ! err="$("$tmp/$name/bin/node" --version 2>&1)"; then
+      lib="$(printf '%s' "$err" | sed -n 's/.*shared libraries: \([^:]*\):.*/\1/p')"
+      case "$lib" in
+        libatomic.so.1) hint="sudo apt install libatomic1 (Fedora, RHEL: sudo dnf install libatomic)" ;;
+        "") hint="" ;;
+        *) hint="the package that provides $lib" ;;
+      esac
+      fail "Node.js $v doesn't run on this system ($err).${hint:+ Install what it needs, then run the line again: $hint}"
+    fi
     stop_own
     mkdir -p "$SYMBIO_HOME_DIR"
     rm -rf "$NODE_DIR"

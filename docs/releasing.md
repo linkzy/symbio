@@ -40,7 +40,9 @@ the same GitHub account. To keep the two from colliding:
    npm i -g --prefix /tmp/symbio-pkg/prefix /tmp/symbio-pkg/symbio-<version>.tgz
    SYMBIO_HOME=/tmp/symbio-pkg/home SYMBIO_PORT=4330 /tmp/symbio-pkg/prefix/sym doctor
    ```
-4. Commit, tag the commit with the version (`git tag v<version>`) and push the tag. The **Release**
+4. If the release changes what depends on the machine (installers, runtime installs, the vault,
+   paths, starting and stopping), run the platform pass first ([platform-testing.md](platform-testing.md)).
+5. Commit, tag the commit with the version (`git tag v<version>`) and push the tag. The **Release**
    workflow (`.github/workflows/release.yml`) checks that the tag matches `package.json`, runs every
    check (type-check, unit, contract and end-to-end tests, build), and publishes to npm through trusted publishing: no npm token is
    stored anywhere, and the package gets provenance. It then creates the GitHub release, with the

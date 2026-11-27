@@ -5,6 +5,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **The Linux and macOS installer says what Node.js is missing.** On a minimal Linux (a fresh WSL Ubuntu, a slim
+  server) Node.js needs `libatomic1`, which isn't there: the installer now checks that Node.js runs before going on, and
+  says what to install (`sudo apt install libatomic1`) instead of failing inside npm.
+- **The Windows installer leaves another Symbio alone.** With `SYMBIO_HOME` set (a second copy), it no longer updates and
+  stops the Symbio installed with npm, and uninstalling removes only its own shortcuts.
+
 ## [0.37.0]
 
 - **Notifications you choose, and can read** (#73). Settings → Notifications lists the kinds, each on or off. On by

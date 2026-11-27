@@ -15,6 +15,7 @@ For people and AI agents working **on** Symbio. To *use* Symbio, start with the 
 | [security.md](security.md) | You're touching anything around agent permissions, credentials or the local API |
 | [roadmap.md](roadmap.md) | You want to know what's being worked on, what's next in priority order, collected ideas and what's done |
 | [known-issues.md](known-issues.md) | You want the known problems and limitations |
+| [platform-testing.md](platform-testing.md) | You're changing what depends on the machine (installers, runtime installs, the vault, paths) and need to try it on a clean Linux or Windows |
 | [releasing.md](releasing.md) | You're a maintainer cutting a release |
 
 Keep these documents true: when a change makes one of them wrong, update it in the same pull
