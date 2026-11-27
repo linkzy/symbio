@@ -16,8 +16,7 @@ Problems people ran into, to fix.
 
 ## Known limitations
 
-- Tested on clean Windows 11 and headless Ubuntu machines; macOS only on CI so far
-  ([#9](https://github.com/linkzy/symbio/issues/9)).
+- Tested on clean Windows 11 and headless Ubuntu machines; macOS only on CI's Macs so far, not a new user's Mac.
 - On a Windows without the Microsoft Visual C++ runtime, passwords and tokens can't be stored until it's installed
   (the Windows installer does it; otherwise https://aka.ms/vs/17/release/vc_redist.x64.exe).
 - On a minimal Linux, the installer may ask for `libatomic1` (Node.js needs it): `sudo apt install libatomic1`.

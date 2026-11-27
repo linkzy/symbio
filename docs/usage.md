@@ -12,7 +12,7 @@ irm https://symbio.linkzy.dev/install.ps1 | iex     # Windows (PowerShell)
 ```
 
 ```sh
-curl -fsSL https://symbio.linkzy.dev/install | sh   # macOS and Linux (still being tested, #9)
+curl -fsSL https://symbio.linkzy.dev/install | sh   # macOS and Linux
 ```
 
 It puts a private copy of Node.js in `~/.symbio/node` (the official one from nodejs.org, checked
