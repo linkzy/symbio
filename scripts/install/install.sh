@@ -31,7 +31,7 @@ main() {
     step "Removing Symbio"
     stop_own
     rm -rf "$APP_DIR" "$NODE_DIR"
-    for rc in "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.zshrc" "$HOME/.profile"; do
+    for rc in "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.zshrc" "$HOME/.zprofile" "$HOME/.profile"; do
       if [ -f "$rc" ] && grep -qF "$MARK" "$rc"; then
         # grep finds no other line when ours was the file's only one: that's not an error here.
         { grep -vF "$MARK" "$rc" || true; } > "$rc.symbio-tmp"
@@ -127,12 +127,20 @@ main() {
     chmod +x "$BIN_DIR/$cmd"
   done
   if [ "${SYMBIO_NO_PATH:-}" != "1" ]; then
-    line="export PATH=\"\$PATH:$BIN_DIR\" $MARK"
+    # Once on the PATH even when one profile reads another (~/.bash_profile sourcing ~/.bashrc).
+    line="case \":\$PATH:\" in *\":$BIN_DIR:\"*) ;; *) export PATH=\"\$PATH:$BIN_DIR\" ;; esac $MARK"
+    # zsh (the Mac's shell) doesn't read ~/.profile, and a new Mac has no zsh files yet.
+    zsh_too=""
+    if [ "$(uname -s)" = Darwin ]; then zsh_too=yes; else case "${SHELL:-}" in */zsh) zsh_too=yes ;; esac; fi
     added=""
-    for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile" $( [ "$(uname -s)" = Darwin ] && echo "$HOME/.bash_profile" ); do
-      # The shells people use: their own rc files when they exist, ~/.profile always.
-      if [ -f "$rc" ] || [ "$rc" = "$HOME/.profile" ]; then
-        if ! grep -qF "$MARK" "$rc" 2>/dev/null; then echo "$line" >> "$rc"; added="yes"; fi
+    for rc in "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.zshrc" "$HOME/.zprofile" "$HOME/.profile"; do
+      # The shells' own files when they exist (bash reads ~/.bash_profile instead of ~/.profile
+      # when there is one); ~/.profile always, and ~/.zprofile for zsh users.
+      if [ -f "$rc" ] || [ "$rc" = "$HOME/.profile" ] || { [ "$rc" = "$HOME/.zprofile" ] && [ -n "$zsh_too" ]; }; then
+        if ! grep -qF "$MARK" "$rc" 2>/dev/null; then
+          # A profile that can't be written (owned by root) isn't worth failing the install for.
+          if { echo "$line" >> "$rc"; } 2>/dev/null; then added="yes"; else warn "Couldn't add $BIN_DIR to the PATH in $rc (not writable)"; fi
+        fi
       fi
     done
     [ -n "$added" ] && say "Added $BIN_DIR to your PATH: 'sym' works in new terminals"

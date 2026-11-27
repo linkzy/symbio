@@ -87,6 +87,7 @@ stop() {
 if [ "$1" = again ]; then
   # The vault key must outlive the login it was made in: a key kept only for the session (Linux's
   # kernel session keyring, with no Secret Service) leaves every saved secret unreadable.
+  [ -x "$SYM" ] || { info "Symbio isn't installed (the first part stopped): nothing to check again"; finish; }
   start
   api GET /notifications
   if [ "$STATUS" = 200 ] && [ "$(echo "$BODY" | json 'v.secrets["webhook.url"]')" = true ]; then
@@ -112,9 +113,13 @@ node_version=$("$NODE" --version 2>&1) && pass "private Node.js ($node_version)"
 [ "$FAILS" -gt 0 ] && { info "stopped: Symbio isn't installed"; finish; }
 
 # 2. A new terminal finds `sym` (the PATH line the installer added to the profile).
-for shell in sh bash zsh; do
+# zsh only where it's the user's shell (the Mac's): it doesn't read ~/.profile.
+shells="sh bash"
+if [ "$(uname -s)" = Darwin ]; then shells="$shells zsh"; else case "${SHELL:-}" in */zsh) shells="$shells zsh" ;; esac; fi
+for shell in $shells; do
   command -v "$shell" > /dev/null 2>&1 || continue
-  found=$("$shell" -lc 'command -v sym' 2> /dev/null)
+  # The last line: a profile may print something first.
+  found=$("$shell" -lc 'command -v sym' 2> /dev/null | tail -n 1)
   [ "$found" = "$SYM" ] && pass "sym on the PATH of a new $shell" || fail "sym on the PATH of a new $shell" "found: ${found:-nothing}"
 done
 version=$("$SYM" --version 2>&1) && pass "sym --version ($version)" || fail "sym --version" "$version"

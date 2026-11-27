@@ -8,6 +8,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **The Linux and macOS installer says what Node.js is missing.** On a minimal Linux (a fresh WSL Ubuntu, a slim
   server) Node.js needs `libatomic1`, which isn't there: the installer now checks that Node.js runs before going on, and
   says what to install (`sudo apt install libatomic1`) instead of failing inside npm.
+- **`sym` works in new terminals on a Mac, and with a `~/.bash_profile`.** zsh, the Mac's shell, doesn't read
+  `~/.profile`, and a new Mac has no zsh files yet: the installer now adds `sym` to `~/.zprofile` on macOS (and for zsh
+  users on Linux), and to an existing `~/.bash_profile`, which bash reads instead of `~/.profile`. A profile it can't
+  write is skipped with a warning instead of stopping the install.
 - **The Windows installer leaves another Symbio alone.** With `SYMBIO_HOME` set (a second copy), it no longer updates and
   stops the Symbio installed with npm, and uninstalling removes only its own shortcuts.
 
