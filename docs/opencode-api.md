@@ -99,6 +99,12 @@ Verified on 2.1.4 (the free models of a fresh install; contract test):
 
 ## Behaviors worth knowing
 
+- **The model list loads after the server answers (2.4).** OpenCode 2.4.2 answers `GET /api/info`
+  at once, but `GET /api/model` and `GET /api/provider` are empty for about 3 seconds after it
+  starts, then fill (the list can still grow by one model right after). 2.1.4 has them at once.
+  `client.listModels()` waits up to 15 s after a start for a non-empty list. Found by the nightly
+  contract run against the newest OpenCode (2026-11-27); with that wait the contract passes on 2.4.2.
+
 - **Code mode: Symbio's tools are called from a script.** Agents often call MCP tools through
   OpenCode's `execute` tool: `input.code` is a JavaScript snippet (`await tools.symbio.send_message({…})`,
   sometimes several calls in one step), and the stored part's `state.metadata.toolCalls` lists what it

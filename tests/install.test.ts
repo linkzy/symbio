@@ -11,6 +11,9 @@ const { loadRuntimeSettings, setFromComputer } = await import("../src/server/run
 
 const standIn = path.resolve(import.meta.dirname, "e2e", "fake-installer.mjs");
 const saved = { ...process.env };
+// Read from the live environment, which ignores case on Windows: the copy above keeps the name as
+// the system spells it ("Path" on GitHub's runners), so saved.PATH can be missing there.
+const savedPath = process.env.PATH;
 // A fake executable on a temporary PATH: finding it only needs a file, running it is tested in e2e.
 const pathDir = mkdtempSync(path.join(os.tmpdir(), "sym-path-bin-"));
 const pathName = process.platform === "win32" ? "opencode.exe" : "opencode";
@@ -18,15 +21,15 @@ const pathExe = path.join(pathDir, pathName);
 writeFileSync(pathExe, "");
 if (process.platform !== "win32") chmodSync(pathExe, 0o755);
 const usePath = () => {
-  process.env.PATH = `${pathDir}${path.delimiter}${saved.PATH ?? ""}`;
+  process.env.PATH = `${pathDir}${path.delimiter}${savedPath ?? ""}`;
 };
 afterEach(async () => {
   for (const k of ["SYMBIO_OPENCODE_BIN", "SYMBIO_COPILOT_SDK", "SYMBIO_NO_DEV_RUNTIMES", "SYMBIO_RUNTIME_INSTALLER", "SYMBIO_FAKE_INSTALL_FAILS"]) {
     if (saved[k] === undefined) delete process.env[k];
     else process.env[k] = saved[k];
   }
-  if (saved.PATH === undefined) delete process.env.PATH;
-  else process.env.PATH = saved.PATH;
+  if (savedPath === undefined) delete process.env.PATH;
+  else process.env.PATH = savedPath;
   await setFromComputer("opencode", false);
 });
 

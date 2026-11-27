@@ -5,6 +5,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **OpenCode 2.4 lists its models.** Newer OpenCode loads its model list a few seconds after it starts; Symbio asked
+  at once and got none (for people using OpenCode from their computer, or once Symbio moves to 2.4). It now waits for the
+  list, briefly, after a start.
+
 - **Saved passwords and tokens survive a restart on a Linux without a desktop** (#9). A server or WSL has no keyring
   service, only the kernel's keyring, which forgets everything when the login ends: secrets saved there were lost, and
   Settings → Notifications didn't load. There the key now goes in `~/.symbio/secrets.key`, readable only by you (a key

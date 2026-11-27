@@ -25,8 +25,13 @@ export class OpencodeError extends Error {
   }
 }
 
+/** How long after a start an empty model list means "still loading" rather than "no models". */
+const CATALOG_LOAD_MS = 15_000;
+
 export class OpencodeClient {
   private readonly auth: string;
+  /** Made when the server starts answering (runtime.ts), so this is about when it started. */
+  private readonly createdAt = Date.now();
 
   constructor(
     readonly baseUrl: string,
@@ -59,8 +64,18 @@ export class OpencodeClient {
   }
 
   async listModels(): Promise<any[]> {
-    const res = await this.request("GET", "/api/model");
-    return res?.data ?? res ?? [];
+    const read = async () => {
+      const res = await this.request("GET", "/api/model");
+      return (res?.data ?? res ?? []) as any[];
+    };
+    let models = await read();
+    // OpenCode 2.4 answers before its model catalog is loaded: for a few seconds after it starts the
+    // list is empty (about 3 s, verified with 2.4.2; 2.1.4 has it at once). Wait it out, briefly.
+    while (!models.length && Date.now() - this.createdAt < CATALOG_LOAD_MS) {
+      await new Promise((r) => setTimeout(r, 250));
+      models = await read();
+    }
+    return models;
   }
 
   async createSession(opts: {
