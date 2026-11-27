@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.37.0]
+
 - **Notifications you choose, and can read** (#73). Settings → Notifications lists the kinds, each on or off. On by
   default: what needs you (questions and briefings, approvals, a plan or work to review, an agent that can't continue,
   the budget pausing the team, a scheduled job to approve or that failed) and what got finished (a **feature done**, new:
