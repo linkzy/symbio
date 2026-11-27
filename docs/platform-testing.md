@@ -106,4 +106,5 @@ becomes an issue and, if users can meet it, a line in [known-issues.md](known-is
 | Date | Platform | Result |
 |---|---|---|
 | 2026-11-27 | Ubuntu 24.04, WSL 2, headless | Node.js 26 from nodejs.org needs `libatomic1`, which a minimal Ubuntu lacks: the installer now says so and how to install it. With it, everything passes but the vault after a restart: with no Secret Service, the key lands in the kernel's session keyring and is lost with the login (#9). |
+| 2026-11-27 | CI: Windows (PowerShell 5.1, 7), Ubuntu, macOS | First CI run found that a new zsh (macOS) and a bash with `~/.bash_profile` didn't find `sym`: fixed. All pass after; Ubuntu's vault after a restart passes there only because the runner keeps one session keyring for the whole job. |
 | 2026-11-27 | Windows 11 26300 (dry run on a used machine) | All pass, PowerShell 5.1. The Sandbox run is still to come. |
