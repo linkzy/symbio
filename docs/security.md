@@ -110,8 +110,13 @@ project the connections it needs.
 
 - **Connections** (GitHub and Azure DevOps tokens, SSH passwords and keys) are encrypted with AES-256-GCM in
   `~/.symbio/secrets.enc`. The master key lives in your OS credential store (Windows Credential
-  Manager, macOS Keychain, Secret Service). If that key can't be read, Symbio stops with an error
-  instead of replacing it.
+  Manager, macOS Keychain, Secret Service). On a Linux without a Secret Service (a server, WSL) the
+  only store is the kernel's keyring, which forgets the key when the login ends; there the key goes
+  in `~/.symbio/secrets.key` instead, readable and writable only by your user (`SYMBIO_VAULT=file`
+  asks for that anywhere). The file protects the secrets from other users, not from programs running
+  as you; agents are denied reading it like `secrets.enc` (`guard.ts`). Settings → About says which
+  store this copy uses. If the key can't be read, Symbio says so where secrets are shown (the pages
+  still load) instead of replacing it.
 - Secrets never leave the Symbio server process: the API doesn't return them, and agents never see
   them. Agents call `git_push`, `git_pull`, `github_api`, `azure_devops_api`, `remote_exec` and
   `remote_upload`, and Symbio performs the action.

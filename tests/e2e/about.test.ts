@@ -22,6 +22,8 @@ test("About: the last tab, with privacy and the usage statistics explained", asy
   await page.locator("#about h2", { hasText: "About Symbio" }).waitFor();
   await page.locator("#about", { hasText: "Free and open source (MIT)" }).waitFor();
   await page.locator("#privacy li", { hasText: "Your conversations with the agents go to the model provider you chose" }).waitFor();
+  // Where the key to saved passwords and tokens is (the OS store here; a file on a Linux without one).
+  await page.locator('[data-testid="vault-store"]', { hasText: "stay on this computer, encrypted, with the key in" }).waitFor();
   const stats = page.locator('[data-testid="telemetry"]');
   await stats.locator("h2", { hasText: "Usage statistics" }).waitFor();
   await stats.locator("li", { hasText: "carries Symbio's version and this copy's id" }).waitFor();

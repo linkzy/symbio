@@ -21,8 +21,10 @@ export function AboutSection() {
   const { t } = useI18n();
   const [state, setState] = useState<UpdateState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [vault, setVault] = useState<Awaited<ReturnType<typeof api.vault>> | null>(null);
   useEffect(() => {
     api.update().then(setState).catch((e) => setError(e.message));
+    api.vault().then(setVault).catch(() => {});
   }, []);
 
   async function setStatistics(on: boolean) {
@@ -75,6 +77,12 @@ export function AboutSection() {
             <li>{t("about.privacy.updates")}</li>
             <li>{t("about.privacy.notifications")}</li>
             <li>{t("about.privacy.remote")}</li>
+            {vault && (
+              <li data-testid="vault-store">
+                {t(`about.privacy.vault.${vault.store}`)}
+                {vault.error && <span className="subtle"> {vault.error}</span>}
+              </li>
+            )}
             <li>{t("about.privacy.nothingElse")}</li>
           </ul>
           <div className="small">{link(LINKS.privacy, t("about.privacy.policy"))}</div>

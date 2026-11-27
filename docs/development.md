@@ -277,5 +277,5 @@ and keeps running: Symbio runs it with Node instead of opening a real tunnel. Re
   program, including your editor's tooling). Stop the specific PID, for example the one listening
   on port 4310.
 - macOS and Linux are less tried. The folder picker uses `osascript` on macOS and `zenity` or
-  `kdialog` on Linux; the vault needs a Secret Service on Linux. To try a change on a clean headless
+  `kdialog` on Linux; without a Secret Service on Linux, the vault keeps its key in a file. To try a change on a clean headless
   Linux or a clean Windows, see [platform-testing.md](platform-testing.md).

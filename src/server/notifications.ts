@@ -72,6 +72,8 @@ export interface Notification {
 /** What the browser sees: the settings, which secrets are set (never their values), and how each channel last went. */
 export interface NotificationSettingsView extends NotificationSettings {
   secrets: Record<string, boolean>;
+  /** Why stored secrets can't be read (the settings still load). */
+  vaultError?: string;
   status: Partial<Record<Channel, { at: number; error: string | null }>>;
 }
 
@@ -158,8 +160,11 @@ export class Notifications {
 
   async view(): Promise<NotificationSettingsView> {
     const secrets: Record<string, boolean> = {};
-    for (const channel of CHANNELS) for (const field of SECRET_FIELDS[channel]) secrets[`${channel}.${field}`] = await this.vault.has(`notify:${channel}:${field}`);
-    return { ...structuredClone(this.settings), secrets, status: { ...this.status } };
+    const vaultError = await this.vault.problem();
+    for (const channel of CHANNELS) {
+      for (const field of SECRET_FIELDS[channel]) secrets[`${channel}.${field}`] = !vaultError && (await this.vault.has(`notify:${channel}:${field}`));
+    }
+    return { ...structuredClone(this.settings), secrets, ...(vaultError ? { vaultError } : {}), status: { ...this.status } };
   }
 
   /**

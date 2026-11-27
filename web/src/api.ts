@@ -61,6 +61,8 @@ interface ConnectionBase {
   name: string;
   lastTest: { ok: boolean; message: string; time: number } | null;
   secrets: Record<string, boolean>;
+  /** Why stored secrets can't be read. */
+  vaultError?: string;
 }
 
 export type ConnectionView =
@@ -557,6 +559,8 @@ export interface NotificationSettings {
   email: { on: boolean; host: string; port: number; secure: boolean; user: string; from: string; to: string };
   /** Which secrets are set ("telegram.token", "webhook.url"…): their values never come back. */
   secrets: Record<string, boolean>;
+  /** Why stored secrets can't be read (the settings still load). */
+  vaultError?: string;
   /** How each channel's latest send went. */
   status: Partial<Record<NotifyChannel, { at: number; error: string | null }>>;
 }
@@ -916,6 +920,7 @@ export const api = {
     > & { maxHelpers?: number | null; budget?: { total: number | null; daily: number | null; warnAt: number } | null; checks?: (Omit<Check, "id"> & { id?: string })[]; modelEfforts?: Record<string, string | null>; helperSkills?: string[] | null },
   ) =>
     call<Project>("PATCH", `/projects/${id}`, patch),
+  vault: () => call<{ store: "credential-manager" | "keychain" | "secret-service" | "file" | "unavailable"; error?: string }>("GET", "/vault"),
   connections: () => call<ConnectionView[]>("GET", "/connections"),
   createConnection: (body: Record<string, unknown>) => call<ConnectionView>("POST", "/connections", body),
   updateConnection: (id: string, body: Record<string, unknown>) => call<ConnectionView>("PATCH", `/connections/${id}`, body),

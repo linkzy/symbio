@@ -5,6 +5,7 @@
 #   pwsh scripts/platform/linux-wsl.ps1                         # Ubuntu 24.04, this checkout's installer
 #   pwsh scripts/platform/linux-wsl.ps1 -Distro Debian -Keep    # keep the distro to look around
 #   pwsh scripts/platform/linux-wsl.ps1 -Installer https://symbio.linkzy.dev/install
+#   npm pack --pack-destination $env:TEMP; pwsh scripts/platform/linux-wsl.ps1 -Package $env:TEMP\symbio-<version>.tgz
 #   pwsh scripts/platform/linux-wsl.ps1 -Prepare "apt-get update && apt-get install -y libatomic1"
 #
 # The report goes to scripts/platform/results/ (ignored by git).
@@ -13,6 +14,7 @@ param(
   [string]$Installer = "",             # an https:// address; default: this checkout's scripts/install/install.sh
   [string]$Version = "",               # SYMBIO_VERSION for the installer; default: the latest release
   [string]$Runtimes = "opencode copilot",
+  [string]$Package = "",               # a .tgz from `npm pack` to test instead of the published Symbio
   [string]$Prepare = "",               # run as root first, e.g. "apt-get update && apt-get install -y libatomic1"
   [switch]$Keep                        # leave the distro (and Symbio in it) for a look; remove it with wsl --unregister
 )
@@ -61,18 +63,21 @@ cp '$smoke' /opt/symbio-smoke/smoke.sh
 cp '$(ToWsl (Join-Path $repo "scripts\install\install.sh"))' /opt/symbio-smoke/install.sh
 chmod 755 /opt/symbio-smoke/smoke.sh; chmod 644 /opt/symbio-smoke/install.sh
 "@
+  if ($Package) { Wsl root "cp '$(ToWsl $Package)' /opt/symbio-smoke/symbio.tgz && chmod 644 /opt/symbio-smoke/symbio.tgz" }
   if ($Prepare) {
     Write-Host "Preparing: $Prepare"
     Wsl root $Prepare
   }
   $envs = "SMOKE_INSTALLER='$installerPath' SMOKE_RUNTIMES='$Runtimes'"
   if ($Version) { $envs += " SYMBIO_VERSION='$Version'" }
+  if ($Package) { $envs += " SMOKE_PACKAGE=/opt/symbio-smoke/symbio.tgz" }
 
   Write-Host "Running the smoke test as a plain user..."
   $header = @(
     "Symbio platform smoke test: headless Linux in WSL 2"
     "Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm zzz')"
     "Distro: $Distro ($name)"
+    "Package: $(if ($Package) { $Package } else { 'the published one' })"
     "Prepared with: $(if ($Prepare) { $Prepare } else { 'nothing (as it comes)' })"
     "Checkout: $(git -C $repo rev-parse --short HEAD) $(git -C $repo branch --show-current)"
     ""

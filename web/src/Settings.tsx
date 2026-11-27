@@ -151,9 +151,9 @@ export function Settings() {
             </div>
           </div>
 
-          {error && (
+          {(error || connections?.find((c) => c.vaultError)) && (
             <div style={{ padding: 12 }}>
-              <div className="error">{error}</div>
+              <div className="error">{error ?? connections?.find((c) => c.vaultError)?.vaultError}</div>
             </div>
           )}
           {connections?.length === 0 && (

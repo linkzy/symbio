@@ -75,7 +75,7 @@ export function azureOrganization(value: string): string {
 }
 
 /** What the browser sees: public fields plus which secrets are stored. */
-export type ConnectionView = Connection & { secrets: Record<string, boolean> };
+export type ConnectionView = Connection & { secrets: Record<string, boolean>; /** Why stored secrets can't be read. */ vaultError?: string };
 
 export interface ConnectionInput {
   type?: ConnectionType;
@@ -128,8 +128,10 @@ export class Connections {
 
   async view(c: Connection): Promise<ConnectionView> {
     const secrets: Record<string, boolean> = {};
-    for (const f of SECRET_FIELDS[c.type]) secrets[f] = await this.vault.has(`${c.id}:${f}`);
-    return { ...c, secrets };
+    // An unreadable vault mustn't hide the connections: they show, with what's wrong.
+    const vaultError = await this.vault.problem();
+    for (const f of SECRET_FIELDS[c.type]) secrets[f] = !vaultError && (await this.vault.has(`${c.id}:${f}`));
+    return { ...c, secrets, ...(vaultError ? { vaultError } : {}) };
   }
 
   async create(input: ConnectionInput): Promise<Connection> {

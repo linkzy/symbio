@@ -13,6 +13,8 @@
 #   $env:SMOKE_DIR         the folder with this script and the installer; the report, the installer's
 #                          log and a "done" file go there too (default: C:\symbio-smoke)
 #   $env:SMOKE_KEEP        "1": leave Symbio installed at the end
+#   $env:SMOKE_PACKAGE     a Symbio package (npm pack's .tgz) put in place of the published one
+#                          after each install: how a change is tried before it's released
 #
 # On a machine you use (a dry run of this script), keep away from your Symbio: set SYMBIO_HOME to a
 # temporary folder and SYMBIO_NO_PATH, SYMBIO_NO_SHORTCUT and SYMBIO_NO_GIT to "1" (those checks are
@@ -45,7 +47,14 @@ function Invoke-Installer {
   $global:SymbioInstallOk = $false
   $text = if ($smokeInstaller -match '^https?://') { Invoke-RestMethod $smokeInstaller } else { Get-Content -Raw $smokeInstaller }
   $text | Invoke-Expression *>&1 | Out-String | Add-Content -Path (Join-Path $smokeDir "installer.log") -Encoding UTF8
-  $global:SymbioInstallOk
+  $ok = $global:SymbioInstallOk
+  if ($ok -and $env:SMOKE_PACKAGE -and $env:SYMBIO_UNINSTALL -ne "1") {
+    # With the installer's own Node.js and npm, into the folder it installed to.
+    $env:Path = "$(Join-Path $smokeHome 'node');$env:Path"
+    cmd.exe /c "`"$(Join-Path $smokeHome 'node\npm.cmd')`" install -g `"$($env:SMOKE_PACKAGE)`" --prefix `"$(Join-Path $smokeHome 'app')`" --no-fund --no-audit --no-update-notifier --loglevel=error 2>&1" | Add-Content -Path (Join-Path $smokeDir "installer.log") -Encoding UTF8
+    $ok = $LASTEXITCODE -eq 0
+  }
+  $ok
 }
 function Invoke-Api([string]$method, [string]$path, $body = $null) {
   $req = @{ Method = $method; Uri = "$smokeBase$path"; UseBasicParsing = $true; Headers = @{ "x-symbio-token" = $script:smokeToken }; ContentType = "application/json" }
@@ -71,7 +80,7 @@ trap { Fail "smoke script" "$($_.Exception.Message) $($_.InvocationInfo.Position
 
 $os = Get-CimInstance Win32_OperatingSystem
 Info "system: $($os.Caption) $($os.Version) ($env:PROCESSOR_ARCHITECTURE); PowerShell $($PSVersionTable.PSVersion)"
-Info "user: $env:USERNAME; execution policy: $(Get-ExecutionPolicy); installer: $smokeInstaller"
+Info ("user: $env:USERNAME; execution policy: $(Get-ExecutionPolicy); installer: $smokeInstaller" + $(if ($env:SMOKE_PACKAGE) { "; package: $($env:SMOKE_PACKAGE)" } else { "" }))
 foreach ($tool in "git", "node", "npm", "winget") {
   $found = Get-Command $tool -ErrorAction SilentlyContinue
   Info ("${tool}: " + $(if ($found) { $found.Source } else { "not installed" }))
@@ -117,6 +126,7 @@ if ($script:smokeFails -eq 0 -or (Test-Path $smokeSym)) {
   # 3. The vault (Windows Credential Manager).
   $r = Invoke-Api PUT "/notifications" @{ webhook = @{ url = "https://example.com/symbio-smoke" } }
   if ($r.Status -eq 200 -and ($r.Body | ConvertFrom-Json).secrets."webhook.url") { Pass "vault (a secret saved)" } else { Fail "vault (a secret saved)" "HTTP $($r.Status) $($r.Body)" }
+  Info "vault key kept in: $((Invoke-Api GET '/vault').Body)"
 
   # 4. Runtimes downloaded by Symbio.
   foreach ($kind in ($smokeRuntimes -split " " | Where-Object { $_ })) {

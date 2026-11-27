@@ -46,10 +46,8 @@ groups and the whole interface translatable, with a language per issue), then re
 Linux and macOS, something to try and show), then features.
 
 1. **Linux and macOS.** ([#9](https://github.com/linkzy/symbio/issues/9)) The installers pass on a fresh headless Ubuntu
-   and on CI's Ubuntu and macOS ([platform-testing.md](platform-testing.md)). Left: the secret vault on a Linux without a
-   Secret Service (a server, WSL), where the key lasts only for the login and saved secrets are lost; it needs a
-   fallback, a key file readable only by the user, and the Notifications page must load when the vault can't be read.
-   Then one run on a real Mac.
+   and on CI's Ubuntu and macOS ([platform-testing.md](platform-testing.md)). The vault keeps its key in a file
+   readable only by the user where there's no Secret Service (unreleased). Left: one run on a real Mac.
 2. **Make it showable.** ([#10](https://github.com/linkzy/symbio/issues/10)) Before inviting others: a sample project to try in five minutes, and a
    two-minute video of core running a team on a non-coding project. First audience: the OpenCode and
    GitHub Copilot CLI communities. Done: the website ([symbio.linkzy.dev](https://symbio.linkzy.dev), instead of a

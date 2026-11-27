@@ -5,6 +5,14 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Saved passwords and tokens survive a restart on a Linux without a desktop** (#9). A server or WSL has no keyring
+  service, only the kernel's keyring, which forgets everything when the login ends: secrets saved there were lost, and
+  Settings → Notifications didn't load. There the key now goes in `~/.symbio/secrets.key`, readable only by you (a key
+  still in the kernel's keyring from this login is moved there). `SYMBIO_VAULT=file` asks for the file anywhere.
+- **Settings → About says where the key to your saved passwords and tokens is kept** (Credential Manager, the Keychain,
+  the desktop's keyring, or that file). When saved secrets can't be read, Notifications and Connections still load and
+  say why.
+
 ## [0.38.0]
 
 - **Symbio starts on a new Windows.** The module Symbio reaches Windows' Credential Manager with needs the Microsoft

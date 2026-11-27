@@ -213,6 +213,8 @@ const installer = new RuntimeInstaller();
       return c.json({ error: (err as Error).message }, 400);
     }
   });
+  // Where the key to stored passwords and tokens is kept (Settings → About).
+  app.get("/api/vault", (c) => c.json(connections.vault.store()));
   // Notifications: settings (secrets only as set / not set), a test per channel, Telegram's chat.
   app.get("/api/notifications", async (c) => c.json(await notifications.view()));
   app.put("/api/notifications", async (c) => {

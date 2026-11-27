@@ -200,6 +200,7 @@ function fakeVault() {
     data,
     get: async (k: string) => data[k],
     has: async (k: string) => k in data,
+    problem: async () => null,
     set: async (k: string, v: string) => void (data[k] = v),
     deletePrefix: async (p: string) => {
       for (const k of Object.keys(data)) if (k.startsWith(p)) delete data[k];

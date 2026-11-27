@@ -15,6 +15,8 @@
 #                     an https:// address (fetched with curl, as users do)
 #   SMOKE_RUNTIMES    runtimes to install through Symbio (default "opencode copilot"; "" for none)
 #   SMOKE_KEEP        1: leave Symbio installed at the end (to look around)
+#   SMOKE_PACKAGE     a Symbio package (npm pack's .tgz) put in place of the published one after
+#                     each install: how a change is tried before it's released
 #   SYMBIO_VERSION    passed to the installer (default: the latest release)
 #
 # The installed copy never asks the update endpoint (it would be counted as a user), and it uses its
@@ -42,7 +44,12 @@ run_installer() {
   case "$INSTALLER" in
     http://* | https://*) curl -fsSL "$INSTALLER" | sh ;;
     *) sh < "$INSTALLER" ;;
-  esac
+  esac || return 1
+  # With the installer's own Node.js and npm, into the folder it installed to.
+  if [ -n "${SMOKE_PACKAGE:-}" ] && [ "${SYMBIO_UNINSTALL:-}" != 1 ]; then
+    PATH="$HOME_DIR/node/bin:$PATH" "$HOME_DIR/node/bin/npm" install -g "$SMOKE_PACKAGE" --prefix "$HOME_DIR/app" \
+      --no-fund --no-audit --no-update-notifier --loglevel=error
+  fi
 }
 
 # Reads JSON with the private Node.js (the machine may have no other): json 'expression of v'.
@@ -100,7 +107,7 @@ if [ "$1" = again ]; then
 fi
 
 info "system: $(uname -srm); $( (. /etc/os-release 2> /dev/null && echo "$PRETTY_NAME") || echo "macOS $(sw_vers -productVersion 2> /dev/null)")"
-info "user: $(id -un); shell: ${SHELL:-?}; installer: $INSTALLER"
+info "user: $(id -un); shell: ${SHELL:-?}; installer: $INSTALLER${SMOKE_PACKAGE:+; package: $SMOKE_PACKAGE}"
 for tool in curl tar git node npm; do
   if command -v "$tool" > /dev/null 2>&1; then info "$tool: $(command -v "$tool")"; else info "$tool: not installed"; fi
 done
@@ -137,6 +144,8 @@ api GET /setup
 # on macOS). A headless Linux usually has none: this is where it shows.
 api PUT /notifications '{"webhook":{"url":"https://example.com/symbio-smoke"}}'
 if [ "$STATUS" = 200 ] && [ "$(echo "$BODY" | json 'v.secrets["webhook.url"]')" = true ]; then pass "vault (a secret saved)"; else fail "vault (a secret saved)" "HTTP $STATUS $BODY"; fi
+api GET /vault
+info "vault key kept in: $BODY"
 
 # 5. Runtimes downloaded by Symbio.
 for kind in $RUNTIMES; do

@@ -14,6 +14,7 @@ param(
   [string]$Installer = "",             # an https:// address; default: this checkout's scripts/install/install.ps1
   [string]$Version = "",               # SYMBIO_VERSION for the installer; default: the latest release
   [string]$Runtimes = "opencode copilot",
+  [string]$Package = "",               # a .tgz from `npm pack` to test instead of the published Symbio
   [int]$TimeoutMinutes = 40,
   [switch]$Keep
 )
@@ -35,12 +36,14 @@ if (-not $wsbCli -and -not $client) {
 
 Copy-Item (Join-Path $here "smoke.ps1") $shared
 Copy-Item (Join-Path $repo "scripts\install\install.ps1") $shared
+if ($Package) { Copy-Item $Package (Join-Path $shared "symbio.tgz") }
 # What the smoke test is told, set before it runs (the logon command stays short).
 $setup = @(
   "`$env:SMOKE_DIR = 'C:\symbio-smoke'"
   "`$env:SMOKE_RUNTIMES = '$(if ($Runtimes) { $Runtimes } else { "none" })'"
   $(if ($Installer) { "`$env:SMOKE_INSTALLER = '$Installer'" })
   $(if ($Version) { "`$env:SYMBIO_VERSION = '$Version'" })
+  $(if ($Package) { "`$env:SMOKE_PACKAGE = 'C:\symbio-smoke\symbio.tgz'" })
   $(if ($Keep) { "`$env:SMOKE_KEEP = '1'" })
 ) | Where-Object { $_ }
 Set-Content (Join-Path $shared "setup.ps1") $setup

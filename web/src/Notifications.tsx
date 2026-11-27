@@ -215,6 +215,7 @@ export function NotificationsSection() {
       </div>
       <div className="stack" style={{ padding: 16, gap: 14 }}>
         {error && !savedFrom && <div className="error">{error}</div>}
+        {saved.vaultError && <div className="error">{saved.vaultError}</div>}
         <div className="field">
           <span>{t("notify.detail.title")}</span>
           <div className="seg">
