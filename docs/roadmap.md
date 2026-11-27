@@ -43,32 +43,29 @@ The issues are also grouped into [milestones](https://github.com/linkzy/symbio/m
 In this order: first what lets a team run unattended (done: being told when it needs
 you, spending limits and scheduled work), then the pieces that open up small issues for anyone (done: settings in
 groups and the whole interface translatable, with a language per issue), then reaching more people (done: installing with one line, a clear first run, notifications worth reading; next:
-Linux and macOS, something to try and show), then features.
+Linux and macOS), then features. A video and a push to the OpenCode and Copilot communities wait until
+it's time to promote it.
 
 1. **Linux and macOS.** ([#9](https://github.com/linkzy/symbio/issues/9)) The installers pass on a fresh headless Ubuntu
    and on CI's Ubuntu and macOS ([platform-testing.md](platform-testing.md)). The vault keeps its key in a file
    readable only by the user where there's no Secret Service (unreleased). Left: one run on a real Mac.
-2. **Make it showable.** ([#10](https://github.com/linkzy/symbio/issues/10)) Before inviting others: a sample project to try in five minutes, and a
-   two-minute video of core running a team on a non-coding project. First audience: the OpenCode and
-   GitHub Copilot CLI communities. Done: the website ([symbio.linkzy.dev](https://symbio.linkzy.dev), instead of a
-   GitHub Pages site, #19), the README's animation of a real session, and a social preview image.
-3. **Which skills were used.** ([#63](https://github.com/linkzy/symbio/issues/63)) Loading a skill shows as a step in
+2. **Which skills were used.** ([#63](https://github.com/linkzy/symbio/issues/63)) Loading a skill shows as a step in
    the chat, and each agent's skills chip says which it used, so you can see whether skills pay off.
-4. **Task priorities.** ([#4](https://github.com/linkzy/symbio/issues/4)) A priority on each task in the plan (e.g. urgent, high, normal, low), shown
+3. **Task priorities.** ([#4](https://github.com/linkzy/symbio/issues/4)) A priority on each task in the plan (e.g. urgent, high, normal, low), shown
    on the Kanban cards and used to sort columns. core sets it when it plans or adds tasks and can
    change it (its plan tools take it), the human can change it on the board, and core is told when
    the human does, so it picks up urgent work first. Helpers see it with their task.
-5. **Model fallback that fits the conversation.** ([#38](https://github.com/linkzy/symbio/issues/38)) Retry the same model on network errors
+4. **Model fallback that fits the conversation.** ([#38](https://github.com/linkzy/symbio/issues/38)) Retry the same model on network errors
    before switching; prefer models whose context holds the conversation; when none does, ask the human
    (continue in a fresh session from a handoff note, go back to the original model, or pick another).
-6. **Create a project from a git repository.** ([#11](https://github.com/linkzy/symbio/issues/11)) In the New project dialog, an option to clone a
+5. **Create a project from a git repository.** ([#11](https://github.com/linkzy/symbio/issues/11)) In the New project dialog, an option to clone a
    repository (GitHub, Azure DevOps or any git URL, using the matching connection when it's private)
    into a folder and open it as a project, e.g. to continue on another computer. Tucked under an
    advanced option, so it doesn't get in the way of people who don't use git.
-7. **Rules register on import.** ([#12](https://github.com/linkzy/symbio/issues/12)) When importing an existing project, offer to build the register
+6. **Rules register on import.** ([#12](https://github.com/linkzy/symbio/issues/12)) When importing an existing project, offer to build the register
    from the project and from sources the human points to (e-mails, meeting notes, manuals), marking
    rules found only in the work as unsourced.
-8. **Talk to Symbio.** ([#6](https://github.com/linkzy/symbio/issues/6)) A spoken conversation with core, hands-free: e.g. from a phone connected to
+7. **Talk to Symbio.** ([#6](https://github.com/linkzy/symbio/issues/6)) A spoken conversation with core, hands-free: e.g. from a phone connected to
    the car over Bluetooth, with Symbio working on the computer at home (remote access). Not just
    dictation into the chat box:
    - Only what core says to the human is read aloud: never tool calls, command output, messages
@@ -83,9 +80,9 @@ Linux and macOS, something to try and show), then features.
    Builds on the phone layout and on telling apart, in core's replies, what's for the human from
    the team's work. To check first: the browsers' own speech recognition and voices (quality,
    languages, whether they keep working with the screen off) against a speech service.
-9. **A public demo.** ([#14](https://github.com/linkzy/symbio/issues/14)) A container on a VPS with a light model, connections and other sensitive
+8. **A public demo.** ([#14](https://github.com/linkzy/symbio/issues/14)) A container on a VPS with a light model, connections and other sensitive
     options disabled, and visitors' data reset every few minutes (needs Linux headless support).
-10. **Filters for a project's skills.** ([#60](https://github.com/linkzy/symbio/issues/60)) Project settings → Skills
+9. **Filters for a project's skills.** ([#60](https://github.com/linkzy/symbio/issues/60)) Project settings → Skills
     gets the library's search and categories, and Select all / Clear for the skills shown.
 
 **Small improvements**, also open to anyone, each with an issue and where to start: the browser tab showing what needs you (#24), unread markers on agents (#25), opening a
@@ -100,6 +97,10 @@ German (#70), three languages at a time (more once these are in). All [good firs
 
 Collected, not sorted or promised yet.
 
+- **A video, when it's time to promote Symbio** ([#10](https://github.com/linkzy/symbio/issues/10)). Two minutes of core
+  running a team on a non-coding project, for the website and the README, made when we reach out to the OpenCode and
+  GitHub Copilot CLI communities. Done already: the website, the README's animation of a real session, a social preview.
+  A sample project inside Symbio was considered and dropped: it costs tokens and teaches little a real goal doesn't.
 - **Images as before and after** in a task's changes, side by side, instead of a text diff.
 - **Claude Code and Codex (other agent CLIs).** Run teams on the agent tools people already use and
   pay for, not only OpenCode, and switch between them (e.g. from the OpenCode menu at the top).
