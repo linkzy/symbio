@@ -5,13 +5,14 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.38.0]
+
 - **Symbio starts on a new Windows.** The module Symbio reaches Windows' Credential Manager with needs the Microsoft
   Visual C++ runtime, which a new Windows may not have; Symbio then stopped at once on start. It now starts anyway and,
   when a password or token is saved, says to install the runtime; the Windows installer installs it when it's missing
   (Windows asks for permission). Found by the new clean-Windows test.
 - **The Windows installer doesn't stop on an npm notice.** A note from npm that a newer npm exists could end the install
   when its output was captured; npm's exit code is what counts now.
-
 - **The Linux and macOS installer says what Node.js is missing.** On a minimal Linux (a fresh WSL Ubuntu, a slim
   server) Node.js needs `libatomic1`, which isn't there: the installer now checks that Node.js runs before going on, and
   says what to install (`sudo apt install libatomic1`) instead of failing inside npm.
@@ -21,6 +22,10 @@ versions follow [Semantic Versioning](https://semver.org/).
   write is skipped with a warning instead of stopping the install.
 - **The Windows installer leaves another Symbio alone.** With `SYMBIO_HOME` set (a second copy), it no longer updates and
   stops the Symbio installed with npm, and uninstalling removes only its own shortcuts.
+- **Tested on clean machines.** Platform smoke tests install Symbio like a new user on a fresh Windows (Windows
+  Sandbox), a fresh headless Linux (WSL) and CI's Windows, Ubuntu and macOS, and check the PATH, the vault, the runtime
+  installs, updating and uninstalling ([docs/platform-testing.md](docs/platform-testing.md)). The installers are served
+  by the website: `irm https://symbio.linkzy.dev/install.ps1 | iex` and `curl -fsSL https://symbio.linkzy.dev/install | sh`.
 
 ## [0.37.0]
 
