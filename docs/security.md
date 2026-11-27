@@ -177,8 +177,9 @@ project the connections it needs.
   exact versions Symbio is tested with, into `~/.symbio/runtimes`, when the human asks for one in
   Settings (or at startup, for one existing projects use). By default Symbio never runs one from the
   PATH, so another copy on the computer doesn't change what runs. In Settings → Agent runtimes the
-  human can explicitly opt in to using an OpenCode already on PATH; that version may be unverified,
-  and the Copilot SDK can't be swapped this way. Agents can't turn that option on (the guard above),
+  human can explicitly opt in to using an OpenCode already on PATH (there, or on the first run);
+  that version may be unverified, and the Copilot SDK can't be swapped this way. To show a copy's
+  version, Symbio runs `<command> --version` on what it finds on the PATH (once per file). Agents can't turn that option on (the guard above),
   only absolute folders on the PATH are searched, and the first `opencode` found there is what runs,
   so keep the PATH free of folders others can write to. An npm shim (`opencode.cmd`) is started
   through `cmd.exe`, which keeps the server password in its own environment (OpenCode itself removes

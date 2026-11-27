@@ -135,8 +135,11 @@ browser's. To add a language:
   credentials are never touched.
 - Git behavior (worktrees, merges, conflicts, restoring workspaces) is tested against real
   temporary repositories in `tests/workspaces.test.ts`.
-- `tests/e2e/install.test.ts` covers the first-run install flow and the opt-in to an OpenCode found
-  on PATH. The PATH test builds a temporary stand-in executable, so it never uses your own OpenCode.
+- `tests/e2e/install.test.ts` covers the first run (each step, installing a runtime, using the
+  computer's OpenCode, a Copilot CLI found on the computer) and the PATH opt-in. The PATH tests
+  build temporary stand-in executables, so they never use your own OpenCode or Copilot.
+- Adding a runtime: describe how it's found on the computer (`command` in `RUNTIME_PACKAGES`,
+  `runtime/install.ts`) and whether Symbio can run on that copy (`computerUsable`).
 - `npm run test:contract` starts the bundled OpenCode (or `SYMBIO_OPENCODE_BIN`) with its data in a
   temporary folder and checks every endpoint Symbio relies on that doesn't need a model. CI runs it
   on each push, and daily against the newest OpenCode too (`.github/workflows/opencode-contract.yml`).

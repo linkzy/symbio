@@ -34,7 +34,7 @@ All optional, set as environment variables:
 | Location | What |
 |---|---|
 | `~/.symbio/config.json` | The list of projects |
-| `~/.symbio/runtime-settings.json` | Whether an OpenCode on PATH is used instead of Symbio's copy |
+| `~/.symbio/runtime-settings.json` | Which runtimes run from the copy already on the computer (on the PATH) instead of Symbio's own (`fromComputer`; OpenCode only, for now) |
 | `~/.symbio/skills/` | Your skills (one folder with a `SKILL.md` each), added in Settings → Skills |
 | `~/.symbio/connections.json` | Connection settings (no secrets) |
 | `~/.symbio/secrets.enc` | Connection secrets and notification tokens (Telegram, ntfy, the webhook address, the e-mail password), encrypted with a key kept in your OS credential store |

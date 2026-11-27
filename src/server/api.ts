@@ -5,8 +5,8 @@ import { streamSSE } from "hono/streaming";
 import { bus, type UiEvent } from "./bus.js";
 import type { OpencodeRuntime } from "./opencode/runtime.js";
 import { runtimeOf, type AgentRuntime, type RuntimeKind } from "./runtime/types.js";
-import { findOnPath, hasInstalledCopy, isInstalled, locate, NotInstalledError, RUNTIME_PACKAGES, RuntimeInstaller } from "./runtime/install.js";
-import { loadRuntimeSettings, saveRuntimeSettings } from "./runtime/settings.js";
+import { computerVersion, findOnPath, hasInstalledCopy, isInstalled, knownVersion, locate, NotInstalledError, RUNTIME_PACKAGES, RuntimeInstaller, testedVersion } from "./runtime/install.js";
+import { loadRuntimeSettings, setFromComputer } from "./runtime/settings.js";
 import { CopilotRuntime } from "./copilot/runtime.js";
 import { validCommandPattern, type Approval } from "./remote.js";
 import type { Autonomy, CoreMode, NotifyLevel, ReviewBy, Store, Project, DocsLocation, HelperWorkspace, ProjectConnection } from "./store.js";
@@ -155,16 +155,42 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
 
   api.get("/runtime", (c) => c.json(runtimeInfo()));
 
-  // Opt-in to an OpenCode on the PATH. A runtime event makes the cards reload right away.
+  // Opt-in to a runtime's copy on the computer (the PATH), per runtime. A runtime event makes the
+  // cards reload right away. `usePathOpenCode` is OpenCode's choice under its first name.
   const pathSettings = () => ({ ...loadRuntimeSettings(), pathAvailable: !!findOnPath("opencode") });
   api.get("/runtime/settings", (c) => c.json(pathSettings()));
   api.put("/runtime/settings", async (c) => {
-    const body = await c.req.json<{ usePathOpenCode?: boolean }>();
-    if (typeof body.usePathOpenCode !== "boolean") return c.json({ error: "usePathOpenCode must be true or false." }, 400);
-    const saved = await saveRuntimeSettings({ usePathOpenCode: body.usePathOpenCode });
+    const body = await c.req.json<{ usePathOpenCode?: boolean; kind?: string; fromComputer?: boolean }>();
+    const kind = (typeof body.usePathOpenCode === "boolean" ? "opencode" : body.kind) as RuntimeKind | undefined;
+    const on = typeof body.usePathOpenCode === "boolean" ? body.usePathOpenCode : body.fromComputer;
+    if (!kind || !RUNTIME_PACKAGES[kind] || typeof on !== "boolean") return c.json({ error: "Give a runtime (kind) and fromComputer: true or false." }, 400);
+    if (on && !RUNTIME_PACKAGES[kind].computerUsable) return c.json({ error: `Symbio can't run ${RUNTIME_PACKAGES[kind].label} from the computer's copy.` }, 400);
+    await setFromComputer(kind, on);
     bus.publish({ type: "runtime", ...runtimeInfo() });
-    return c.json({ ...saved, pathAvailable: !!findOnPath("opencode") });
+    return c.json(pathSettings());
   });
+
+  // A runtime's copy on the computer, for its card. Its version is read in the background (it runs
+  // the program) the first time; the cards reload when it's known.
+  const probing = new Set<string>();
+  const computerCopy = (kind: RuntimeKind) => {
+    const found = findOnPath(kind);
+    if (!found) return null;
+    const version = knownVersion(found);
+    if (version === undefined && !probing.has(found.entry)) {
+      probing.add(found.entry);
+      void computerVersion(found).then(() => {
+        probing.delete(found.entry);
+        if (knownVersion(found) !== undefined) bus.publish({ type: "runtime", ...runtimeInfo() });
+      });
+    }
+    return {
+      path: found.entry,
+      version: version ?? null,
+      usable: RUNTIME_PACKAGES[kind].computerUsable,
+      chosen: RUNTIME_PACKAGES[kind].computerUsable && loadRuntimeSettings().fromComputer[kind] === true,
+    };
+  };
 
   // Every agent runtime Symbio can use: whether it's installed (and installing it), for choosing one
   // (a project's runtime), and Copilot's sign-in.
@@ -182,6 +208,15 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       installed: !!found,
       installedVersion: found?.version ?? null,
       source: found?.source ?? null,
+      computer: computerCopy(r.kind),
+      // The version Symbio installs and is tested with.
+      testedVersion: (() => {
+        try {
+          return testedVersion(r.kind).replace(/^[\^~=v]+/, "");
+        } catch {
+          return null;
+        }
+      })(),
       // Symbio's copy can be removed even while a PATH OpenCode is preferred (not a dev checkout's).
       removable: hasInstalledCopy(r.kind),
       installing: install.installing,
@@ -449,6 +484,12 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     const installer = hasGit ? null : await gitInstaller();
     const existing = store.list().find((p) => path.resolve(p.directory).toLowerCase() === inspection.directory.toLowerCase());
     return c.json({ ...inspection, gitAvailable: hasGit, gitInstaller: installer, existingProject: existing ? { id: existing.id, name: existing.name } : null });
+  });
+
+  // What a first run needs to know besides the runtimes: whether git is there (and can be installed).
+  api.get("/setup", async (c) => {
+    const git = await gitAvailable();
+    return c.json({ git, gitInstaller: git ? null : await gitInstaller() });
   });
 
   // The human's "Install git" in the New project dialog: one installer run at a time.

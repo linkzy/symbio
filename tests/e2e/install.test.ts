@@ -1,6 +1,8 @@
-// Symbio ships no agent runtime: on a first run it asks for one, installs the one the human picks
-// (here with a stand-in for npm that "installs" the stand-in runtimes), offers only installed ones
-// for new projects, and installs again one that existing projects use but that's missing.
+// Symbio ships no agent runtime: a first run explains what one is and walks through what's needed
+// (a runtime installed for Symbio, or the one already on the computer; the models; git; then a
+// project), installs the one the human picks (here with a stand-in for npm that "installs" the
+// stand-in runtimes), offers only installed ones for new projects, and installs again one that
+// existing projects use but that's missing. A Copilot CLI on the computer is mentioned, not used.
 import assert from "node:assert/strict";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
@@ -62,7 +64,10 @@ test("a first run asks for an agent runtime, installs the one chosen, and offers
   );
 
   const { page } = await openPage(symbio);
-  await page.locator(".first-run h2", { hasText: "Install an agent runtime to start" }).waitFor();
+  const firstRun = page.locator('[data-testid="first-run"]');
+  await firstRun.locator("h2", { hasText: "Getting started" }).waitFor();
+  await firstRun.locator("p", { hasText: "Agents run on an agent runtime: a program like OpenCode or GitHub Copilot CLI." }).waitFor();
+  assert.ok(await firstRun.locator('li[data-step="project"] button', { hasText: "New project" }).isDisabled(), "not before a runtime and models");
   assert.ok(await page.locator(".page-head button", { hasText: "New project" }).isDisabled(), "nothing to run agents on yet");
   // A project can't be created on a runtime that isn't installed.
   await assert.rejects(
@@ -70,14 +75,16 @@ test("a first run asks for an agent runtime, installs the one chosen, and offers
     /isn't installed/,
   );
 
-  const card = page.locator(`.first-run .runtime-card[data-runtime="${RUNTIME}"]`);
-  await card.locator("button", { hasText: "Install" }).click();
-  await card.locator(".runtime-install-log").waitFor();
-  await until("the first-run cards to go", async () => (await page.locator(".first-run").count()) === 0, 20_000, symbio.output);
+  const card = firstRun.locator(`.runtime-card[data-runtime="${RUNTIME}"]`);
+  await card.locator("p", { hasText: "a separate copy in Symbio's own folder: it doesn't touch, replace or update one already on this computer" }).waitFor();
+  await card.locator("button", { hasText: "Install it for Symbio" }).click();
+  // Installed, then the models: the stand-ins come with them (OpenCode's provider, Copilot signed in).
+  await firstRun.locator('li[data-step="runtime"].done', { hasText: `${LABEL[RUNTIME]} · installed for Symbio` }).waitFor({ timeout: 20_000 });
+  await firstRun.locator('li[data-step="models"].done').waitFor({ timeout: 20_000 });
   assert.ok(existsSync(path.join(symbio.root, "home", "runtimes", RUNTIME, "runtime.json")), "installed in Symbio's folder");
 
-  // New project: only the installed runtime.
-  await page.locator(".page-head button", { hasText: "New project" }).click();
+  // New project, from the last step: only the installed runtime.
+  await firstRun.locator('li[data-step="project"] button', { hasText: "New project" }).click();
   await page.getByPlaceholder("my-project", { exact: false }).fill(symbio.folder("first"));
   await page.locator("button.btn.primary", { hasText: "Continue" }).click();
   await page.locator("button.btn.primary", { hasText: "Continue" }).click();
@@ -147,7 +154,12 @@ test(
     );
     assert.equal((await symbio.call("GET", "/runtime/settings")).pathAvailable, true);
 
-    await symbio.call("PUT", "/runtime/settings", { usePathOpenCode: true });
+    // Chosen on the first run, with its version and the one Symbio is tested with.
+    const { page } = await openPage(symbio);
+    const card = page.locator('[data-testid="first-run"] .runtime-card[data-runtime="opencode"]');
+    await card.locator("p", { hasText: "Found on this computer 9.9.9. Symbio is tested with" }).waitFor();
+    await card.locator("button", { hasText: "Use the one on this computer 9.9.9" }).click();
+    await page.locator('li[data-step="runtime"].done', { hasText: "OpenCode · the one on this computer" }).waitFor({ timeout: 10_000 });
     await until("the PATH OpenCode to be used", async () => {
       const r = (await symbio.call("GET", "/runtimes")).find((x: any) => x.kind === "opencode");
       return r.installed && r.source === "path";
@@ -170,5 +182,46 @@ test(
     await idle(symbio, project.id);
     assert.equal((await symbio.call("GET", "/runtime")).runtimes.find((r: any) => r.kind === "opencode").state, "running");
     assert.equal((await symbio.call("GET", "/runtime/settings")).usePathOpenCode, true, "the choice is persisted");
+    // Settings: the same choice in the card, turned off from there.
+    await page.goto(`${symbio.base}/#/settings`);
+    const settingsCard = page.locator('#runtimes .runtime-card[data-runtime="opencode"]');
+    await settingsCard.locator(".list-sub", { hasText: "Using the one on this computer" }).waitFor();
+    assert.equal(await settingsCard.getByRole("checkbox", { name: "Use the one on this computer 9.9.9" }).isChecked(), true);
+    assert.deepEqual((page as any).errors, []);
   },
 );
+
+test("a GitHub Copilot CLI on the computer is mentioned, with why Symbio installs its own", async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "sym-e2e-copilot-cli-"));
+  const dir = path.join(root, "path-bin");
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(path.join(root, "version.mjs"), 'console.log("GitHub Copilot CLI 1.0.116.")');
+  if (process.platform === "win32") writeFileSync(path.join(dir, "copilot.cmd"), `@echo off\r\nnode "${path.join(root, "version.mjs")}" %*\r\n`);
+  else {
+    writeFileSync(path.join(dir, "copilot"), `#!/bin/sh\nexec node "${path.join(root, "version.mjs")}" "$@"\n`);
+    chmodSync(path.join(dir, "copilot"), 0o755);
+  }
+  const value = `${dir}${path.delimiter}${process.env.PATH ?? process.env.Path ?? ""}`;
+  const symbio = await startSymbio({ ...freshEnv(root), PATH: value, Path: value });
+  running.push(symbio);
+  const { page } = await openPage(symbio);
+  const note = page.locator('[data-testid="first-run"] .runtime-card[data-runtime="copilot"] [data-testid="computer-copy"]');
+  await note.filter({ hasText: "GitHub Copilot CLI 1.0.116 is on this computer. Symbio can't run agents on it" }).waitFor({ timeout: 15_000 });
+  assert.equal(await page.locator('[data-testid="first-run"] .runtime-card[data-runtime="copilot"] button', { hasText: "Use the one on this computer" }).count(), 0);
+  await assert.rejects(symbio.call("PUT", "/runtime/settings", { kind: "copilot", fromComputer: true }), /can't run GitHub Copilot CLI from the computer's copy/);
+  assert.deepEqual((page as any).errors, []);
+});
+
+test("first run with GitHub Copilot signed out: the models step is signing in", async () => {
+  const symbio = await startSymbio({ ...freshEnv(), SYMBIO_FAKE_COPILOT_SIGNED_OUT: "1" });
+  running.push(symbio);
+  await symbio.call("POST", "/runtimes/copilot/install");
+  await until("the install", async () => (await symbio.call("GET", "/runtimes")).find((r: any) => r.kind === "copilot").installed, 20_000, symbio.output);
+  const { page } = await openPage(symbio);
+  const models = page.locator('[data-testid="first-run"] li[data-step="models"]');
+  // Copilot is started to read its sign-in: signed out, the step asks for it.
+  await models.locator("span", { hasText: "sign in with your GitHub account" }).waitFor({ timeout: 20_000 });
+  await models.getByRole("button", { name: "Sign in with GitHub" }).waitFor();
+  assert.ok(await page.locator('li[data-step="project"] button', { hasText: "New project" }).isDisabled());
+  assert.deepEqual((page as any).errors, []);
+});

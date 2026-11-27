@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Bot, Check, Download, ExternalLink, Loader2, LogIn, SquareTerminal, Trash2 } from "lucide-react";
-import { api, subscribe, type RuntimeKind, type RuntimeSettings, type RuntimeView } from "./api";
+import { api, subscribe, type RuntimeKind, type RuntimeView } from "./api";
 import { useI18n } from "./i18n";
 
 /**
@@ -42,7 +42,7 @@ const ICONS: Record<RuntimeKind, React.ReactNode> = {
   copilot: <SquareTerminal size={16} />,
 };
 
-const size = (mb: number) => (mb >= 1000 ? `${(mb / 1000).toFixed(1)} GB` : `${mb} MB`);
+export const size = (mb: number) => (mb >= 1000 ? `${(mb / 1000).toFixed(1)} GB` : `${mb} MB`);
 
 /** One runtime: what it is, installing or removing it, and (GitHub Copilot) signing in. */
 export function RuntimeCard({ view, onChange }: { view: RuntimeView; onChange: () => void }) {
@@ -77,7 +77,7 @@ export function RuntimeCard({ view, onChange }: { view: RuntimeView; onChange: (
           <div className="list-sub">
             {view.installed ? (
               <span className="row" style={{ gap: 4, display: "inline-flex" }}>
-                <Check size={12} /> {view.source === "path" ? t("agents.runtimes.usingPath") : t("agents.runtimes.installed")}
+                <Check size={12} /> {view.source === "path" ? t("agents.runtimes.usingComputer") : t("agents.runtimes.installed")}
                 {(view.installedVersion ?? view.version) ? ` · ${view.installedVersion ?? view.version}` : ""}
               </span>
             ) : view.installing ? (
@@ -104,6 +104,7 @@ export function RuntimeCard({ view, onChange }: { view: RuntimeView; onChange: (
       <p className="runtime-card-desc subtle">
         {t("agents.runtimes.needs", { needs: view.kind === "opencode" || view.kind === "copilot" ? t(`agents.runtimes.needs.${view.kind}`) : view.needs })}
       </p>
+      {view.computer && <ComputerCopy view={view} onChange={onChange} />}
       {view.installing && (
         <div className="runtime-install-log">
           <Loader2 size={13} className="spin" />
@@ -116,8 +117,57 @@ export function RuntimeCard({ view, onChange }: { view: RuntimeView; onChange: (
   );
 }
 
+/**
+ * A copy of the runtime already on the computer: using it instead of Symbio's own (OpenCode), or why
+ * Symbio can't (Copilot: the SDK needs the runtime version it was built with).
+ */
+export function ComputerCopy({ view, onChange }: { view: RuntimeView; onChange: () => void }) {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const copy = view.computer!;
+  const version = copy.version ? ` ${copy.version}` : "";
+  if (!copy.usable) {
+    return (
+      <p className="runtime-card-desc subtle" data-testid="computer-copy">
+        {t("agents.runtimes.computer.unusable", { name: view.label, version })}
+      </p>
+    );
+  }
+  async function choose(on: boolean) {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.setFromComputer(view.kind, on);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+      onChange();
+    }
+  }
+  const differs = copy.version && view.testedVersion && copy.version !== view.testedVersion;
+  return (
+    <div className="runtime-computer" data-testid="computer-copy">
+      <label className="check">
+        <input type="checkbox" checked={copy.chosen} disabled={busy} onChange={(e) => void choose(e.target.checked)} />
+        {t("agents.runtimes.computer.use", { version })}
+      </label>
+      <p className="runtime-card-desc subtle">
+        {t("agents.runtimes.computer.desc", { path: copy.path })}{" "}
+        {differs
+          ? t("agents.runtimes.computer.differs", { tested: view.testedVersion ?? "" })
+          : !copy.version
+            ? t("agents.runtimes.computer.untested")
+            : ""}
+      </p>
+      {error && <div className="error">{error}</div>}
+    </div>
+  );
+}
+
 /** Who GitHub Copilot is signed in as, and signing in with a device code (Symbio waits for the approval on GitHub). */
-function CopilotSignIn({ view, onChange }: { view: RuntimeView; onChange: () => void }) {
+export function CopilotSignIn({ view, onChange }: { view: RuntimeView; onChange: () => void }) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -200,53 +250,6 @@ export function RuntimeCards({ runtimes, onChange }: { runtimes: RuntimeView[]; 
   );
 }
 
-/** Opt-in to an OpenCode already installed on the computer, instead of Symbio's tested copy. */
-function PathOpenCodeOption({ onChange }: { onChange: () => void }) {
-  const { t } = useI18n();
-  const [settings, setSettings] = useState<RuntimeSettings | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    void api.runtimeSettings().then(setSettings).catch((e: Error) => setError(e.message));
-  }, []);
-
-  async function toggle(usePathOpenCode: boolean) {
-    setBusy(true);
-    setError(null);
-    try {
-      setSettings(await api.setRuntimeSettings({ usePathOpenCode }));
-      onChange();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="runtime-path-option">
-      <label className="check">
-        <input
-          type="checkbox"
-          checked={settings?.usePathOpenCode ?? false}
-          // If the executable disappears while it's on, the human must still be able to turn it off.
-          disabled={busy || (!settings?.usePathOpenCode && !settings?.pathAvailable)}
-          onChange={(e) => void toggle(e.target.checked)}
-        />
-        {t("agents.runtimes.usePath")}
-      </label>
-      <p className="runtime-card-desc subtle">
-        {t("agents.runtimes.pathDesc.before")}
-        <code>opencode</code>
-        {t("agents.runtimes.pathDesc.after")}
-        {settings && !settings.pathAvailable ? t("agents.runtimes.pathNotFound") : t("agents.runtimes.pathUntested")}
-      </p>
-      {error && <div className="error">{error}</div>}
-    </div>
-  );
-}
-
 /** Settings section: the agent runtimes, installed or not. */
 export function RuntimesSection() {
   const { t } = useI18n();
@@ -261,7 +264,6 @@ export function RuntimesSection() {
       </div>
       <div className="section-body">
         {runtimes && <RuntimeCards runtimes={runtimes} onChange={reload} />}
-        <PathOpenCodeOption onChange={reload} />
         {error && <div className="error">{error}</div>}
       </div>
     </section>

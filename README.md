@@ -59,9 +59,10 @@ curl -fsSL https://symbio.linkzy.dev/install | sh   # macOS and Linux (still bei
 
 Or, with Node.js 22+ already there: `npm install -g symbio`, then `sym`.
 
-Symbio opens in your browser. The first time, install an agent runtime from the Projects page
-(OpenCode or GitHub Copilot CLI), then click **New project** and tell core what you want. git is
-recommended (the Windows installer adds it). Installing, updating, removing, all the commands and
+Symbio opens in your browser. The first time, the Projects page walks you through what it needs: an
+agent runtime (OpenCode or GitHub Copilot CLI, installed for Symbio or the one already on your
+computer), its models, and git (optional, recommended), then **New project**, where you tell core
+what you want. Installing, updating, removing, all the commands and
 remote access are in [docs/usage.md](docs/usage.md).
 
 ## A quick tour

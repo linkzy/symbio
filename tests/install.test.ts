@@ -7,7 +7,7 @@ import { afterEach, test } from "node:test";
 
 process.env.SYMBIO_HOME = mkdtempSync(path.join(os.tmpdir(), "sym-install-home-"));
 const { findOnPath, hasInstalledCopy, locate, RuntimeInstaller, runtimesDir, testedVersion } = await import("../src/server/runtime/install.js");
-const { loadRuntimeSettings, saveRuntimeSettings } = await import("../src/server/runtime/settings.js");
+const { loadRuntimeSettings, setFromComputer } = await import("../src/server/runtime/settings.js");
 
 const standIn = path.resolve(import.meta.dirname, "e2e", "fake-installer.mjs");
 const saved = { ...process.env };
@@ -27,7 +27,7 @@ afterEach(async () => {
   }
   if (saved.PATH === undefined) delete process.env.PATH;
   else process.env.PATH = saved.PATH;
-  await saveRuntimeSettings({ usePathOpenCode: false });
+  await setFromComputer("opencode", false);
 });
 
 test("a development checkout finds the runtimes in its own node_modules, at the versions it installs", () => {
@@ -86,11 +86,11 @@ test("an OpenCode on PATH is ignored unless the human opts in", async () => {
   process.env.SYMBIO_NO_DEV_RUNTIMES = "1";
   process.env.SYMBIO_OPENCODE_BIN = "  ";
   usePath();
-  await saveRuntimeSettings({ usePathOpenCode: false });
+  await setFromComputer("opencode", false);
   assert.equal(findOnPath("opencode")?.source, "path");
   assert.equal(locate("opencode"), null, "off by default");
 
-  await saveRuntimeSettings({ usePathOpenCode: true });
+  await setFromComputer("opencode", true);
   const found = locate("opencode");
   assert.equal(found?.source, "path");
   assert.equal(found?.entry, pathExe);
@@ -109,7 +109,7 @@ test("the PATH opt-in wins over Symbio's copy but not over an explicit override"
   assert.equal(hasInstalledCopy("opencode"), true);
 
   usePath();
-  await saveRuntimeSettings({ usePathOpenCode: true });
+  await setFromComputer("opencode", true);
   assert.equal(locate("opencode")?.source, "path", "PATH is preferred once opted in");
   assert.equal(hasInstalledCopy("opencode"), true, "Symbio's copy is still there and removable");
 
@@ -130,12 +130,36 @@ test("relative folders on the PATH are skipped (they'd depend on where Symbio wa
   }
 });
 
-test("the PATH opt-in never applies to Copilot", async () => {
+test("a Copilot CLI on the computer is found, but never run (the SDK needs its own runtime version)", async () => {
   process.env.SYMBIO_NO_DEV_RUNTIMES = "1";
   process.env.SYMBIO_COPILOT_SDK = "";
-  writeFileSync(path.join(pathDir, process.platform === "win32" ? "copilot.cmd" : "copilot"), "");
+  const copilot = path.join(pathDir, process.platform === "win32" ? "copilot.cmd" : "copilot");
+  writeFileSync(copilot, "");
   usePath();
-  await saveRuntimeSettings({ usePathOpenCode: true });
-  assert.equal(findOnPath("copilot"), null);
-  assert.equal(locate("copilot"), null);
+  await setFromComputer("copilot", true);
+  assert.equal(findOnPath("copilot")?.entry, copilot, "found, to mention it");
+  assert.equal(locate("copilot"), null, "but not used, even if the setting says so");
+});
+
+test("the choice per runtime; OpenCode's earlier setting (usePathOpenCode) still counts", async () => {
+  const { writeFileSync: write } = await import("node:fs");
+  write(path.join(process.env.SYMBIO_HOME!, "runtime-settings.json"), JSON.stringify({ usePathOpenCode: true }));
+  assert.deepEqual(loadRuntimeSettings(), { fromComputer: { opencode: true }, usePathOpenCode: true });
+  const saved = await setFromComputer("opencode", false);
+  assert.deepEqual(saved, { fromComputer: {}, usePathOpenCode: false });
+  assert.deepEqual(JSON.parse(readFileSync(path.join(process.env.SYMBIO_HOME!, "runtime-settings.json"), "utf8")), saved, "written for older versions too");
+});
+
+test("the version of a copy on the computer is read from --version, once per file", async () => {
+  const { computerVersion, knownVersion } = await import("../src/server/runtime/install.js");
+  const dir = mkdtempSync(path.join(os.tmpdir(), "sym-ver-"));
+  const script = path.join(dir, "v.mjs");
+  writeFileSync(script, 'console.log("GitHub Copilot CLI 1.0.116.")');
+  const exe = path.join(dir, process.platform === "win32" ? "tool.cmd" : "tool");
+  writeFileSync(exe, process.platform === "win32" ? `@node "${script}" %*\r\n` : `#!/bin/sh\nexec node "${script}" "$@"\n`);
+  if (process.platform !== "win32") chmodSync(exe, 0o755);
+  const found = { entry: exe, source: "path" as const, version: null, ...(process.platform === "win32" ? { shell: true } : {}) };
+  assert.equal(knownVersion(found), undefined);
+  assert.equal(await computerVersion(found), "1.0.116");
+  assert.equal(knownVersion(found), "1.0.116");
 });

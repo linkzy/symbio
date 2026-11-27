@@ -23,6 +23,11 @@ import http from "node:http";
 import path from "node:path";
 
 const argv = process.argv.slice(2);
+// What Symbio reads from an OpenCode it finds on the computer.
+if (argv[0] === "--version") {
+  console.log("9.9.9");
+  process.exit(0);
+}
 const arg = (name, fallback) => {
   const i = argv.indexOf(name);
   return i >= 0 ? argv[i + 1] : fallback;

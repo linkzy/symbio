@@ -152,11 +152,18 @@ Copilot's; keys never leave the server.
   produced more output tokens). Copilot doesn't check the level for them (an unknown one was
   passed on as is), so Symbio offers `low` … `max` for them.
 
-## No "from the PATH" option
+## No "from the computer" option
 
-Unlike OpenCode, Copilot isn't a command Symbio starts but the SDK's module, loaded from Symbio's own
-copy; so Settings → Agent runtimes' "use the one on the PATH" is OpenCode-only, and its end-to-end
-test is skipped on the Copilot run.
+Symbio loads the SDK's module from its own copy, and the SDK starts the runtime that comes with it.
+The SDK can be pointed at another runtime executable (`connection: RuntimeConnection.forStdio({
+path })`), but only one speaking its protocol: verified live with SDK 1.0.34 and the Copilot CLI
+1.0.116 installed with winget, `client.start()` fails with "SDK protocol version mismatch: SDK
+supports versions 3-3, but server reports version 4". The CLI updates itself, so a copy on the
+computer would break whenever the two drift apart. So "use the one on this computer" is
+OpenCode-only (`computerUsable: false` for Copilot): a `copilot` found on the PATH is mentioned on
+its card, with its version (`copilot --version`: "GitHub Copilot CLI 1.0.116."), and the
+end-to-end test of the opt-in is skipped on the Copilot run. The sign-in is shared either way (see
+Sign-in above).
 
 ## Co-author lines in commits
 

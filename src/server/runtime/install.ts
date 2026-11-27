@@ -1,14 +1,15 @@
 // Which agent runtimes are installed, and installing them. Symbio doesn't ship any: the human
 // installs the ones they want (Settings → Runtimes, or the first-run cards), and Symbio downloads
 // the version it was tested with into its own folder (~/.symbio/runtimes/<kind>), with npm. Removing
-// one deletes that folder. An OpenCode already on the PATH can be used instead, but only when the
-// human opts in: by default Symbio runs the version it was tested with.
+// one deletes that folder. A copy already on the computer (on the PATH) can be used instead, for the
+// runtimes that allow it, but only when the human opts in: by default Symbio runs the version it was
+// tested with.
 //
 // A runtime is found, in order: a path given in the environment (development, the end-to-end tests'
-// stand-ins), an OpenCode on the PATH when opted in, Symbio's own copy, or (in a development
-// checkout) the copy in Symbio's node_modules.
+// stand-ins), the computer's copy when opted in, Symbio's own copy, or (in a development checkout)
+// the copy in Symbio's node_modules.
 
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { promises as fs } from "node:fs";
 import { createRequire } from "node:module";
@@ -34,6 +35,14 @@ export interface RuntimePackage {
   entry(packageDir: string): string | null;
   /** An environment variable that points at the runtime instead (development, tests). */
   env: string;
+  /** Its command, to find a copy already on the computer (on the PATH) and read its version. */
+  command: string;
+  /**
+   * Whether Symbio can run on the computer's copy (when the human opts in). Copilot can't: Symbio
+   * drives it through the SDK, which only talks to the runtime version it was built with
+   * (docs/copilot-api.md), so a copy found is only mentioned.
+   */
+  computerUsable: boolean;
 }
 
 export const RUNTIME_PACKAGES: Record<RuntimeKind, RuntimePackage> = {
@@ -51,6 +60,8 @@ export const RUNTIME_PACKAGES: Record<RuntimeKind, RuntimePackage> = {
       return rel ? path.resolve(dir, rel) : null;
     },
     env: "SYMBIO_OPENCODE_BIN",
+    command: "opencode",
+    computerUsable: true,
   },
   copilot: {
     kind: "copilot",
@@ -66,6 +77,8 @@ export const RUNTIME_PACKAGES: Record<RuntimeKind, RuntimePackage> = {
       return rel ? path.resolve(dir, rel) : null;
     },
     env: "SYMBIO_COPILOT_SDK",
+    command: "copilot",
+    computerUsable: false,
   },
 };
 
@@ -88,14 +101,11 @@ export function hasInstalledCopy(kind: RuntimeKind): boolean {
   return typeof manifest?.entry === "string" && existsSync(manifest.entry);
 }
 
-/**
- * An OpenCode executable on the PATH, if there is one. Only OpenCode has this opt-in: the Copilot
- * runtime is a module loaded from a known folder, not a command that can be resolved from PATH.
- */
+/** A runtime's executable on the PATH (a copy installed on the computer), if there is one. */
 export function findOnPath(kind: RuntimeKind): Located | null {
-  if (kind !== "opencode") return null;
+  const command = RUNTIME_PACKAGES[kind].command;
   // Windows npm shims are .cmd; the extensionless file is a shell script Node can't spawn directly.
-  const names = process.platform === "win32" ? ["opencode.exe", "opencode.cmd"] : ["opencode"];
+  const names = process.platform === "win32" ? [`${command}.exe`, `${command}.cmd`] : [command];
   for (const dir of (process.env.PATH ?? "").split(path.delimiter)) {
     // Only absolute folders: a relative one (".", "bin") would depend on where Symbio was started from.
     if (!dir || !path.isAbsolute(dir)) continue;
@@ -119,9 +129,9 @@ export function locate(kind: RuntimeKind): Located | null {
   const fromEnv = process.env[spec.env]?.trim();
   if (fromEnv) return { entry: fromEnv, source: "environment", version: null };
   // Opt-in and explicit: PATH can hold any version, so never use it silently.
-  if (kind === "opencode" && loadRuntimeSettings().usePathOpenCode) {
+  if (spec.computerUsable && loadRuntimeSettings().fromComputer[kind]) {
     const onPath = findOnPath(kind);
-    if (onPath) return onPath;
+    if (onPath) return { ...onPath, version: versions.get(onPath.entry)?.version ?? null };
   }
   if (hasInstalledCopy(kind)) {
     const manifest = readJson(manifestFile(kind))!;
@@ -143,6 +153,40 @@ export function locate(kind: RuntimeKind): Located | null {
 }
 
 export const isInstalled = (kind: RuntimeKind) => locate(kind) !== null;
+
+/** Versions read from executables found on the computer, by path (and file time: an update changes it). */
+const versions = new Map<string, { mtime: number; version: string | null }>();
+
+/** What `<command> --version` says, as x.y.z (or null), read once per file and kept. */
+export async function computerVersion(found: Located): Promise<string | null> {
+  let mtime = 0;
+  try {
+    mtime = statSync(found.entry).mtimeMs;
+  } catch {
+    return null;
+  }
+  const known = versions.get(found.entry);
+  if (known && known.mtime === mtime) return known.version;
+  const output = await new Promise<string>((resolve) =>
+    // Through cmd.exe for .cmd shims; the path is quoted, and comes from the PATH, not from a request.
+    execFile(found.shell ? `"${found.entry}"` : found.entry, ["--version"], { timeout: 8000, windowsHide: true, shell: !!found.shell }, (_err, stdout) =>
+      resolve(String(stdout ?? "")),
+    ),
+  );
+  const version = /\d+\.\d+\.\d+(?:[-.][\w.]+)?/.exec(output)?.[0]?.replace(/\.$/, "") ?? null;
+  versions.set(found.entry, { mtime, version });
+  return version;
+}
+
+/** The version already read for an executable (undefined: not yet, or it changed since). */
+export function knownVersion(found: Located): string | null | undefined {
+  const known = versions.get(found.entry);
+  try {
+    return known && known.mtime === statSync(found.entry).mtimeMs ? known.version : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 /** The version range of a runtime Symbio was tested with (its dev dependency). */
 export function testedVersion(kind: RuntimeKind): string {

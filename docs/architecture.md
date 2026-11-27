@@ -38,14 +38,17 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
   needs it** (an agent to wake, a project's page, New project's models, Settings), and at launch only
   if agents left active run on it. The rest of this page describes OpenCode, the default.
 - **Symbio ships no runtime** (`runtime/install.ts`). The human installs the ones they use (the
-  first-run cards on the Projects page, or Settings → Agent runtimes): Symbio runs
+  first run on the Projects page, `FirstRun.tsx`, or Settings → Agent runtimes): Symbio runs
   `npm install <package>@<version>` into `~/.symbio/runtimes/<kind>`, the version being its own dev
   dependency (what it's developed and tested with), and records where the runtime starts in
   `runtime.json`; removing it deletes the folder. A runtime is found, in order: an environment
-  variable (`SYMBIO_OPENCODE_BIN`, `SYMBIO_COPILOT_SDK`), an OpenCode on the PATH when the human opts
-  in (Settings → Agent runtimes, stored in `~/.symbio/runtime-settings.json`), Symbio's copy, or a
-  development checkout's `node_modules`. By default no PATH executable is used, and the Copilot SDK
-  is never resolved from PATH. New projects can only pick an installed runtime; one that existing
+  variable (`SYMBIO_OPENCODE_BIN`, `SYMBIO_COPILOT_SDK`), the runtime's copy on the computer (on the
+  PATH) when the human opts in for that runtime (the first run, or its card in Settings; stored per
+  runtime in `~/.symbio/runtime-settings.json`, `fromComputer`), Symbio's copy, or a development
+  checkout's `node_modules`. Each runtime says how it's found on the computer (its command) and
+  whether Symbio can run on that copy (`computerUsable`): OpenCode can, Copilot can't (the SDK only
+  talks to the runtime version it was built with), so a Copilot CLI found is only mentioned. The
+  copy's version comes from `<command> --version`. By default no PATH executable is used. New projects can only pick an installed runtime; one that existing
   projects use but that's missing (Symbio used to ship OpenCode) is installed at startup.
 - **OpenCode is the default runtime.** Symbio starts its *own* private `opencode serve`: a random port,
   a random `OPENCODE_SERVER_PASSWORD`, Basic auth user `opencode`, in `--stdio` mode so the password
@@ -125,7 +128,7 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 | `remote-access.ts` | Optional remote access: Cloudflare quick tunnel, access code, remote sessions, the remote login page |
 | `folder-picker.ts` | Native "choose a folder" dialog on the machine running Symbio |
 | `fsutil.ts` | Writing files atomically (a temporary file, then a rename), so a crash never leaves half a file |
-| `runtime/install.ts`, `runtime/settings.ts` | Installing and removing the runtimes Symbio runs (`~/.symbio/runtimes`), finding them, and the human's runtime settings (`runtime-settings.json`: e.g. an OpenCode on the PATH) |
+| `runtime/install.ts`, `runtime/settings.ts` | Installing and removing the runtimes Symbio runs (`~/.symbio/runtimes`), finding them, and the human's runtime settings (`runtime-settings.json`: which runtimes run from the computer's copy) |
 | `runtime/types.ts` | `AgentRuntime`: what Symbio needs from an agent runtime (sessions, prompts, interrupts, models, instructions, permissions, questions, history, usage, changes, background shells) and the event vocabulary the team logic and the chat use. The team and the API call runtimes only through it |
 | `opencode/runtime.ts` | The OpenCode runtime: starts, supervises and restarts `opencode serve`, measures its memory, and implements `AgentRuntime` over its API |
 | `opencode/client.ts` | Typed wrapper over the OpenCode HTTP API |

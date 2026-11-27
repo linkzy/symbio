@@ -85,13 +85,19 @@ itself. Whoever gets in controls your agents, so keep the link and code to yours
 
 ## Your first project
 
-1. **Install an agent runtime.** The first time, the Projects page offers them (later: **Settings →
-   Agent runtimes**). Then connect its models:
+1. **Get started.** The first time, the Projects page walks you through it, step by step: what
+   your agents run on (an agent runtime: OpenCode or GitHub Copilot CLI), installed for Symbio (a
+   separate copy in its own folder, which doesn't touch one already on your computer) or, for
+   OpenCode, the one already on your computer; then its models; then git, which is optional (the
+   page can install it on Windows); then your first project. Later, all of it is in **Settings →
+   Agent runtimes**. Connecting the models:
    - **OpenCode:** in **Settings → Model providers**, check that the providers you use are there.
      Add one with an API key or a browser sign-in, and remove the ones you don't use so the model
      list stays short.
    - **GitHub Copilot CLI:** sign in with GitHub from its card (or Symbio reuses your
-     `copilot login`). Models you added to the Copilot CLI with your own key show up too.
+     `copilot login`). Models you added to the Copilot CLI with your own key show up too. A
+     `copilot` already on your computer can't run Symbio's agents (Symbio needs the version its
+     SDK was built with), so Symbio installs its own copy; your sign-in works with both.
 2. **Create a project.** On the Projects page, click **New project**:
    - **Folder:** browse for or paste a folder. An empty folder starts a new project; an existing
      one is studied first. Symbio offers to set up git if the folder doesn't have it.

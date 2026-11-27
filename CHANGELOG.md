@@ -5,6 +5,17 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **A first run that explains itself** (#58). With no project yet, the Projects page walks through what Symbio needs, in
+  order: what agents run on (an agent runtime, said in one line), installed for Symbio, which says plainly that it's a
+  separate copy in Symbio's folder that doesn't touch one already on the computer, or the one already on the computer;
+  then the models (a provider for OpenCode, the GitHub sign-in for Copilot, checked right away); then git, optional,
+  installable from there on Windows; then **New project**.
+- **A runtime already on the computer, per runtime** (#59). Each runtime's card says when one is on the computer, with
+  its version and the one Symbio is tested with. OpenCode's can be used instead of Symbio's copy (as before, now also
+  from the first run). A GitHub Copilot CLI is mentioned but can't be used: Symbio's Copilot SDK only talks to the
+  runtime version it was built with (checked live: the installed CLI speaks a newer protocol); the sign-in is shared
+  either way. The setting is now stored per runtime; the earlier one still counts.
+
 - `sym update` checks with this copy's install id, like the running Symbio does; without it, it counted as an older copy.
 
 - **Install with one line, without Node.js** (#71): `irm https://symbio.linkzy.dev/install.ps1 | iex` on Windows, and

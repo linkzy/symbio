@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { ArrowLeft, ArrowRight, FolderOpen, FolderPlus, Plus } from "lucide-react";
+import { ArrowLeft, ArrowRight, FolderOpen, Plus } from "lucide-react";
 import { api, subscribe, type DocsLocation, type Inspection, type Project, type ProjectConnection, type RuntimeInfo, type RuntimeKind, type RuntimeView } from "./api";
-import { RuntimeCards, useRuntimes } from "./Runtimes";
+import { useRuntimes } from "./Runtimes";
+import { FirstRun } from "./FirstRun";
 import { ConnectionsPicker } from "./ConnectionsPicker";
 import { FolderSummary } from "./FolderSummary";
 import { FolderBrowser } from "./FolderBrowser";
 import { ModelPicker, choiceBody, type ModelChoice } from "./ModelPicker";
 import { ProjectMenu } from "./ProjectMenu";
-import { Avatar, Dialog, EmptyState, timeAgo } from "./ui";
+import { Avatar, Dialog, timeAgo } from "./ui";
 import { useI18n, type MessageKey } from "./i18n";
 
 function baseName(p: string) {
@@ -46,17 +47,6 @@ export function Home({ runtime, create }: { runtime: RuntimeInfo | null; create?
     history.replaceState(null, "", "#/");
   }, [create, canCreate]);
 
-  // First steps with OpenCode only: nothing to run agents on until a model provider is connected.
-  const [noProviders, setNoProviders] = useState(false);
-  const onlyOpenCode = installed.length === 1 && installed[0].kind === "opencode";
-  useEffect(() => {
-    if (!onlyOpenCode || projects?.length !== 0) return;
-    api
-      .providers()
-      .then((p) => setNoProviders(p.connected.every((c) => c.models === 0)))
-      .catch(() => {});
-  }, [onlyOpenCode, projects?.length]);
-
   return (
     <div className="page-inner">
       <div className="page-head">
@@ -70,41 +60,8 @@ export function Home({ runtime, create }: { runtime: RuntimeInfo | null; create?
         </button>
       </div>
 
-      {runtimes && installed.length === 0 && (
-        <div className="first-run section" style={{ padding: 16 }}>
-          <div>
-            <h2>{t("home.installRuntime.title")}</h2>
-            <p>{t("home.installRuntime.body")}</p>
-          </div>
-          <RuntimeCards runtimes={runtimes} onChange={reloadRuntimes} />
-        </div>
-      )}
-
-      {noProviders && (
-        <div className="notice row" style={{ justifyContent: "space-between", gap: 12 }}>
-          <span>{t("home.noProviders")}</span>
-          <a className="btn sm" href="#/settings/agents">
-            {t("home.connectProvider")}
-          </a>
-        </div>
-      )}
-
-      {projects && projects.length === 0 && !(runtimes && installed.length === 0) && (
-        <div className="section">
-          <EmptyState
-            icon={<FolderPlus size={20} />}
-            title={t("home.noProjects.title")}
-            action={
-              <button className="btn primary" onClick={() => setCreating(true)} disabled={!canCreate}>
-                <Plus size={15} />
-                {t("home.newProject")}
-              </button>
-            }
-          >
-            {t("home.noProjects.body")}
-          </EmptyState>
-        </div>
-      )}
+      {/* No project yet: what Symbio needs, in the order it's done, ending with the first project. */}
+      {projects && projects.length === 0 && runtimes && <FirstRun runtimes={runtimes} reload={reloadRuntimes} onNewProject={() => setCreating(true)} />}
 
       {projects && projects.length > 0 && (
         <div className="project-list">

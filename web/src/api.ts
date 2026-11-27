@@ -454,10 +454,15 @@ export interface RuntimeView {
   /** A GitHub sign-in in progress: the code to enter on GitHub. */
   signIn: { userCode: string; verificationUri: string; expiresAt: number } | null;
   signInError: string | null;
+  /** A copy already on the computer (on the PATH): its version, whether Symbio can run on it, and whether it does. */
+  computer: { path: string; version: string | null; usable: boolean; chosen: boolean } | null;
+  /** The version Symbio installs and is tested with. */
+  testedVersion: string | null;
 }
 
-/** The opt-in to run an OpenCode found on PATH (GET/PUT /runtime/settings). */
+/** The opt-in to run a runtime's copy on the computer (GET/PUT /runtime/settings). */
 export interface RuntimeSettings {
+  fromComputer: Partial<Record<RuntimeKind, boolean>>;
   usePathOpenCode: boolean;
   /** Whether an `opencode` executable was found on PATH. */
   pathAvailable: boolean;
@@ -835,7 +840,8 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
 export const api = {
   runtime: () => call<RuntimeInfo>("GET", "/runtime"),
   runtimeSettings: () => call<RuntimeSettings>("GET", "/runtime/settings"),
-  setRuntimeSettings: (settings: { usePathOpenCode: boolean }) => call<RuntimeSettings>("PUT", "/runtime/settings", settings),
+  setFromComputer: (kind: RuntimeKind, fromComputer: boolean) => call<RuntimeSettings>("PUT", "/runtime/settings", { kind, fromComputer }),
+  setup: () => call<{ git: boolean; gitInstaller: "winget" | null }>("GET", "/setup"),
   runtimes: () => call<RuntimeView[]>("GET", "/runtimes"),
   installRuntime: (kind: RuntimeKind) => call<RuntimeView>("POST", `/runtimes/${kind}/install`),
   removeRuntime: (kind: RuntimeKind) => call<RuntimeView>("DELETE", `/runtimes/${kind}`),
