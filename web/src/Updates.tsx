@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowUpCircle, RefreshCw } from "lucide-react";
 import { api, type UpdateMode, type UpdateState } from "./api";
-import { CopyButton } from "./ui";
 import { useI18n, type MessageKey } from "./i18n";
 
 /** Update state, refreshed now and then (the server checks npm every hour). */
@@ -74,14 +73,6 @@ export function UpdatesSection() {
       setError((e as Error).message);
     } finally {
       setBusy(null);
-    }
-  }
-
-  async function setInstallId(on: boolean) {
-    try {
-      setState(await api.setInstallId(on));
-    } catch (e) {
-      setError((e as Error).message);
     }
   }
 
@@ -171,24 +162,11 @@ export function UpdatesSection() {
             </div>
             {state?.error && <div className="small subtle">{state.error}</div>}
             {state?.checkedAt && <div className="small subtle">{t("usage.updates.lastChecked", { date: new Date(state.checkedAt).toLocaleString() })}</div>}
-            <label className="choice" data-testid="install-id">
-              <input type="checkbox" checked={!!state?.installId} onChange={(e) => setInstallId(e.target.checked)} disabled={!state} />
-              <span className="choice-body">
-                <span className="choice-title">{t("usage.updates.installId.title")}</span>
-                <span className="choice-desc">
-                  {t("usage.updates.installId.desc")}{" "}
-                  <a href="https://github.com/linkzy/symbio/blob/main/docs/security.md#update-checks" target="_blank" rel="noreferrer">
-                    {t("usage.updates.installId.more")}
-                  </a>
-                </span>
-                {state?.installId && (
-                  <span className="choice-desc row" style={{ gap: 6 }}>
-                    {t("usage.updates.installId.yours")} <code>{state.installId}</code>
-                    <CopyButton text={state.installId} />
-                  </span>
-                )}
-              </span>
-            </label>
+            {state?.install === "npm" && (
+              <div className="small subtle">
+                {t("usage.updates.statistics")} <a href="#/settings/about">{t("usage.updates.statisticsLink")}</a>
+              </div>
+            )}
           </>
         )}
       </div>

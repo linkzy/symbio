@@ -1,7 +1,7 @@
 import { SkillsSection } from "./Skills";
 import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence } from "motion/react";
-import { ArrowLeft, Bell, Bot, Check, Coins, LifeBuoy, Monitor, Pencil, Plug, Plus, ShieldCheck, Trash2, X } from "lucide-react";
+import { ArrowLeft, Bell, Bot, Check, Coins, Info, LifeBuoy, Monitor, Pencil, Plug, Plus, ShieldCheck, Trash2, X } from "lucide-react";
 import { SettingsTabs, settingsHref, useSettingsGroup, type SettingsGroupId } from "./SettingsTabs";
 import { api, type ConnectionView, type FtpSecurity } from "./api";
 import { ConnIcon } from "./ConnectionsPicker";
@@ -14,6 +14,7 @@ import { UpdatesSection } from "./Updates";
 import { NotificationsSection } from "./Notifications";
 import { FeedbackSection } from "./Feedback";
 import { ReportProblemSection } from "./ReportProblem";
+import { AboutSection } from "./About";
 import { Dialog, EmptyState } from "./ui";
 import { useI18n } from "./i18n";
 
@@ -56,6 +57,7 @@ export function Settings() {
     { id: "usage", label: t("settings.group.usage"), icon: <Coins size={14} /> },
     { id: "computer", label: t("settings.group.computer"), icon: <Monitor size={14} /> },
     { id: "help", label: t("settings.group.help"), icon: <LifeBuoy size={14} /> },
+    { id: "about", label: t("settings.group.about"), icon: <Info size={14} /> },
   ];
 
   // Escape leaves Settings, unless it's closing a dialog or the cursor is in a field.
@@ -223,6 +225,8 @@ export function Settings() {
           <ReportProblemSection />
         </>
       )}
+
+      {group === "about" && <AboutSection />}
 
       <AnimatePresence>
         {editing && (

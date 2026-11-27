@@ -5,6 +5,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Settings → About**, the last tab: what Symbio is (version, license, links), what leaves your computer and where it
+  goes, and the usage statistics the update checks carry (the version and this copy's random id; the website notes the
+  time and the country, not the address), with this copy's id and the switch to turn them off. The switch moved there
+  from Updates, which now links to it.
+
 - **A first run that explains itself** (#58). With no project yet, the Projects page walks through what Symbio needs, in
   order: what agents run on (an agent runtime, said in one line), installed for Symbio, which says plainly that it's a
   separate copy in Symbio's folder that doesn't touch one already on the computer, or the one already on the computer;

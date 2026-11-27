@@ -184,7 +184,7 @@ test("the anonymous install id: made once, sent as a header, gone when turned of
   const id = updates.state().installId!;
   assert.match(id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   assert.equal(announced.length, 1);
-  assert.match(announced[0], /anonymous install id.*Settings → This computer → Updates/);
+  assert.match(announced[0], /anonymous usage statistics.*Settings → About/);
 
   // The same id after a restart, and the note isn't repeated.
   const again = new Updater(host, npm);

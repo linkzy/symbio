@@ -212,7 +212,8 @@ Nothing else: no project data, no names, no paths. The endpoint keeps, per id, w
 check. The country is worked out from the connection's address when the check arrives; the address
 itself isn't kept. The country tells us which translations to do next, the times tell real copies
 from test runs. Installed copies tell the
-human about the id once, in Messages. **Turn it off** in Settings → This computer → Updates (the id
+human about the id once, in Messages. It's described, with the id itself, in **Settings → About**
+(*Usage statistics*), where it's **turned off** (the id
 is deleted; turning it on again makes a new one, which can't be linked to the old). Update checks
 keep working without it. Development folders, the tests and CI ask npm directly and send nothing,
 and `SYMBIO_UPDATE_URL=off` skips the endpoint altogether.

@@ -1032,6 +1032,9 @@ tr.file-view-target > td, tr.file-view-target > th { background: color-mix(in sr
 .first-run h2 { margin: 0; font-size: 15px; }
 .first-run p { margin: 0; color: var(--text-2); font-size: 13px; }
 /* The first run's steps, in the order they're done: the current one stands out, done ones are quiet. */
+.about-body { padding: 14px 16px 16px; gap: 10px; }
+.about-body p { margin: 0; }
+.about-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; color: var(--text-2); line-height: 1.5; }
 .setup-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
 .setup-steps > li { display: flex; flex-direction: column; gap: 8px; padding-left: 14px; border-left: 2px solid var(--border-strong); }
 .setup-steps > li.current { border-left-color: var(--accent); }

@@ -264,9 +264,9 @@ export class SelfUpdate {
     if (!this.installIdTold && usesUpdateEndpoint(this.install)) {
       await this.host
         .announce(
-          "Symbio's update checks now include an anonymous install id: a random number, so we can tell how many people use Symbio " +
-            "and whether they keep using it. Nothing about your projects or your computer is sent. Turn it off in Settings → " +
-            "This computer → Updates.",
+          "Symbio's update checks carry anonymous usage statistics: its version and a random id for this copy, so we know how many " +
+            "copies are in use and whether people keep using Symbio. Nothing about you, your projects or your computer. What's sent, " +
+            "and the switch to turn it off: Settings → About.",
         )
         .catch(() => {});
       this.installIdTold = true;

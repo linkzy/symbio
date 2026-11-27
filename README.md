@@ -218,7 +218,7 @@ npm when that doesn't answer, and GitHub to read release notes. The update check
 version and an **anonymous install id** (a random number), so we can tell how many people use
 Symbio and whether they keep using it (the endpoint also notes the time and the country the check
 came from, not the address); nothing about your projects or your computer, and you can
-turn it off in Settings → This computer → Updates (details in [security.md](docs/security.md#update-checks)).
+turn it off in Settings → About, where it's described (details in [security.md](docs/security.md#update-checks)).
 Remote access goes through Cloudflare only while you have it on. Notifications go only to the
 channels you turn on (Telegram, ntfy, a webhook, your e-mail server), and can say only "a project
 needs you".
