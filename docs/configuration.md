@@ -38,7 +38,7 @@ All optional, set as environment variables:
 | `~/.symbio/skills/` | Your skills (one folder with a `SKILL.md` each), added in Settings → Skills |
 | `~/.symbio/connections.json` | Connection settings (no secrets) |
 | `~/.symbio/secrets.enc` | Connection secrets and notification tokens (Telegram, ntfy, the webhook address, the e-mail password), encrypted with a key kept in your OS credential store |
-| `~/.symbio/notifications.json` | Where notifications go, and what they say (no secrets) |
+| `~/.symbio/notifications.json` | Where notifications go, which kinds are sent, and what they say (no secrets) |
 | `~/.symbio/worktrees/` | Helpers' working copies |
 | `~/.symbio/runtimes/` | The agent runtimes you installed from Symbio |
 | `~/.symbio/copilot/` | GitHub Copilot CLI's sessions for Symbio's agents (kept apart from your own Copilot history) |

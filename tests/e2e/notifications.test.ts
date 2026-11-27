@@ -131,3 +131,23 @@ test("Telegram: set up in order (token, then chat, then test), each step shown w
   await card.locator(".notify-ok", { hasText: "Sent" }).waitFor();
   assert.ok(telegramSent.some((m) => m.chat_id === "42" && /Symbio: test notification/.test(m.text)));
 });
+
+test("the kinds of notification: what needs you and what got finished on, routine news off; changed and saved", async () => {
+  const { page } = await openPage(symbio);
+  await page.goto(`${symbio.base}/#/settings/notifications`);
+  const kinds = page.locator('[data-testid="notify-kinds"]');
+  const box = (name: string) => kinds.getByRole("checkbox", { name });
+  await box("Questions and briefings").waitFor();
+  assert.equal(await box("Questions and briefings").isChecked(), true);
+  assert.equal(await box("A feature done (every task of its spec)").isChecked(), true);
+  assert.equal(await box("Each task done").isChecked(), false);
+  assert.equal(await box("Decisions core made on its own").isChecked(), false);
+  await box("Each task done").check();
+  await box("The team stopping work").uncheck();
+  await page.locator("#notifications").getByRole("button", { name: "Save", exact: true }).click();
+  await until("the kinds to be saved", async () => {
+    const k = (await symbio.call("GET", "/notifications")).kinds;
+    return k.task === true && k.stopped === false && k.question === true;
+  });
+  assert.deepEqual((page as any).errors, []);
+});

@@ -3,10 +3,13 @@
 // news (a task done, every task done, the team stopped working). It listens to the bus: the
 // messages Symbio logs for the human, the plan, and agents' status. Things that happen close
 // together go out as one notification per project, so a briefing of five questions is one ping.
-// Each project chooses: everything (unset), only what waits on the human, or nothing.
+// Each project chooses: everything (unset), only what waits on the human, or nothing; and the human
+// chooses, for all projects, which kinds are sent (NOTIFY_KINDS: what needs them and what got
+// finished by default). Messages are plain and short: no file paths or links to project files,
+// which can't be opened where notifications are read.
 
 import { bus, type UiEvent } from "./bus.js";
-import type { Notification } from "./notifications.js";
+import type { Notification, NotifyKind } from "./notifications.js";
 import type { Plan } from "./plan.js";
 import type { Question } from "./questions.js";
 import { BUDGET_PAUSED } from "./team/budget.js";
@@ -22,6 +25,7 @@ export interface NotifierHost {
 
 export interface NotifyItem {
   key: string;
+  kind: NotifyKind;
   title: string;
   body: string;
   /** Waits on the human (sent even when the project wants only those). */
@@ -35,12 +39,15 @@ export interface NotifierOptions {
   quietMs: number;
   /** Shorter runs (a quick reply in the chat) don't count as the team stopping. */
   minRunMs: number;
+  /** Whether the human wants this kind of notification (Settings → Notifications). */
+  wants: (kind: NotifyKind) => boolean;
 }
 
 const DEFAULTS: NotifierOptions = {
   groupMs: Number(process.env.SYMBIO_NOTIFY_GROUP_MS ?? 20_000),
   quietMs: Number(process.env.SYMBIO_NOTIFY_QUIET_MS ?? 60_000),
   minRunMs: Number(process.env.SYMBIO_NOTIFY_MIN_RUN_MS ?? 3 * 60_000),
+  wants: () => true,
 };
 
 const MAX_BODY = 600;
@@ -55,7 +62,25 @@ export function plain(text: string, max = MAX_BODY): string {
   return clean.length > max ? `${clean.slice(0, max - 1).trimEnd()}…` : clean;
 }
 
-const firstLine = (text: string, max: number) => plain(text.split("\n").find((l) => l.trim()) ?? "", max);
+/**
+ * What a notification can show of an agent's text: links as their words, paths to files as the
+ * file's name (neither opens from a phone), and plain text cut at a sentence when it's long.
+ */
+export function readable(text: string, max = 300): string {
+  const tidy = plain(text, 4000)
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+    // (Not inside an address: "https://site.com/page.html" stays whole.)
+    .replace(/(?<![\w/\\:.])(?:[A-Za-z]:[\\/]|\/)?(?:[\w.~-]+[\\/])+([\w.-]+\.\w{1,8})\b/g, "$1");
+  if (tidy.length <= max) return tidy;
+  const cut = tidy.slice(0, max);
+  const sentence = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("? "), cut.lastIndexOf("! "), cut.lastIndexOf("\n"));
+  return sentence >= 20 ? cut.slice(0, sentence + 1).trimEnd() : `${cut.slice(0, cut.lastIndexOf(" ") > 0 ? cut.lastIndexOf(" ") : max).trimEnd()}…`;
+}
+
+const firstLine = (text: string, max: number) => readable(text.split("\n").find((l) => l.trim()) ?? "", max);
+
+/** A spec's path as a feature's name: "docs/specs/contact-form.md" → "contact form". */
+const featureName = (spec: string) => spec.split(/[\\/]/).pop()!.replace(/\.\w+$/, "").replace(/[-_]+/g, " ");
 
 interface Run {
   since: number;
@@ -140,39 +165,51 @@ export class Notifier {
     switch (m.kind) {
       case "question": {
         const briefing = m.text.match(/^B\d+: (.*)$/s);
-        if (briefing) return { key, title: `${who} started a briefing`, body: plain(briefing[1]), important: true };
+        if (briefing) return { key, kind: "question", title: `${who} started a briefing`, body: readable(briefing[1]), important: true };
         const id = m.text.match(/^(Q\d+): /)?.[1];
         const q = id ? await this.host.question(project, id) : undefined;
-        if (q?.decided) return { key, title: `${who} decided`, body: plain(`${q.question}\n→ ${q.decided}`), important: false };
-        return { key, title: `${who} asks`, body: plain(q?.question ?? m.text.replace(/^Q\d+: /, "")), important: true };
+        if (q?.decided) return { key, kind: "decided", title: `${who} decided`, body: readable(`${q.question}\n→ ${q.decided}`), important: false };
+        return { key, kind: "question", title: `${who} asks`, body: readable(q?.question ?? m.text.replace(/^Q\d+: /, "")), important: true };
       }
       case "form":
-        return { key, title: `${who} asks you`, body: plain(m.text), important: true };
+        return { key, kind: "question", title: `${who} asks you`, body: readable(m.text), important: true };
       case "approval":
-        return { key, title: `${who} wants to use a connection`, body: plain(m.text), important: true };
+        return { key, kind: "approval", title: `${who} wants to use a connection`, body: readable(m.text), important: true };
       case "permission":
-        return { key, title: `${who} asks permission`, body: plain(m.text), important: true };
+        return { key, kind: "approval", title: `${who} asks permission`, body: readable(m.text), important: true };
       case "plan": {
         const goal = m.text.match(/\*\*Goal:\*\*\s*(.*)$/s)?.[1] ?? "";
         const proposed = m.text.startsWith("Proposed");
-        return { key, title: proposed ? "Plan to review" : `${who} started on a plan`, body: plain(goal ? `Goal: ${goal}` : m.text), important: proposed };
+        return {
+          key,
+          kind: proposed ? "review" : "plan-started",
+          title: proposed ? "Plan to review" : `${who} started on a plan`,
+          body: readable(goal ? `Goal: ${goal}` : m.text),
+          important: proposed,
+        };
       }
       case "task-review":
-        return { key, title: "Work to review", body: plain(m.text), important: true };
+        return { key, kind: "review", title: "Work to review", body: readable(m.text), important: true };
       case "alert":
-        return { key, title: "Symbio needs you", body: plain(m.text), important: true };
+        return { key, kind: "alert", title: "Symbio needs you", body: readable(m.text), important: true };
       case "job": {
         const kind = (Object.keys(JOB_PREFIX) as (keyof typeof JOB_PREFIX)[]).find((k) => m.text.startsWith(JOB_PREFIX[k]));
         const rest = kind ? m.text.slice(JOB_PREFIX[kind].length).trim() : m.text;
         const titles = { proposed: "Scheduled job to approve", scheduled: "Job scheduled", done: "Scheduled job done", failed: "Scheduled job failed", skipped: "Scheduled job skipped" };
-        return { key, title: kind ? titles[kind] : "Scheduled jobs", body: plain(rest), important: kind === "proposed" || kind === "failed" };
+        const attention = kind === "proposed" || kind === "failed";
+        return { key, kind: attention ? "jobs" : "job-runs", title: kind ? titles[kind] : "Scheduled jobs", body: readable(rest), important: attention };
       }
       case "budget": {
         const paused = m.text.startsWith(BUDGET_PAUSED);
-        return { key, title: paused ? "Budget reached: team paused" : "Budget", body: plain(paused ? m.text.slice(BUDGET_PAUSED.length) : m.text), important: paused };
+        return {
+          key,
+          kind: paused ? "budget" : "budget-warning",
+          title: paused ? "Budget reached: team paused" : "Budget",
+          body: readable(paused ? m.text.slice(BUDGET_PAUSED.length) : m.text),
+          important: paused,
+        };
       }
-      case "file":
-        return { key, title: `${who} shared a file`, body: plain(m.text), important: false };
+      // Shared files: in the Files tab and with their task, not on the human's phone.
       default:
         return null;
     }
@@ -188,7 +225,19 @@ export class Notifier {
       finishedOne = true;
       // The human approved it themselves: nothing to tell them.
       if (task.humanReview?.state === "approved") continue;
-      this.add(project, { key: `done:${task.id}`, title: `${task.id} done`, body: plain(task.title), important: false });
+      this.add(project, { key: `done:${task.id}`, kind: "task", title: `${task.id} done`, body: readable(task.title), important: false });
+      // The last task of a feature (the tasks of one spec): the feature is done.
+      const feature = task.spec ? plan.tasks.filter((t) => t.spec === task.spec) : [];
+      const all = plan.tasks.length > 0 && plan.tasks.every((t) => t.status === "done");
+      if (feature.length && !all && feature.every((t) => t.status === "done")) {
+        this.add(project, {
+          key: `feature:${task.spec}:${plan.revision}`,
+          kind: "feature",
+          title: `Feature done: ${featureName(task.spec!)}`,
+          body: readable(feature.map((t) => t.title).join("; ")),
+          important: false,
+        });
+      }
     }
     // Tasks that went back (sent back, reopened) count again when they're done again.
     for (const id of [...done]) if (!plan.tasks.some((t) => t.id === id && t.status === "done")) done.delete(id);
@@ -197,8 +246,9 @@ export class Notifier {
       if (run) run.finished = true;
       this.add(project, {
         key: `finished:${plan.revision}:${Date.now()}`,
+        kind: "finished",
         title: `All ${plan.tasks.length} tasks done`,
-        body: plain(plan.goal ? `Goal: ${plan.goal}` : ""),
+        body: readable(plan.goal ? `Goal: ${plan.goal}` : ""),
         important: true,
       });
     }
@@ -229,14 +279,17 @@ export class Notifier {
       if (Date.now() - this.opts.quietMs - run.since < this.opts.minRunMs) return;
       this.add(latest, {
         key: `stopped:${run.since}`,
+        kind: "stopped",
         title: "The team stopped working",
-        body: run.lastReply ? plain(run.lastReply) : "Nothing is waiting for you.",
+        body: run.lastReply ? readable(run.lastReply) : "Nothing is waiting for you.",
         important: true,
       });
     }, this.opts.quietMs);
   }
 
   private add(project: Project, item: NotifyItem) {
+    // A kind the human turned off isn't sent, and doesn't count as having told them.
+    if (!this.opts.wants(item.kind)) return;
     const run = this.runs.get(project.id);
     if (run && item.important && !item.key.startsWith("stopped:")) run.asked = true;
     const queue = this.queues.get(project.id);
@@ -272,6 +325,6 @@ export function compose(project: Pick<Project, "id" | "name">, items: NotifyItem
   return {
     ...base,
     title: `${project.name}: ${important ? "needs you" : "updates"} (${items.length})`,
-    body: ordered.map((i) => `• ${i.title}${i.body ? `: ${firstLine(i.body, 140)}` : ""}`).join("\n"),
+    body: ordered.map((i) => `• ${i.title}${i.body ? `: ${firstLine(i.body, 120)}` : ""}`).join("\n"),
   };
 }

@@ -542,8 +542,14 @@ export interface BudgetStatus {
 
 export type NotifyChannel = "browser" | "telegram" | "ntfy" | "webhook" | "email";
 
+/** The kinds of notification (server: NOTIFY_KINDS), each sent or not. */
+export const NOTIFY_KINDS_NEEDS = ["question", "approval", "review", "alert", "budget", "jobs"] as const;
+export const NOTIFY_KINDS_NEWS = ["feature", "finished", "stopped", "task", "decided", "plan-started", "budget-warning", "job-runs"] as const;
+export type NotifyKind = (typeof NOTIFY_KINDS_NEEDS)[number] | (typeof NOTIFY_KINDS_NEWS)[number];
+
 export interface NotificationSettings {
   detail: "full" | "short";
+  kinds: Record<NotifyKind, boolean>;
   browser: { on: boolean };
   telegram: { on: boolean; chatId: string; chatName: string; bot: string };
   ntfy: { on: boolean; server: string; topic: string };

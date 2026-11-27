@@ -22,7 +22,7 @@ async function until(check: () => boolean, ms = 3000) {
   await wait(120); // and a moment more, so an extra notification would show up too
 }
 
-function setup(opts: { minRunMs?: number; tasks?: Partial<Task>[]; questions?: Partial<Question>[] } = {}) {
+function setup(opts: { minRunMs?: number; tasks?: Partial<Task>[]; questions?: Partial<Question>[]; wants?: (kind: string) => boolean } = {}) {
   const agent = { id: "a1", name: "core", status: "idle" } as Agent;
   const project = { id: "p1", name: "My site", agents: [agent] } as unknown as Project;
   const plan: Plan = {
@@ -43,7 +43,7 @@ function setup(opts: { minRunMs?: number; tasks?: Partial<Task>[]; questions?: P
     },
     async (n) => void sent.push(n),
     () => "full",
-    { groupMs: 40, quietMs: 40, minRunMs: opts.minRunMs ?? 0 },
+    { groupMs: 40, quietMs: 40, minRunMs: opts.minRunMs ?? 0, ...(opts.wants ? { wants: opts.wants } : {}) },
   );
   const log = (m: Partial<LoggedMessage>) =>
     bus.publish({ type: "message", projectId: project.id, message: { id: `m${Math.random()}`, time: Date.now(), from: agent.id, to: "human", kind: "chat", text: "", ...m } });
@@ -64,13 +64,9 @@ test("what happens together goes out as one notification, what waits on the huma
     log({ kind: "chat", text: "Working on it" }); // the chat isn't a notification
     await until(() => sent.length >= 1);
     assert.equal(sent.length, 1);
-    assert.equal(sent[0].title, "My site: needs you (3)");
+    assert.equal(sent[0].title, "My site: needs you (2)", "a shared file isn't a notification");
     assert.equal(sent[0].important, true);
-    assert.deepEqual(sent[0].body.split("\n"), [
-      "• core asks: Which font for the titles?",
-      "• core wants to use a connection: Deploy to production",
-      "• core shared a file: logo.png: the new logo",
-    ]);
+    assert.deepEqual(sent[0].body.split("\n"), ["• core asks: Which font for the titles?", "• core wants to use a connection: Deploy to production"]);
   } finally {
     notifier.stop();
   }
@@ -159,10 +155,43 @@ test("the team stopping after a while of work is news, with what it last said; a
 });
 
 test("a short notification says only which project needs the human", () => {
-  const items = [{ key: "a", title: "core asks", body: "Which font?", important: true }];
+  const items = [{ key: "a", kind: "question" as const, title: "core asks", body: "Which font?", important: true }];
   const n = compose({ id: "p1", name: "My site" }, items, "short");
   assert.equal(n.title, "Symbio");
   assert.equal(n.body, "My site needs you");
+});
+
+test("the kinds the human turned off aren't sent; a feature's last task is news of its own", async () => {
+  const off = new Set(["task", "decided"]);
+  const { plan, sent, notifier, project, log } = setup({
+    wants: (kind) => !off.has(kind),
+    questions: [{ id: "Q3", question: "Serif or sans?", decided: "Sans" }],
+    tasks: [
+      { id: "T1", status: "done", spec: "docs/specs/contact-form.md", title: "The form" },
+      { id: "T2", status: "in-progress", spec: "docs/specs/contact-form.md", title: "Sending the e-mail" },
+      { id: "T3", status: "todo", title: "The map" },
+    ],
+  });
+  await notifier.start();
+  try {
+    log({ kind: "question", text: "Q3: Serif or sans?" }); // decided: turned off
+    plan.tasks[1].status = "done";
+    bus.publish({ type: "plan.updated", projectId: project.id });
+    await until(() => sent.length >= 1);
+    assert.equal(sent.length, 1);
+    assert.equal(sent[0].title, "My site: Feature done: contact form", "T2 done alone is off, the feature isn't");
+    assert.equal(sent[0].body, "The form; Sending the e-mail");
+  } finally {
+    notifier.stop();
+  }
+});
+
+test("readable: links as their words, files by name, long text cut at a sentence", async () => {
+  const { readable } = await import("../src/server/notifier.js");
+  assert.equal(readable("See [the report](docs/evidence/t35-report.md) in docs/evidence/t35-cards-1440.png"), "See the report in t35-cards-1440.png");
+  assert.equal(readable("Deployed to https://site.example.com/index.html, and C:\\proj\\out\\build.log is clean"), "Deployed to https://site.example.com/index.html, and build.log is clean");
+  const long = "The first sentence is short. " + "Then a second one goes on and on about details nobody reads on a phone ".repeat(6);
+  assert.equal(readable(long, 120), "The first sentence is short.");
 });
 
 function fakeVault() {

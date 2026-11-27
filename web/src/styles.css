@@ -1203,6 +1203,9 @@ body.resizing iframe { pointer-events: none; }
 .notify-flow > li.done { border-left-color: var(--green); }
 .notify-step-title { font-size: 13px; font-weight: 600; }
 .notify-ok svg, .notify-error svg { vertical-align: -2px; }
+.notify-kinds { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px 24px; }
+.notify-kinds-group { display: flex; flex-direction: column; gap: 6px; }
+.notify-kinds-head { font-weight: 600; color: var(--text-2); }
 .notify-ok { color: var(--green); }
 .notify-error { color: var(--red); }
 .notify-steps { margin: 0; padding-left: 18px; color: var(--text-2); line-height: 1.6; }

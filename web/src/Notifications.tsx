@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Bell, Check, Search, Send, Shuffle } from "lucide-react";
-import { api, subscribe, type NotificationSettings, type NotifyChannel, type Project } from "./api";
+import { api, NOTIFY_KINDS_NEEDS, NOTIFY_KINDS_NEWS, subscribe, type NotificationSettings, type NotifyChannel, type NotifyKind, type Project } from "./api";
 import { useI18n } from "./i18n";
 import { timeAgo } from "./ui";
 
@@ -226,6 +226,28 @@ export function NotificationsSection() {
             </button>
           </div>
           <span className="hint">{draft.detail === "full" ? t("notify.detail.hint.full") : t("notify.detail.hint.short")}</span>
+        </div>
+
+        {/* Which kinds go out, for every project and channel: what needs the human, then news. */}
+        <div className="field" data-testid="notify-kinds">
+          <span>{t("notify.kinds.title")}</span>
+          <div className="notify-kinds">
+            {([
+              ["needs", NOTIFY_KINDS_NEEDS],
+              ["news", NOTIFY_KINDS_NEWS],
+            ] as const).map(([group, kinds]) => (
+              <div key={group} className="notify-kinds-group">
+                <div className="small notify-kinds-head">{t(`notify.kinds.${group}`)}</div>
+                {kinds.map((kind: NotifyKind) => (
+                  <label key={kind} className="check small">
+                    <input type="checkbox" checked={draft.kinds[kind] !== false} onChange={(e) => setDraft({ ...draft, kinds: { ...draft.kinds, [kind]: e.target.checked } })} />
+                    {t(`notify.kind.${kind}`)}
+                  </label>
+                ))}
+              </div>
+            ))}
+          </div>
+          <span className="hint">{t("notify.kinds.hint")}</span>
         </div>
 
         {card(

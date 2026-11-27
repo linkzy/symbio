@@ -13,9 +13,35 @@ import type { SecretVault } from "./secrets.js";
 export const CHANNELS = ["browser", "telegram", "ntfy", "webhook", "email"] as const;
 export type Channel = (typeof CHANNELS)[number];
 
+/**
+ * The kinds of notification, and whether each is on unless the human says otherwise: what needs
+ * them or blocks the work, and what got finished, are; routine news isn't. Shared files never
+ * notify on their own (they're in the Files tab and with their task).
+ */
+export const NOTIFY_KINDS = {
+  question: true, // a question, a briefing, a form
+  approval: true, // a connection to approve, a permission
+  review: true, // a plan or work to review
+  alert: true, // an agent that can't continue, Symbio needing the human
+  budget: true, // the budget paused the team
+  jobs: true, // a scheduled job to approve, or one that failed
+  feature: true, // every task of a feature (a spec) done
+  finished: true, // every task in the plan done
+  stopped: true, // the team stopped working (and nothing else said so)
+  task: false, // each task done
+  decided: false, // core decided something on its own
+  "plan-started": false, // core started on a plan on its own
+  "budget-warning": false, // near a budget limit
+  "job-runs": false, // a scheduled job set up, done or skipped
+} as const;
+export type NotifyKind = keyof typeof NOTIFY_KINDS;
+const kindDefaults = (): Record<NotifyKind, boolean> => ({ ...NOTIFY_KINDS });
+
 export interface NotificationSettings {
   /** "full": what happened ("core asks: …"); "short": only the project and that it needs the human. */
   detail: "full" | "short";
+  /** Which kinds of notification are sent (NOTIFY_KINDS gives the defaults). */
+  kinds: Record<NotifyKind, boolean>;
   browser: { on: boolean };
   /** The chat is found from a message sent to the bot (Find my chat), with its name to show. */
   telegram: { on: boolean; chatId: string; chatName: string; bot: string };
@@ -51,6 +77,7 @@ export interface NotificationSettingsView extends NotificationSettings {
 
 const defaults = (): NotificationSettings => ({
   detail: "full",
+  kinds: kindDefaults(),
   browser: { on: true },
   telegram: { on: false, chatId: "", chatName: "", bot: "" },
   ntfy: { on: false, server: "https://ntfy.sh", topic: "" },
@@ -79,6 +106,16 @@ async function botName(token: string): Promise<string> {
 // A chat id is a number (negative for groups), or a public channel's @name; anything else is a mistake
 // (someone typed a message there), and Telegram would only answer "chat not found".
 const isChatId = (v: string) => /^-?\d{1,20}$/.test(v) || /^@\w{5,32}$/.test(v);
+/** The known kinds with a true/false value, from a request or the saved file. */
+function pickKinds(given: unknown): Partial<Record<NotifyKind, boolean>> {
+  const out: Partial<Record<NotifyKind, boolean>> = {};
+  if (!given || typeof given !== "object") return out;
+  for (const kind of Object.keys(NOTIFY_KINDS) as NotifyKind[]) {
+    const v = (given as Record<string, unknown>)[kind];
+    if (typeof v === "boolean") out[kind] = v;
+  }
+  return out;
+}
 const str = (v: unknown, max = 500) => (typeof v === "string" ? v.trim().slice(0, max) : undefined);
 
 export class Notifications {
@@ -100,6 +137,8 @@ export class Notifications {
       const base = defaults();
       this.settings = {
         detail: saved.detail === "short" ? "short" : "full",
+        // Kinds added since the file was written get their default.
+        kinds: { ...kindDefaults(), ...pickKinds(saved.kinds) },
         browser: { ...base.browser, ...saved.browser },
         telegram: { ...base.telegram, ...saved.telegram },
         ntfy: { ...base.ntfy, ...saved.ntfy },
@@ -130,6 +169,7 @@ export class Notifications {
   async update(body: any): Promise<NotificationSettingsView> {
     const next = structuredClone(this.settings);
     if (body?.detail === "full" || body?.detail === "short") next.detail = body.detail;
+    if (body?.kinds && typeof body.kinds === "object") next.kinds = { ...next.kinds, ...pickKinds(body.kinds) };
     for (const channel of CHANNELS) {
       const given = body?.[channel];
       if (!given || typeof given !== "object") continue;

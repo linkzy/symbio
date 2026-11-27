@@ -117,6 +117,7 @@ const installer = new RuntimeInstaller();
     },
     (n) => notifications.send(n),
     () => notifications.current.detail,
+    { wants: (kind) => notifications.current.kinds[kind] !== false },
   );
   await notifier.start();
   // Agents that were working when Symbio last went down (crash, killed, machine off)

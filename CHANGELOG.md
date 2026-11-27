@@ -5,6 +5,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Notifications you choose, and can read** (#73). Settings → Notifications lists the kinds, each on or off. On by
+  default: what needs you (questions and briefings, approvals, a plan or work to review, an agent that can't continue,
+  the budget pausing the team, a scheduled job to approve or that failed) and what got finished (a **feature done**, new:
+  every task of its spec; every task done; the team stopping). Off by default: each task done, core's own decisions, core
+  starting a plan, budget warnings, routine scheduled-job runs. Shared files no longer notify at all. Messages are short
+  and plain: links as their words, files by name instead of paths, long text cut at a sentence.
+
 - **Settings → About**, the last tab: what Symbio is (version, license, links), what leaves your computer and where it
   goes, and the usage statistics the update checks carry (the version and this copy's random id; the website notes the
   time and the country, not the address), with this copy's id and the switch to turn them off. The switch moved there
