@@ -42,6 +42,12 @@
 - **One word per thing.** Every project has a glossary core keeps: the project's terms, what each
   means and the words not to use. Every agent gets it, so the work, the reports and what you read
   use the same words; when two words are used for one thing, core asks you which to keep.
+- **Light by default, thorough when you want it.** A new project is *light*: core says in a few
+  lines what it understood and what it would do, and you pick how to start (go ahead, brainstorm,
+  a briefing or grilling) or just write; nobody picking means core goes ahead after five minutes.
+  Specs, a glossary and documentation come when the work needs them, so a small request costs
+  little and starts in seconds. *Thorough* (More options when creating it, or the project's
+  settings) works from specs and keeps a glossary, documentation and a rules register from the start.
 - **Runs on its own, or asks: your choice per project.** *Decide and tell me* (new projects): core
   picks the option it would recommend, keeps going, and shows it in Needs you as a decision you keep
   or change; it approves its own plan, and waits only for what can't be undone, costs more than you
@@ -74,7 +80,7 @@
   Docs tab shows them as a folder tree with search across every doc, links between docs that open
   in place, an outline of long docs, and plain-text sources (e-mails, transcripts) with line
   numbers.
-- **A rules register** (on for new projects; you can turn it off). Agents record the project's rules (requirements, decisions,
+- **A rules register** (on for thorough projects; off for light ones, and you can turn it on). Agents record the project's rules (requirements, decisions,
   constraints) with where each came from, a literal excerpt, who imposes it, how confirmed it is
   and whether it's met. The Docs tab shows them as an index you can filter and search, with each
   citation opening its source at the cited line.

@@ -95,6 +95,7 @@ Browser UI (React)  ⇄  Symbio server (Node, Hono)  ⇄  opencode serve (OpenCo
 | `team/permissions.ts` | The runtimes' permission requests: answered from known rules, or held for the human |
 | `team/housekeeper.ts` | The hourly and daily housekeeping run (see `housekeeping.ts`) and its reports |
 | `team/usage.ts`, `team/processes.ts`, `team/loop-guard.ts` | Token usage per agent; agents' background processes; the message limit between two agents |
+| `team/start-offer.ts` | How work starts in a light project: core's offer (`offer_start`), the human's pick, and going ahead when nobody picks in a project that lets core decide |
 | `schedule.ts`, `team/schedules.ts` | Scheduled jobs: their schedules (next run, in words, checked), kept in `.symbio/schedules.json`; running them when due (core woken with the job), skipping and reporting |
 | `team/budget.ts` | Spending limits per project: warnings near a limit, the team paused at it, a daily pause ended by a new day, a raised limit resuming the team |
 | `tools.ts` | The MCP tools agents call (worker and coordinator sets) |

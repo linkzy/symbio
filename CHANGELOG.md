@@ -5,6 +5,26 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- **Light by default.** New projects start light: core says in a few lines what it understood and what it would do,
+  and you pick how to start, above its chat box: **go ahead**, **brainstorm** (talk it through first), a **briefing**
+  (the questions together; your answers become a spec) or **grilling** (rounds of questions until nothing is open). Or
+  just write. If you don't pick, core goes ahead on its own after five minutes, so a team left alone keeps working. A
+  light project writes a spec, a glossary and documentation only when the work needs them, records only the decisions
+  you'd want to know, has no rules register and no separate reviewer unless you ask, and, in an existing folder, core
+  takes a quick look without asking first. The thorough way (specs, glossary, documentation and the register from the
+  start) is one choice away: **More options** when creating a project, or Project settings → How core runs the project.
+  Projects created before keep working as they did (thorough). A two-page guide on free models took 7 minutes instead of 35 (`scripts/benchmark.mjs` measures it).
+- **New project in two steps.** The folder, then the models, with the free ones already chosen (OpenCode's need no
+  account) and a legend for the icons; how much process, where documentation goes, the rules register and connections
+  wait under More options.
+- **OpenCode's free models need no account, and Symbio now says so** (the first run said a provider was required).
+- **OpenCode takes 235 MB instead of 700 MB.** Its installer leaves the platform packages it copied its program from;
+  Symbio removes them.
+- **Smaller things:** Symbio's opening instruction to core is no longer shown in the chat; a search step with nothing to
+  show reads "Searched the files"; the first run no longer explains a Copilot CLI on the computer that Symbio can't use
+  (Settings still does); an unknown API address answers 404 in JSON; Help is part of Settings → About and help, with how
+  to open and close Symbio (`sym`, `sym stop`).
+
 - **OpenCode 2.4 lists its models.** Newer OpenCode loads its model list a few seconds after it starts; Symbio asked
   at once and got none (for people using OpenCode from their computer, or once Symbio moves to 2.4). It now waits for the
   list, briefly, after a start.

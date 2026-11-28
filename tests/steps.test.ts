@@ -42,6 +42,8 @@ test("Symbio's tools, alone or called from a code-mode script, read from their a
 
   assert.equal(stepLabels("read", { path: "C:\\Users\\x\\docs\\padrao-visual\\padrao.md", offset: 252 })[0].label, "Read padrao.md");
   assert.equal(stepLabels("grep", { pattern: "^\\| (SA-015|CG-011)", path: "docs/regras" })[0].label, 'Searched for "^\\| (SA-015|CG-011)"');
+  // A search with nothing to show (another runtime's argument, or a step still starting) says so plainly.
+  assert.equal(stepLabels("search", {})[0].label, "Searched the files");
   assert.equal(stepLabels("edit", { filePath: "src/Foo.cs" })[0].label, "Edited Foo.cs");
   assert.equal(stepLabels("symbio_update_task", { task_id: "T3", status: "review" })[0].label, "Reported T3 for review");
   assert.equal(stepLabels("mystery_tool", {})[0].label, "mystery tool");

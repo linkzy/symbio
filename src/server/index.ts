@@ -257,6 +257,8 @@ const installer = new RuntimeInstaller();
   app.route("/api", createApi(store, runtime, team, connections, installer));
   // Agents' tool server. Only reachable from this machine (we bind to 127.0.0.1) and only with a per-run token.
   app.all("/mcp/:token", (c) => handleMcp(c, team.mcpResolver));
+  // An address the API doesn't have is an error in JSON, not the web page (the fallback below).
+  app.all("/api/*", (c) => c.json({ error: `No such API address: ${c.req.method} ${c.req.path}` }, 404));
 
   if (webRoot) {
     app.get("*", async (c) => {

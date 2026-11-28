@@ -87,7 +87,6 @@ test("a first run asks for an agent runtime, installs the one chosen, and offers
   await firstRun.locator('li[data-step="project"] button', { hasText: "New project" }).click();
   await page.getByPlaceholder("my-project", { exact: false }).fill(symbio.folder("first"));
   await page.locator("button.btn.primary", { hasText: "Continue" }).click();
-  await page.locator("button.btn.primary", { hasText: "Continue" }).click();
   await page.locator(".runtime-choice .choice", { hasText: LABEL[RUNTIME] }).waitFor();
   assert.equal(await page.locator(".runtime-choice .choice").count(), 1, `${LABEL[OTHER]} isn't offered`);
   assert.ok(await page.getByRole("radio", { name: new RegExp(LABEL[RUNTIME]) }).isChecked());
@@ -191,7 +190,7 @@ test(
   },
 );
 
-test("a GitHub Copilot CLI on the computer is mentioned, with why Symbio installs its own", async () => {
+test("a GitHub Copilot CLI on the computer is mentioned in Settings, with why Symbio installs its own (not on the first run)", async () => {
   const root = mkdtempSync(path.join(os.tmpdir(), "sym-e2e-copilot-cli-"));
   const dir = path.join(root, "path-bin");
   mkdirSync(dir, { recursive: true });
@@ -205,9 +204,13 @@ test("a GitHub Copilot CLI on the computer is mentioned, with why Symbio install
   const symbio = await startSymbio({ ...freshEnv(root), PATH: value, Path: value });
   running.push(symbio);
   const { page } = await openPage(symbio);
-  const note = page.locator('[data-testid="first-run"] .runtime-card[data-runtime="copilot"] [data-testid="computer-copy"]');
-  await note.filter({ hasText: "GitHub Copilot CLI 1.0.116 is on this computer. Symbio can't run agents on it" }).waitFor({ timeout: 15_000 });
+  // The first run stays short: nothing about a copy Symbio can't use.
+  await page.locator('[data-testid="first-run"] .runtime-card[data-runtime="copilot"]').waitFor();
+  assert.equal(await page.locator('[data-testid="first-run"] .runtime-card[data-runtime="copilot"] [data-testid="computer-copy"]').count(), 0);
   assert.equal(await page.locator('[data-testid="first-run"] .runtime-card[data-runtime="copilot"] button', { hasText: "Use the one on this computer" }).count(), 0);
+  await page.goto(`${symbio.base}/#/settings/agents`);
+  const note = page.locator('[data-testid="computer-copy"]');
+  await note.filter({ hasText: "GitHub Copilot CLI 1.0.116 is on this computer. Symbio can't run agents on it" }).waitFor({ timeout: 15_000 });
   await assert.rejects(symbio.call("PUT", "/runtime/settings", { kind: "copilot", fromComputer: true }), /can't run GitHub Copilot CLI from the computer's copy/);
   assert.deepEqual((page as any).errors, []);
 });

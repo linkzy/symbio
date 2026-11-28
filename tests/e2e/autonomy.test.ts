@@ -62,7 +62,8 @@ test("deciding on its own: the plan is approved as it's made; questions are deci
 });
 
 test("how core runs the project: its settings reach every agent, and grilling replaces the briefing", async () => {
-  const { project, core } = await projectWithCore(symbio, "Settings");
+  // Thorough: its brief has the questioning the light one leaves for when the human picks it.
+  const { project, core } = await projectWithCore(symbio, "Settings", { depth: "thorough" });
   const say = async (text: string) => {
     await symbio.call("POST", `/projects/${project.id}/agents/${core.id}/messages`, { text });
     await idle(symbio, project.id);

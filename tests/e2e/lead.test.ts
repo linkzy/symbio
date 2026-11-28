@@ -16,8 +16,12 @@ after(async () => {
 
 const tool = (agent: string, name: string, args: object) => `@${agent} tool ${name} ${JSON.stringify(args)}`;
 
-test("new projects keep a rules register and give helpers a fresh session after each task; the glossary reaches every agent", async () => {
-  const { project, core } = await projectWithCore(symbio, "Glossary");
+test("new projects are light (no rules register up front) and give helpers a fresh session after each task; a thorough one keeps a register; the glossary reaches every agent", async () => {
+  const light = await projectWithCore(symbio, "Light");
+  assert.equal(light.project.depth, "light");
+  assert.equal(light.project.rulesRegister, false);
+  const { project, core } = await projectWithCore(symbio, "Glossary", { depth: "thorough" });
+  assert.equal(project.depth, "thorough");
   assert.equal(project.rulesRegister, true);
   assert.equal(project.renewSessions, "after-task");
   const say = async (text: string) => {

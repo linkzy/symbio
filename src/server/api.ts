@@ -9,7 +9,7 @@ import { computerVersion, findOnPath, hasInstalledCopy, isInstalled, knownVersio
 import { loadRuntimeSettings, setFromComputer } from "./runtime/settings.js";
 import { CopilotRuntime } from "./copilot/runtime.js";
 import { validCommandPattern, type Approval } from "./remote.js";
-import type { Autonomy, CoreMode, NotifyLevel, ReviewBy, Store, Project, DocsLocation, HelperWorkspace, ProjectConnection } from "./store.js";
+import type { Autonomy, CoreMode, Depth, NotifyLevel, StartChoice, ReviewBy, Store, Project, DocsLocation, HelperWorkspace, ProjectConnection } from "./store.js";
 import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 import os from "node:os";
@@ -573,6 +573,7 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       coreOnlyModels?: string[];
       runtime?: RuntimeKind;
       autonomy?: Autonomy;
+      depth?: Depth;
     }>();
     if (!body.name?.trim() || !body.directory?.trim()) return c.json({ error: "name and directory are required" }, 400);
     if (body.runtime !== undefined && !team.runtimes.has(body.runtime)) return c.json({ error: `Unknown runtime "${body.runtime}"` }, 400);
@@ -588,6 +589,7 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       return c.json({ error: (err as Error).message }, 400);
     }
 
+    const depth: Depth = body.depth === "thorough" ? "thorough" : "light";
     const directory = body.directory.trim();
     await fs.mkdir(directory, { recursive: true });
     let inspection = await inspectFolder(directory);
@@ -611,8 +613,9 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       allowedModels: allowed,
       coordinatorModel: body.coordinatorModel,
       docsLocation: body.docsLocation === "private" ? "private" : "project",
-      // On unless turned off (the New project dialog has it checked).
-      rulesRegister: body.rulesRegister !== false,
+      // A light project starts without one (it can be turned on), a thorough one with it.
+      rulesRegister: typeof body.rulesRegister === "boolean" ? body.rulesRegister : depth === "thorough",
+      depth,
       origin: inspection.empty ? "new" : "existing",
       inspectionSummary: describeInspection(inspection),
       connections: cleanLinks(body.connections),
@@ -753,18 +756,21 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
       requireReviewer?: boolean;
       autonomy?: Autonomy;
       questionStyle?: "briefing" | "grill";
+      depth?: Depth;
       standingPermissions?: string;
       allowInstalls?: boolean;
       notify?: NotifyLevel;
       budget?: { total?: number | null; daily?: number | null; warnAt?: number | null } | null;
     }>();
-    if (body.autonomy !== undefined || body.questionStyle !== undefined || body.standingPermissions !== undefined || body.allowInstalls !== undefined) {
+    if (body.autonomy !== undefined || body.questionStyle !== undefined || body.depth !== undefined || body.standingPermissions !== undefined || body.allowInstalls !== undefined) {
       if (body.autonomy !== undefined && body.autonomy !== "ask" && body.autonomy !== "decide") return c.json({ error: 'autonomy is "ask" or "decide".' }, 400);
+      if (body.depth !== undefined && body.depth !== "light" && body.depth !== "thorough") return c.json({ error: 'depth is "light" or "thorough".' }, 400);
       if (body.questionStyle !== undefined && body.questionStyle !== "briefing" && body.questionStyle !== "grill") return c.json({ error: 'questionStyle is "briefing" or "grill".' }, 400);
       try {
         await team.setLeadSettings(project, {
           ...(body.autonomy ? { autonomy: body.autonomy } : {}),
           ...(body.questionStyle ? { questionStyle: body.questionStyle } : {}),
+          ...(body.depth ? { depth: body.depth } : {}),
           ...(typeof body.standingPermissions === "string" ? { standingPermissions: body.standingPermissions } : {}),
           ...(typeof body.allowInstalls === "boolean" ? { allowInstalls: body.allowInstalls } : {}),
         });
@@ -1182,6 +1188,18 @@ export function createApi(store: Store, runtime: OpencodeRuntime, team: Team, co
     const connectionId = c.req.query("connection") ?? "";
     if (!agentId || !connectionId) return c.json({ error: "agent and connection are required" }, 400);
     await team.remote.revokeGrant(project, agentId, connectionId);
+    return c.json(project);
+  });
+
+  // How to start the work core offered (team/start-offer.ts): go ahead, brainstorm, briefing or grilling.
+  api.post("/projects/:id/start-offer", async (c) => {
+    const project = withProject(c.req.param("id"));
+    const { choice } = await c.req.json<{ choice?: string }>().catch(() => ({}) as { choice?: string });
+    try {
+      await team.startOffers.choose(project, choice as StartChoice);
+    } catch (err) {
+      return c.json({ error: (err as Error).message }, 400);
+    }
     return c.json(project);
   });
 

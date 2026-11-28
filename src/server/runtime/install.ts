@@ -33,6 +33,8 @@ export interface RuntimePackage {
   sizeMB: number;
   /** Where the runtime starts, inside an installed package folder (node_modules/<npm>). */
   entry(packageDir: string): string | null;
+  /** Removes what the install left that the runtime doesn't need (node_modules, once it's in place). */
+  trim?(nodeModules: string, entry: string): Promise<void>;
   /** An environment variable that points at the runtime instead (development, tests). */
   env: string;
   /** Its command, to find a copy already on the computer (on the PATH) and read its version. */
@@ -49,15 +51,24 @@ export const RUNTIME_PACKAGES: Record<RuntimeKind, RuntimePackage> = {
   opencode: {
     kind: "opencode",
     label: "OpenCode",
-    description: "Open-source agent runtime. Agents run on models from the providers you connect: OpenAI, Anthropic, Azure, OpenRouter, local models…",
-    needs: "a model provider (an API key or a sign-in), connected in Settings → Model providers.",
+    description: "Open-source agent runtime. Free models work right away, with no account; add providers (OpenAI, Anthropic, Azure, OpenRouter, local models…) for more.",
+    needs: "nothing to start with: its free models need no account. Other providers in Settings → Model providers.",
     npm: "@opencode/cli",
-    sizeMB: 700,
+    sizeMB: 240,
     // The executable its package declares (its postinstall puts the platform binary there).
     entry: (dir) => {
       const pkg = readJson(path.join(dir, "package.json"));
       const rel = typeof pkg?.bin === "string" ? pkg.bin : pkg?.bin?.opencode;
       return rel ? path.resolve(dir, rel) : null;
+    },
+    // Its postinstall copies the platform's binary into @opencode/cli/bin, leaving the platform
+    // packages it came from (two on x64: with and without AVX2) as dead weight: 235 MB each.
+    trim: async (nodeModules, entry) => {
+      if (statSync(entry).size < 1_000_000) return; // not the real binary: keep everything
+      const scope = path.join(nodeModules, "@opencode");
+      for (const name of await fs.readdir(scope).catch(() => [] as string[])) {
+        if (name.startsWith("cli-")) await fs.rm(path.join(scope, name), { recursive: true, force: true }).catch(() => {});
+      }
     },
     env: "SYMBIO_OPENCODE_BIN",
     command: "opencode",
@@ -275,6 +286,7 @@ export class RuntimeInstaller extends EventEmitter<{ change: [RuntimeKind] }> {
           this.onChange(kind);
         });
         entry = spec.entry(path.join(dir, "node_modules", ...spec.npm.split("/")));
+        if (entry && existsSync(entry)) await spec.trim?.(path.join(dir, "node_modules"), entry);
       }
       if (!entry || !existsSync(entry)) throw new Error(`${spec.label} was downloaded, but its program isn't where its package says.`);
       await fs.writeFile(manifestFile(kind), JSON.stringify({ kind, npm: spec.npm, version: installedVersion(entry), entry, installedAt: Date.now() }, null, 2));

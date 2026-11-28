@@ -48,14 +48,16 @@ export function SettingsTabs<T extends string>({
 
 // ---- Settings (the whole app): the group is in the address, "#/settings/<group>".
 
-export const SETTINGS_GROUPS = ["agents", "notifications", "connections", "usage", "computer", "help", "about"] as const;
+export const SETTINGS_GROUPS = ["agents", "notifications", "connections", "usage", "computer", "about"] as const;
 export type SettingsGroupId = (typeof SETTINGS_GROUPS)[number];
 
 /** Where a link to one part of Settings goes. */
 export const settingsHref = (group: SettingsGroupId) => `#/settings/${group}`;
 
 function groupFromHash(): SettingsGroupId {
-  const id = location.hash.match(/^#\/settings\/([\w-]+)/)?.[1];
+  let id = location.hash.match(/^#\/settings\/([\w-]+)/)?.[1];
+  // Help became part of About (older links still land there).
+  if (id === "help") id = "about";
   return (SETTINGS_GROUPS as readonly string[]).includes(id ?? "") ? (id as SettingsGroupId) : "agents";
 }
 

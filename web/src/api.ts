@@ -197,6 +197,8 @@ export interface LoggedMessage {
 
 export type DocsLocation = "project" | "private";
 
+export type StartChoice = "go" | "brainstorm" | "briefing" | "grill";
+
 export interface ProjectConnection {
   id: string;
   policy: "ask" | "allow";
@@ -293,6 +295,10 @@ export interface Project {
   autonomy?: "ask" | "decide";
   /** How core questions the human about a feature. */
   questionStyle?: "briefing" | "grill";
+  /** How much process core puts around the work: "light" (new projects) or "thorough" (unset). */
+  depth?: "light" | "thorough";
+  /** core offered how to start; the human picks above core's chat box (or Symbio goes ahead). */
+  startOffer?: { summary: string; at: number };
   /** What the team may do without asking, in the human's words. */
   standingPermissions?: string;
   /** Installing software without asking. */
@@ -895,7 +901,9 @@ export const api = {
     initGit: boolean;
     connections: ProjectConnection[];
     rulesRegister?: boolean;
+    depth?: "light" | "thorough";
   }) => call<Project & { gitError?: string }>("POST", "/projects", input),
+  chooseStart: (projectId: string, choice: StartChoice) => call<Project>("POST", `/projects/${projectId}/start-offer`, { choice }),
   permissions: (projectId: string) => call<PermissionRequest[]>("GET", `/projects/${projectId}/permissions`),
   answerPermission: (projectId: string, requestId: string, decision: "once" | "always" | "reject", note?: string) =>
     call<{ ok: true }>("POST", `/projects/${projectId}/permissions/${requestId}`, { decision, note }),
@@ -916,7 +924,7 @@ export const api = {
   updateProject: (
     id: string,
     patch: Partial<
-      Pick<Project, "name" | "allowedModels" | "coordinatorModel" | "connections" | "allowedPatterns" | "messageLimit" | "renewSessions" | "helperWorkspace" | "rulesRegister" | "subRepositories" | "coreMode" | "reviewBy" | "aiCoauthors" | "coreSkills" | "requireReviewer" | "autonomy" | "questionStyle" | "standingPermissions" | "allowInstalls" | "notify">
+      Pick<Project, "name" | "allowedModels" | "coordinatorModel" | "connections" | "allowedPatterns" | "messageLimit" | "renewSessions" | "helperWorkspace" | "rulesRegister" | "subRepositories" | "coreMode" | "reviewBy" | "aiCoauthors" | "coreSkills" | "requireReviewer" | "autonomy" | "questionStyle" | "depth" | "standingPermissions" | "allowInstalls" | "notify">
     > & { maxHelpers?: number | null; budget?: { total: number | null; daily: number | null; warnAt: number } | null; checks?: (Omit<Check, "id"> & { id?: string })[]; modelEfforts?: Record<string, string | null>; helperSkills?: string[] | null },
   ) =>
     call<Project>("PATCH", `/projects/${id}`, patch),

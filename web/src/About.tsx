@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ExternalLink } from "lucide-react";
 import { api, type UpdateState } from "./api";
 import { CopyButton } from "./ui";
@@ -10,6 +10,7 @@ const LINKS = {
   repo: "https://github.com/linkzy/symbio",
   changelog: "https://github.com/linkzy/symbio/blob/main/CHANGELOG.md",
   details: "https://github.com/linkzy/symbio/blob/main/docs/security.md#update-checks",
+  usage: "https://github.com/linkzy/symbio/blob/main/docs/usage.md",
 };
 
 /**
@@ -17,7 +18,7 @@ const LINKS = {
  * checks carry (the install id), with the switch to turn them off. It says exactly what's sent;
  * when that changes, so do this page and docs/security.md.
  */
-export function AboutSection() {
+export function AboutSection({ help }: { help?: ReactNode } = {}) {
   const { t } = useI18n();
   const [state, setState] = useState<UpdateState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +64,8 @@ export function AboutSection() {
           </div>
         </div>
       </section>
+
+      {help}
 
       <section className="section" id="privacy">
         <div className="section-head">
@@ -127,5 +130,32 @@ export function AboutSection() {
         </div>
       </section>
     </>
+  );
+}
+
+/** Settings → About: starting and stopping Symbio (there's no icon on macOS and Linux), and the usage guide. */
+export function UsingSection() {
+  const { t } = useI18n();
+  return (
+    <section className="section" id="using">
+      <div className="section-head">
+        <div>
+          <h2>{t("about.using.title")}</h2>
+          <p>{t("about.using.desc")}</p>
+        </div>
+      </div>
+      <div className="stack about-body">
+        <ul className="about-list small">
+          <li>{t("about.using.start")}</li>
+          <li>{t("about.using.stop")}</li>
+        </ul>
+        <div className="small">
+          <a href={LINKS.usage} target="_blank" rel="noreferrer" className="row" style={{ gap: 4, display: "inline-flex" }}>
+            {t("about.using.guide")}
+            <ExternalLink size={12} />
+          </a>
+        </div>
+      </div>
+    </section>
   );
 }

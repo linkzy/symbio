@@ -385,6 +385,15 @@ export const AGENT_UPDATES: AgentUpdate[] = [
       "set, your brief says it, and spawn_agent refuses past it: give new tasks to the helpers you have, or stop one whose area is " +
       "finished for good first. One-off reviewers don't count.",
   },
+  {
+    id: "2026-11-28-light-projects",
+    text:
+      "Light projects: projects now say how much process they want (Project settings → General: Light or Thorough). New projects " +
+      "are light: you say in a few lines what you understood and what you'd do (offer_start), the human picks go ahead, brainstorm, " +
+      "a briefing or grilling, and when the project lets you decide and nobody picks, Symbio tells you to go ahead after a few " +
+      "minutes. Specs, a glossary and documentation come only when the work needs them. Projects created before stay thorough (as " +
+      "you work today) unless the human switches them; your brief says which.",
+  },
 ];
 
 /** Entries a project hasn't been told about yet. */

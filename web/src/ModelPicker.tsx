@@ -40,7 +40,7 @@ export const choiceBody = (c: ModelChoice) => ({ allowedModels: c.allowed, coord
  * Choose which models the project may use and who may use each: click a model to allow it, the
  * crown for core to be able to use it (several can be crowned), the lock to keep it for core only.
  */
-export function ModelPicker(props: { value: ModelChoice; onChange: (next: ModelChoice) => void; runtime?: RuntimeKind }) {
+export function ModelPicker(props: { value: ModelChoice; onChange: (next: ModelChoice) => void; runtime?: RuntimeKind; suggest?: boolean }) {
   const { t, locale } = useI18n();
   const { value, onChange } = props;
   const { allowed, core, coreOnly } = value;
@@ -54,13 +54,27 @@ export function ModelPicker(props: { value: ModelChoice; onChange: (next: ModelC
   const [pinned] = useState(() => new Set(allowed));
 
   useEffect(() => {
+    // A runtime switched while its models load: the late answer is for the old one.
+    let current = true;
     setModels(null);
     setError(null);
     api
       .models(props.runtime)
-      .then(setModels)
-      .catch((e) => setError(e.message));
-  }, [props.runtime]);
+      .then((list) => {
+        if (!current) return;
+        setModels(list);
+        // A new project starts with the free models (they cost nothing; a newcomer may know none of
+        // the names): the human adds or removes from there. Nothing free: they pick.
+        if (props.suggest && value.allowed.length === 0) {
+          const free = list.filter((m) => m.free).map((m) => m.ref);
+          if (free.length) onChange({ allowed: free, core: free, coreOnly: [], coordinator: free[0] });
+        }
+      })
+      .catch((e) => current && setError(e.message));
+    return () => {
+      current = false;
+    };
+  }, [props.runtime]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const visible = useMemo(() => {
     const q = query.toLowerCase();
@@ -144,6 +158,9 @@ export function ModelPicker(props: { value: ModelChoice; onChange: (next: ModelC
         <button className="btn ghost xs" onClick={selectNone} disabled={allowed.length === 0}>
           {t("common.none")}
         </button>
+      </div>
+      <div className="model-legend small subtle">
+        <Eye size={12} /> {t("agents.models.legend.vision")} · <Crown size={12} /> {t("agents.models.legend.crown")} · <Lock size={12} /> {t("agents.models.legend.lock")}
       </div>
       <div className="model-summary">
         {allowed.length === 0 ? (

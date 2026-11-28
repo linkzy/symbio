@@ -519,6 +519,22 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); margi
 .form-option:disabled { opacity: 0.45; cursor: not-allowed; }
 .form-field-desc { font-size: 13px; color: var(--text-2); margin: -4px 0 8px; }
 .form-option span { font-size: 12px; color: var(--text-2); }
+/* How to start (StartOffer.tsx): go ahead first and highlighted, the deeper ways beside it. */
+.more-options { border: 1px solid var(--border); border-radius: var(--r); padding: 10px 12px; flex-shrink: 0; }
+.more-options > summary { cursor: pointer; font-size: 13px; color: var(--text-2); }
+.more-options[open] > summary { color: var(--text); }
+.model-legend { display: flex; align-items: center; gap: 4px; padding: 8px 12px 0; flex-wrap: wrap; }
+.model-legend svg { vertical-align: -2px; }
+.start-offer { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.start-offer .form-card-head { background: var(--accent-soft); }
+.start-offer .form-card-head svg { color: var(--accent); }
+.start-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.start-choice { text-align: left; display: flex; flex-direction: column; gap: 3px; background: var(--surface); border: 1px solid var(--border-strong); color: var(--text); font: inherit; padding: 9px 12px; border-radius: var(--r); cursor: pointer; }
+.start-choice:hover { border-color: var(--border-hover); }
+.start-choice.primary { border-color: var(--accent); background: var(--accent-soft); }
+.start-choice:disabled { opacity: 0.5; cursor: wait; }
+.start-choice-title { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; }
+.start-choice-desc { font-size: 12px; color: var(--text-2); }
 
 /* ---------- Kanban ---------- */
 .kanban { display: flex; flex-direction: column; height: 100%; min-height: 0; }
@@ -642,7 +658,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); margi
 .danger-zone { border-color: color-mix(in srgb, var(--red) 30%, transparent); }
 
 /* Model picker */
-.model-picker { border: 1px solid var(--border-strong); border-radius: var(--r-lg); overflow: hidden; }
+.model-picker { border: 1px solid var(--border-strong); border-radius: var(--r-lg); overflow: hidden; flex-shrink: 0; /* a dialog's body scrolls instead of squeezing it */ }
 .model-picker-head { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
 .model-picker-head input { flex: 1; height: 28px; padding: 4px 8px; }
 .model-summary { padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-2); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }

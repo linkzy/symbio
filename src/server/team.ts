@@ -16,10 +16,11 @@ import { PlanStore, type Task, type TaskInput, type TaskStatus } from "./plan.js
 import type { RemoteOps } from "./remote.js";
 import { coordinatorBrief, kickoffMessage, modeNote, reviewerBrief, workerBrief } from "./prompts.js";
 import { git } from "./git.js";
-import { defaultModel, globalDir, modelsFor, newId, type Agent, type Autonomy, type Budget, type CoreMode, type HelperWorkspace, type ReviewBy, type LoggedMessage, type MessageKind, type Project, type Store } from "./store.js";
+import { defaultModel, globalDir, modelsFor, newId, type Agent, type Autonomy, type Budget, type CoreMode, type Depth, type HelperWorkspace, type ReviewBy, type LoggedMessage, type MessageKind, type Project, type Store } from "./store.js";
 import { accountUsage, emptyUsage, Pricing } from "./costs.js";
 import { Budgets } from "./team/budget.js";
 import { Schedules } from "./team/schedules.js";
+import { StartOffers } from "./team/start-offer.js";
 import { AGENT_UPDATES, unseenUpdates, updatesNote } from "./updates.js";
 import { coordinatorTools, workerTools, type ToolContext } from "./tools.js";
 import { SharedAssets } from "./team/asset-protocol.js";
@@ -123,6 +124,7 @@ export class Team implements TeamCore {
   private loopGuard = new LoopGuard(this);
   /** Scheduled jobs: core is woken with each when it's due. */
   readonly schedules = new Schedules(this);
+  readonly startOffers = new StartOffers(this);
   /** Model prices, for usage reports and budgets. */
   readonly pricing = new Pricing(globalDir, () => [...this.runtimes.values()]);
   readonly budgets = new Budgets({
@@ -181,6 +183,7 @@ export class Team implements TeamCore {
     this.watchdog.start();
     this.budgets.start();
     this.schedules.start();
+    this.startOffers.start();
     this.housekeeper.start();
     this.fallback.resumeWaits();
   }
@@ -214,6 +217,7 @@ export class Team implements TeamCore {
     this.watchdog.stop();
     this.budgets.stop();
     this.schedules.stop();
+    this.startOffers.stop();
   }
 
   // ---------------------------------------------------------------- lookups
@@ -323,9 +327,10 @@ export class Team implements TeamCore {
    */
   async setLeadSettings(
     project: Project,
-    change: { autonomy?: Autonomy; questionStyle?: QuestionStyle; standingPermissions?: string; allowInstalls?: boolean },
+    change: { autonomy?: Autonomy; questionStyle?: QuestionStyle; standingPermissions?: string; allowInstalls?: boolean; depth?: Depth },
   ): Promise<void> {
     if (change.autonomy) project.autonomy = change.autonomy;
+    if (change.depth) project.depth = change.depth;
     if (change.questionStyle) {
       const style = QUESTION_STYLE_SKILLS[change.questionStyle];
       if (!listSkills().some((s) => s.name === style)) throw new Error(`The ${style} skill isn't in the library.`);
@@ -1157,6 +1162,8 @@ export class Team implements TeamCore {
   async sendFromHuman(project: Project, agent: Agent, text: string, urgent = false) {
     // The human is talking to the helper directly: its answer goes to them, not to core.
     if (agent.role === "worker") this.quiet.reported(agent);
+    // Writing to core instead of picking how to start: their message decides.
+    if (agent.role === "coordinator") await this.startOffers.answered(project);
     await this.log(project, { from: "human", to: agent.id, kind: urgent ? "urgent" : "chat", text });
     await this.prepare(project, agent);
     // The coordinator talks with the human directly (in the chat mode they chose); for helpers, say who is speaking.

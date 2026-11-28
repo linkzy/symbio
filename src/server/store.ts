@@ -89,6 +89,14 @@ export interface Agent {
 /** "project": AGENTS.md + docs/ committed in the folder. "private": .symbio/docs, injected into agents. */
 export type DocsLocation = "project" | "private";
 
+export type Depth = "light" | "thorough";
+export type StartChoice = "go" | "brainstorm" | "briefing" | "grill";
+export interface StartOffer {
+  /** What core understood and what it would do, in its words (markdown, short). */
+  summary: string;
+  at: number;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -177,6 +185,20 @@ export interface Project {
   autonomy?: Autonomy;
   /** How core questions the human about a feature: a briefing (unset) or grilling (rounds until nothing is open). */
   questionStyle?: "briefing" | "grill";
+  /**
+   * How much process core puts around the work. "light" (new projects): core understands the request,
+   * offers how to start (go ahead, brainstorm, briefing, grilling) and goes ahead by default; specs,
+   * the glossary and documentation come only when the work calls for them. "thorough" (unset, as
+   * projects created before 0.39 worked): core works from specs, keeps a glossary and documentation
+   * from the start.
+   */
+  depth?: Depth;
+  /**
+   * core offered how to start (offer_start) and waits for the human's pick: shown above core's chat
+   * box with the choices. When the project lets core decide, Symbio goes ahead on its own after
+   * START_OFFER_WAIT_MS (team/start-offer.ts).
+   */
+  startOffer?: StartOffer;
   /** What the team may do without asking (spending, deploying, deleting…), in the human's words; every agent gets it. */
   standingPermissions?: string;
   /** Installing software (pip, npm -g, winget…) without asking the human first. Unset = ask. */
@@ -375,6 +397,7 @@ export class Store {
     connections?: ProjectConnection[];
     rulesRegister?: boolean;
     runtime?: RuntimeKind;
+    depth?: Depth;
   }) {
     const directory = path.resolve(input.directory);
     const existing = this.list().find((p) => samePath(p.directory, directory));
@@ -403,6 +426,8 @@ export class Store {
           renewSessions: "after-task",
           // New projects run on their own: core decides what it can undo, and the human can change it.
           autonomy: "decide",
+          // And light: the process grows with the work, instead of up front (Project.depth).
+          depth: input.depth ?? "light",
           agents: [],
           createdAt: Date.now(),
         };

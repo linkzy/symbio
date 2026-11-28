@@ -5,7 +5,7 @@ import { useI18n } from "./i18n";
 import { CopilotSignIn, size } from "./Runtimes";
 
 /**
- * Whether the runtimes installed can run agents yet: OpenCode needs a model provider connected,
+ * Whether the runtimes installed can run agents yet: OpenCode needs models (its free ones count),
  * GitHub Copilot a signed-in account. null while it isn't known.
  */
 export function useReadiness(runtimes: RuntimeView[] | null): { ready: boolean | null; models: Record<string, number | null> } {
@@ -219,11 +219,6 @@ function RuntimeChoice({ view, onChange }: { view: RuntimeView; onChange: () => 
       {copy?.usable && (
         <p className="runtime-card-desc subtle">
           {t("firstRun.runtime.computerNote", { version, tested: view.testedVersion ?? "?" })}
-        </p>
-      )}
-      {copy && !copy.usable && (
-        <p className="runtime-card-desc subtle" data-testid="computer-copy">
-          {t("agents.runtimes.computer.unusable", { name: view.label, version })}
         </p>
       )}
       {view.installing && (

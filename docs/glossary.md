@@ -59,6 +59,7 @@ and align the rest.
 | **autonomy** | How much core decides on its own (a project setting): *Decide and tell me*, or *Ask me and wait* | autonomia (*Decida e me avise* / *Pergunte e espere*) | `Project.autonomy` (`"decide"` / `"ask"`) |
 | **decision** | What an agent decided meanwhile, shown in Needs you for the human to keep or change | decisão | `Question.decided` |
 | **what the team may do without asking** | The human's standing permissions for a project (spending, deploying, deleting…) | o que a equipe pode fazer sem pedir | `standingPermissions`, `allowInstalls` |
+| **light / thorough** | How much process a project puts around the work: light (new projects) starts quickly and adds specs, a glossary and documentation when needed; thorough has them from the start. Not "mode" (that's the chat's Auto / Plan / Act) | leve / completo | `Project.depth` |
 | **grilling** | Questioning in rounds, each with a recommended answer, until nothing is open; the alternative to a briefing | sabatina | `questionStyle: "grill"`, the `grilling` skill |
 | **shared file** | A file an agent showed the human (in the chat and the Files tab), tagged with what it is and its task | arquivo compartilhado | `share_file` |
 | **evidence** | Shared files that show a task's work was done (screenshots, outputs, results), tied to the task | evidência | `share_file` `tag: "evidence"`, `list_shared_files` |

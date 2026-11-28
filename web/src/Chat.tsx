@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowUp, Brain, Check, CircleAlert, CircleStop, Folder, FolderInput, GitBranch, Info, Loader2, Pencil, Pin, PinOff, RefreshCw, Repeat, RotateCcw, Wrench, X } from "lucide-react";
 import { api, subscribe, type Agent, type Project, type CoreMode } from "./api";
 import { PendingForms } from "./FormCard";
+import { StartOfferCard } from "./StartOffer";
 import { AttachButton, DropOverlay, MessageAttachments, PendingFiles, splitAttachmentNote, usePendingFiles } from "./Attachments";
 import { Avatar, Dialog, RetryIn, statusText, waitsForPinnedModel } from "./ui";
 import { useCostsShown } from "./privacy";
@@ -76,6 +77,7 @@ function contentText(content: unknown): string | undefined {
 }
 
 const SYSTEM_PREFIX = /^Symbio( watchdog)?:\s*/;
+const KICKOFF = /^Symbio: the project was just created /;
 /** Messages delivered by Symbio between agents start with "[from: name · kind]". */
 const AGENT_HEADER = /^\[from: ([^\]·]+?) · ([\w-]+)\]\n?/;
 
@@ -523,6 +525,8 @@ export function Chat({ project, agent }: { project: Project; agent: Agent }) {
           </AnimatePresence>
           {busy && live.length === 0 && <Thinking stuck={agent.status === "stuck"} retry={retry ?? pendingRetry(history)} />}
           <PendingForms project={project} agent={agent} />
+          {/* Keyed by the offer: a new one starts with its buttons enabled again. */}
+          {agent.role === "coordinator" && project.startOffer && <StartOfferCard key={project.startOffer.at} project={project} agentId={agent.id} />}
           {failure && !lastTurnHasError(history) && (
             <div className="msg-failure">
               <CircleAlert size={14} />
@@ -715,6 +719,8 @@ function HistoryItem({ message: m, project }: { message: any; project: Project }
         </motion.div>
       );
     }
+    // Symbio's first turn for core (prompts.ts kickoffMessage) is an instruction to it, not news for the human.
+    if (KICKOFF.test(text)) return null;
     if (SYSTEM_PREFIX.test(text)) {
       return (
         <motion.div className="msg-note" {...anim}>

@@ -91,9 +91,9 @@ itself. Whoever gets in controls your agents, so keep the link and code to yours
    OpenCode, the one already on your computer; then its models; then git, which is optional (the
    page can install it on Windows); then your first project. Later, all of it is in **Settings →
    Agent runtimes**. Connecting the models:
-   - **OpenCode:** in **Settings → Model providers**, check that the providers you use are there.
-     Add one with an API key or a browser sign-in, and remove the ones you don't use so the model
-     list stays short.
+   - **OpenCode:** its free models work right away, with no account or key. For others, in
+     **Settings → Model providers**, add a provider with an API key or a browser sign-in, and
+     remove the ones you don't use so the model list stays short.
    - **GitHub Copilot CLI:** sign in with GitHub from its card (or Symbio reuses your
      `copilot login`). Models you added to the Copilot CLI with your own key show up too. A
      `copilot` already on your computer can't run Symbio's agents (Symbio needs the version its
@@ -101,16 +101,23 @@ itself. Whoever gets in controls your agents, so keep the link and code to yours
 2. **Create a project.** On the Projects page, click **New project**:
    - **Folder:** browse for or paste a folder. An empty folder starts a new project; an existing
      one is studied first. Symbio offers to set up git if the folder doesn't have it.
-   - **Setup:** choose where the project documentation goes (in the project, or private), and which
-     connections (GitHub, Azure DevOps, servers) the agents may use.
-   - **Models:** pick the agent runtime (among the installed ones), the models agents may use, and
-     the one core runs on (the crown).
-3. **Talk to core.** Describe what you want. By default a new project runs on its own: core works
-   from what you said and the folder's documents, makes the plan and starts, and what it decided
-   for you shows in **Needs you**, to keep or change. In the project's **Settings → How core runs
-   the project** you can have it ask and wait instead (the plan then waits for your approval in the
-   **Plan** tab, with a *Review* badge), choose briefings or grilling for its questions, and write
-   what the team may do without asking.
+   - **Models:** pick the agent runtime (among the installed ones) and the models agents may use
+     (the free ones are chosen for you when there are some); the crown marks the ones core may use.
+   - **More options** (closed until you open it): how much process (**Light**, the default, or
+     **Thorough**), where the project documentation goes (in the project, or private), a rules
+     register (on with Thorough), and which connections (GitHub, Azure DevOps, servers) the agents
+     may use.
+3. **Talk to core.** Describe what you want. In a light project core answers with what it
+   understood and what it would do, and you pick how to start, above its chat box: **Go ahead**
+   (plan and start now), **Brainstorm** (talk it through in the chat first), a **Briefing** (the
+   questions together; your answers become a spec) or **Grilling** (rounds of questions until
+   nothing is open). Or just write what you want instead. If you don't pick, core goes ahead on its
+   own after five minutes, so a team left alone keeps working. By default a new project runs on its
+   own: what core decided for you shows in **Needs you**, to keep or change. In the project's
+   **Settings → How core runs the project** you can switch between Light and Thorough, have core
+   ask and wait instead (the plan then waits for your approval in the **Plan** tab, with a *Review*
+   badge), choose briefings or grilling for its questions, and write what the team may do without
+   asking.
 4. **Watch and steer.** Helpers appear in the sidebar as core creates them. Click any agent to read
    its conversation or message it directly, change its model from its header, or stop and restart
    it. The **Messages** tab shows all traffic between agents. To move the project to another agent

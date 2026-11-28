@@ -37,3 +37,7 @@ test("About: the last tab, with privacy and the usage statistics explained", asy
   assert.equal(await page.locator('[data-testid="install-id"]').count(), 0);
   assert.deepEqual((page as any).errors, []);
 });
+
+test("an API address that doesn't exist answers 404 in JSON, not the web page", async () => {
+  await assert.rejects(symbio.call("GET", "/projects/nope/no-such-thing"), /→ 404: \{"error":"No such API address/);
+});

@@ -187,8 +187,11 @@ function toolLabel(tool: string, i: Record<string, unknown>): StepLabel {
     case "apply_patch":
       return { label: t("steps.edited", { file: fileName(i.path ?? i.filePath ?? patchedFile(i)) || t("steps.files") }), weight: 3 };
     case "grep":
-    case "search":
-      return { label: t("steps.searchedFor", { query: firstLine(i.pattern ?? i.query, 50) }), weight: 1 };
+    case "search": {
+      // Runtimes name the searched text differently (and a running step may have none yet).
+      const query = firstLine(i.pattern ?? i.query ?? i.regex ?? i.text, 50);
+      return { label: query ? t("steps.searchedFor", { query }) : t("steps.searched"), weight: 1 };
+    }
     case "glob":
     case "list":
     case "ls":

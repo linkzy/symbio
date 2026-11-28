@@ -152,11 +152,15 @@ export const answered = (answer: string) =>
   RUNTIME === "copilot" ? new RegExp(`User responded: ${answer}`) : new RegExp(`User has answered your questions.*${answer}`);
 
 /** A project with core started and its greeting turn done. */
-export async function projectWithCore(symbio: Symbio, name: string, opts: { directory?: string; models?: string[]; autonomy?: "ask" | "decide" } = {}) {
+export async function projectWithCore(
+  symbio: Symbio,
+  name: string,
+  opts: { directory?: string; models?: string[]; autonomy?: "ask" | "decide"; depth?: "light" | "thorough" } = {},
+) {
   const directory = opts.directory ?? symbio.folder(name.toLowerCase().replace(/\W+/g, "-"));
   const models = opts.models ?? [MODEL];
   // Tests ask and wait unless they test deciding (new projects in the app decide on their own).
-  const project = await symbio.call("POST", "/projects", { name, directory, coordinatorModel: models[0], allowedModels: models, runtime: RUNTIME, autonomy: opts.autonomy ?? "ask" });
+  const project = await symbio.call("POST", "/projects", { name, directory, coordinatorModel: models[0], allowedModels: models, runtime: RUNTIME, autonomy: opts.autonomy ?? "ask", ...(opts.depth ? { depth: opts.depth } : {}) });
   const { coordinator } = await symbio.call("POST", `/projects/${project.id}/start`);
   await idle(symbio, project.id);
   return { project, core: coordinator, directory };

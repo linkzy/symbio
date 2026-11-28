@@ -263,6 +263,22 @@ Running several files at once makes a slow machine slower, so tests must not dep
 - A long file is a long pole: when one grows past ~15 s, split it by theme (each file is one
   Symbio).
 
+## Benchmark: the first hour
+
+`node scripts/benchmark.mjs` (after `npm run build`) runs what a new user's first request costs: a
+fresh Symbio in a temporary folder, OpenCode installed as a new user would, a project on OpenCode's
+free models (no account needed), and always the same request, a two-page pocket guide to Porto. It
+picks *Go ahead* when core offers how to start, and prints how long it took, the tokens and what the
+human was asked. `--depth thorough` runs the thorough way; `--keep` leaves it running to look at.
+Run it before and after changing core's briefs or a project's defaults: process costs time and
+tokens, and this shows how much. Free models vary with load, so compare a few runs.
+
+| Date | Depth | Time | Tokens (not from cache) | Asked |
+|---|---|---|---|---|
+| 2026-11-27 | thorough (0.38.0's defaults) | 35 min | (not measured) | 5 decisions |
+| 2026-11-28 | light | 7.4 min | 1.6 M (236 k) | 3 decisions |
+| 2026-11-28 | light | 9.5 min | 2.1 M (252 k) | 1 decision |
+
 ## Testing remote access
 
 Set `SYMBIO_CLOUDFLARED_BIN` to a `.js` stand-in that prints a `https://….trycloudflare.com` line

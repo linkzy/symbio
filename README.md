@@ -18,9 +18,10 @@ cleanup, a set of documents. Symbio provides the machinery (messaging, isolation
 safety); the agents decide how to organize the work.
 
 It isn't tied to one AI tool either. The agents run on an **agent runtime** you choose per project:
-[OpenCode](https://opencode.ai), with the model providers you connect (OpenAI, Anthropic, Azure,
-OpenRouter, local models…), or **GitHub Copilot CLI** (preview), with your Copilot subscription. You
-install only the ones you use, and a project can move from one to the other.
+[OpenCode](https://opencode.ai), whose free models work right away **with no account or key** (and
+with the model providers you connect: OpenAI, Anthropic, Azure, OpenRouter, local models…), or
+**GitHub Copilot CLI** (preview), with your Copilot subscription. You install only the ones you use,
+and a project can move from one to the other.
 
 ![A team of agents writing a pocket travel guide: core proposes a plan, helpers research and write in parallel, a question comes to the human, the board fills up](docs/images/symbio-demo.gif)
 
@@ -61,8 +62,9 @@ Or, with Node.js 22+ already there: `npm install -g symbio`, then `sym`.
 
 Symbio opens in your browser. The first time, the Projects page walks you through what it needs: an
 agent runtime (OpenCode or GitHub Copilot CLI, installed for Symbio or the one already on your
-computer), its models, and git (optional, recommended), then **New project**, where you tell core
-what you want. Installing, updating, removing, all the commands and
+computer), its models (OpenCode's free ones need no account), and git (optional, recommended), then
+**New project**, where you tell core what you want. core says what it understood and you pick how to
+start: **go ahead**, or brainstorm, a briefing or grilling first. Installing, updating, removing, all the commands and
 remote access are in [docs/usage.md](docs/usage.md).
 
 ## A quick tour

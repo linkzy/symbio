@@ -92,6 +92,26 @@ const askHuman: Tool = {
   },
 };
 
+const offerStart: Tool = {
+  name: "offer_start",
+  description:
+    "Before starting a piece of work in a light project: show the human, in a few lines, what you understood and what you'd do " +
+    "(the first tasks), with buttons to pick how to go on: go ahead, brainstorm, a briefing or grilling. End your turn after it; " +
+    "their pick arrives as a message. When the project lets you decide and nobody picks in a few minutes, Symbio tells you to go ahead.",
+  inputSchema: obj(
+    {
+      summary: str(
+        "What you understood and what you'd do, for the human: 2 to 6 short lines (markdown), e.g. the goal in their words, " +
+          "what you assumed, and the tasks you'd start with. No questions here: the buttons are the question.",
+      ),
+    },
+    ["summary"],
+  ),
+  run({ summary }, { team, project }) {
+    return team.startOffers.offer(project, String(summary ?? ""));
+  },
+};
+
 const startBriefing: Tool = {
   name: "start_briefing",
   description:
@@ -1109,6 +1129,7 @@ const COORDINATOR_ONLY = [
   subRepositories,
   submitPlan,
   addTask,
+  offerStart,
   startBriefing,
   assignTask,
   spawnAgent,

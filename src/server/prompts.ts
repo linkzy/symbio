@@ -154,8 +154,7 @@ ${helperFolders(project)}
 - \`request_review\` — have a reviewer (a fresh, one-off helper with the review
   skill) check a task in review against its Done when, the rules and the glossary
   before you merge it: you didn't do the work, but you planned it, so a separate
-  reviewer judges it better. Worth it for big or risky tasks; small ones you can
-  check yourself. ${project.requireReviewer ? "The human requires one for every task, so Symbio starts it on its own and a task's report reaches you once it passed." : "Its verdict comes to you; findings go straight back to the helper."}
+  reviewer judges it better. ${project.depth === "light" && !project.requireReviewer ? "In this light project, only when the human asks for one: check the work yourself, at a glance, and trust the checks the helper says it ran." : "Worth it for big or risky tasks; small ones you can\n  check yourself."} ${project.requireReviewer ? "The human requires one for every task, so Symbio starts it on its own and a task's report reaches you once it passed." : "Its verdict comes to you; findings go straight back to the helper."}
 - \`propose_check\` — propose a check for the human to approve (above).
 - \`schedule_job\`, \`list_jobs\`, \`change_job\`, \`remove_job\`, \`report_job\` — recurring
   (or one-off) work the human asks for ("refresh the data every night", "check the site
@@ -224,6 +223,7 @@ ${KEEP_CONVERSATION_SMALL}
  * the project (Project.autonomy, Project.questionStyle).
  */
 function understandPoints(project: Project): string {
+  if (project.depth === "light") return lightStartPoints(project);
   const grill = project.questionStyle === "grill";
   const how = grill
     ? "**grilling** (your grilling skill: rounds of questions until nothing is open, each round one \`start_briefing\`)"
@@ -250,6 +250,40 @@ function understandPoints(project: Project): string {
    too. Small, clear requests don't need one.
 2. **Agree on scope.** Summarize the scope back in a short list and get the
    human's explicit OK before planning. ${spec}`;
+}
+
+/**
+ * A light project (Project.depth): the process grows with the work. core says what it understood and
+ * offers how to go on (offer_start); a spec, the glossary and documentation come when the work needs them.
+ */
+function lightStartPoints(project: Project): string {
+  const wait =
+    project.autonomy === "decide"
+      ? "If they don't pick within a few minutes, Symbio tells you to go ahead: a team left alone keeps working."
+      : "Wait for their pick.";
+  return `1. **Understand, then offer how to start.** This project is **light**: the
+   human wants results with little ceremony. Get what they want from their
+   message (and, in an existing folder, a quick look: see Starting point). Then
+   call \`offer_start\` with 2 to 6 short lines: the goal in their words, what you
+   assumed, the first tasks you'd start. The human picks from buttons: **go
+   ahead** (the default), **brainstorm** (talk it through in the chat first), a
+   **briefing** (\`start_briefing\`: the questions together, answers become a spec)
+   or **grilling** (rounds of questions until nothing is open). ${wait} Don't ask
+   questions in the chat at this point, and don't write a spec, a glossary or
+   documentation before they pick. If they write something instead of picking,
+   follow it. Offer again for each new piece of work that's more than a small
+   follow-up; small, clear requests you just do.
+2. **Go ahead means go.** ${
+     project.autonomy === "decide"
+       ? `Plan it and start right away. Decide what's open
+   yourself (the option you'd recommend) and record only decisions the human
+   would want to know (\`ask_human\` with \`decided\`; see 11): a handful at most, not
+   every detail.`
+       : `Plan it right away and propose the plan (see 3): it
+   starts when they approve it. Ask only what changes the plan.`
+   } A spec is written only after a briefing or grilling (Symbio
+   writes its answers to \`docs/specs/…\`; complete it and give the feature's
+   tasks that \`spec\`).`;
 }
 
 /** Core's brief, point 3: whether the plan waits for the human's approval. */
@@ -439,6 +473,16 @@ function multiRepoFolders(project: Project, repos: string[]): string {
 }
 
 function onboarding(project: Project): string {
+  if (project.origin !== "new" && project.depth === "light") {
+    return `## Starting point: an existing folder
+
+The folder already has content. Take a quick look before anything else, without
+asking first and without reading everything: guidance files (README, AGENTS.md,
+docs), the structure, a few representative samples. Then say in a few lines what
+this is and what looks unfinished or next, and offer how to start (\`offer_start\`)
+with what you'd do first; or, if the human already said what they want, with
+that. Follow existing conventions and guidance files.`;
+  }
   if (project.origin === "new") {
     return `## Starting point
 
@@ -495,6 +539,22 @@ function afterTaskNote(project: Project): string {
 /** The project's glossary: core keeps it, every agent gets it with its instructions (team.ts). */
 function glossarySection(project: Project, role: "coordinator" | "worker"): string {
   const file = glossaryPath(project);
+  if (project.depth === "light") {
+    if (role === "worker") {
+      return existsSync(file)
+        ? `## The project's glossary
+
+The project's terms are in ${file} (Symbio puts it in your instructions). Use them,
+one word per thing; tell the coordinator about a missing or confusing term.`
+        : "";
+    }
+    return `## The project's glossary (only when it's needed)
+
+Don't start a glossary up front. Start one at ${file} (a Markdown table
+\`| Term | Means | Not |\`) when the project's words need pinning down: the human
+asks, or the same thing gets two names in the work. Symbio then gives it to
+every agent. You keep it; helpers tell you about terms.`;
+  }
   if (role === "worker") {
     return `## The project's glossary
 
@@ -560,6 +620,16 @@ edit the register file directly.
 
 function docsSection(project: Project): string {
   const { entry, folder } = docsPaths(project);
+  if (project.depth === "light") {
+    const where = project.docsLocation === "private" ? `privately (${entry}, details in ${folder}; never AGENTS.md or docs/ in the project folder)` : `${entry} (and ${folder} for details)`;
+    return `## Project documentation (as the work needs it)
+
+Don't write documentation before the work starts. When there's something an
+agent joining later would need (what this is, conventions, where things are),
+keep it short in ${where}: Symbio gives the entry point to every agent. If
+documentation already exists, follow it and keep it current; don't rewrite what
+others wrote without asking the human.`;
+  }
   if (project.docsLocation === "private") {
     return `## Project documentation (private)
 
@@ -766,6 +836,9 @@ ${KEEP_CONVERSATION_SMALL}
 
 /** First turn, sent by Symbio right after the coordinator is created, so it speaks first. */
 export function kickoffMessage(project: Project): string {
+  if (project.origin !== "new" && project.depth === "light") {
+    return "Symbio: the project was just created on a folder that already has content (see the folder summary in your instructions). Greet the human in a line, take a quick look at the folder, then offer how to start (offer_start): what this is, what looks next, what you'd do first.";
+  }
   return project.origin === "new"
     ? "Symbio: the project was just created in an empty folder. Greet the human briefly and ask what they want to build or achieve."
     : "Symbio: the project was just created on a folder that already has content (see the folder summary in your instructions). Greet the human briefly, mention in one or two sentences what you can see at a glance, and offer to study the folder before planning.";

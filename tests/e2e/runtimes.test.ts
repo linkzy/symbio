@@ -21,7 +21,6 @@ test("a new project's agents run on GitHub Copilot CLI when chosen, with its mod
   await page.locator("button", { hasText: "New project" }).first().click();
   await page.getByPlaceholder("my-project", { exact: false }).fill(folder);
   await page.locator("button.btn.primary", { hasText: "Continue" }).click();
-  await page.locator("button.btn.primary", { hasText: "Continue" }).click();
 
   // OpenCode by default, with its models.
   assert.ok(await page.getByRole("radio", { name: /OpenCode/ }).isChecked());
@@ -58,7 +57,6 @@ test("signing in to GitHub Copilot from Settings, with a device code", async () 
     // Choosing Copilot before signing in says where to sign in.
     await page.locator("button", { hasText: "New project" }).first().click();
     await page.getByPlaceholder("my-project", { exact: false }).fill(signedOut.folder("later"));
-    await page.locator("button.btn.primary", { hasText: "Continue" }).click();
     await page.locator("button.btn.primary", { hasText: "Continue" }).click();
     await page.locator(".runtime-choice .choice", { hasText: "GitHub Copilot CLI" }).click();
     await page.locator(".error", { hasText: "Sign in from Settings → Agent runtimes" }).waitFor();
@@ -98,7 +96,6 @@ test("models from the user's own Copilot providers (e.g. Azure AI Foundry) are o
   await page.locator("button", { hasText: "New project" }).first().click();
   const folder = symbio.folder("on-foundry");
   await page.getByPlaceholder("my-project", { exact: false }).fill(folder);
-  await page.locator("button.btn.primary", { hasText: "Continue" }).click();
   await page.locator("button.btn.primary", { hasText: "Continue" }).click();
   await page.locator(".runtime-choice .choice", { hasText: "GitHub Copilot CLI" }).click();
   await page.locator(".model-group-title", { hasText: "foundry" }).waitFor();

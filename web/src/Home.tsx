@@ -123,7 +123,9 @@ function ProjectRow({ project: p }: { project: Project }) {
   );
 }
 
-const STEPS = ["newProject.steps.folder", "newProject.steps.setup", "newProject.steps.models"] as const;
+// Two steps: where, and on what. How much process and where documents go are under "More options"
+// (light by default; the thorough path is there for those who want it).
+const STEPS = ["newProject.steps.folder", "newProject.steps.models"] as const;
 
 /** The runtime wanted if it's installed, else the first installed one. */
 const pickRuntime = (installed: RuntimeView[], wanted: RuntimeKind): RuntimeKind =>
@@ -144,7 +146,10 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
   const [inspectError, setInspectError] = useState<string | null>(null);
   const [initGit, setInitGit] = useState(true);
   const [docsLocation, setDocsLocation] = useState<DocsLocation>("project");
-  const [rulesRegister, setRulesRegister] = useState(true);
+  const [depth, setDepth] = useState<"light" | "thorough">("light");
+  // Unset: follows the depth (off when light, on when thorough), until the human ticks it.
+  const [rulesChoice, setRulesChoice] = useState<boolean | null>(null);
+  const rulesRegister = rulesChoice ?? depth === "thorough";
   const [projectConnections, setProjectConnections] = useState<ProjectConnection[]>([]);
   const [runtime, setRuntime] = useState<RuntimeKind>(initialRuntime);
   const [models, setModels] = useState<ModelChoice>({ allowed: [], coordinator: "", core: [], coreOnly: [] });
@@ -207,7 +212,7 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
       setInstallingGit(false);
     }
   }
-  const stepValid = [!!(name.trim() && inspection && !conflict), true, !!coordinator][step];
+  const stepValid = [!!(name.trim() && inspection && !conflict), !!coordinator][step];
 
   // The dialog opens on the machine running Symbio (browsers can't reveal full paths).
   async function browse() {
@@ -235,6 +240,7 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
         runtime,
         docsLocation,
         rulesRegister,
+        depth,
         initGit: !!offerGit && initGit,
         connections: projectConnections,
       });
@@ -252,7 +258,7 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
     <Dialog
       title={t("newProject.title")}
       onClose={onClose}
-      wide={step === 2}
+      wide={step === 1}
       header={
         <div className="steps">
           {STEPS.map((s, i) => (
@@ -389,42 +395,6 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
       {step === 1 && (
         <>
           <div className="field">
-            <span>{t("newProject.docs.title")}</span>
-            <label className="choice">
-              <input type="radio" checked={docsLocation === "project"} onChange={() => setDocsLocation("project")} />
-              <span className="choice-body">
-                <span className="choice-title">
-                  {t("newProject.docs.project.title")} <span className="tag accent">{t("newProject.docs.project.recommended")}</span>
-                </span>
-                <span className="choice-desc">{t("newProject.docs.project.desc")}</span>
-              </span>
-            </label>
-            <label className="choice">
-              <input type="radio" checked={docsLocation === "private"} onChange={() => setDocsLocation("private")} />
-              <span className="choice-body">
-                <span className="choice-title">{t("newProject.docs.private.title")}</span>
-                <span className="choice-desc">{t("newProject.docs.private.desc")}</span>
-              </span>
-            </label>
-          </div>
-          <label className="choice">
-            <input type="checkbox" checked={rulesRegister} onChange={(e) => setRulesRegister(e.target.checked)} />
-            <span className="choice-body">
-              <span className="choice-title">{t("newProject.rules.title")}</span>
-              <span className="choice-desc">{t("newProject.rules.desc")}</span>
-            </span>
-          </label>
-          <div className="field">
-            <span>{t("newProject.connections.title")}</span>
-            <span className="hint">{t("newProject.connections.hint")}</span>
-            <ConnectionsPicker value={projectConnections} onChange={setProjectConnections} />
-          </div>
-        </>
-      )}
-
-      {step === 2 && (
-        <>
-          <div className="field">
             <span>{t("newProject.runtime.title")}</span>
             {/* Only the installed runtimes (Settings → Agent runtimes installs the others). */}
             <div className="runtime-choice">
@@ -439,7 +409,60 @@ function NewProjectDialog({ onClose, initialRuntime, runtimes }: { onClose: () =
               ))}
             </div>
           </div>
-          <ModelPicker value={models} onChange={setModels} runtime={runtime} />
+          <ModelPicker value={models} onChange={setModels} runtime={runtime} suggest />
+          <details className="more-options" data-testid="more-options">
+            <summary>{t("newProject.more")}</summary>
+            <div className="stack" style={{ gap: 12, paddingTop: 10 }}>
+              <div className="field">
+                <span>{t("lead.depth.title")}</span>
+                <label className="choice">
+                  <input type="radio" name="depth" checked={depth === "light"} onChange={() => setDepth("light")} />
+                  <span className="choice-body">
+                    <span className="choice-title">
+                      {t("lead.depth.light")} <span className="tag accent">{t("newProject.docs.project.recommended")}</span>
+                    </span>
+                    <span className="choice-desc">{t("lead.depth.hint.light")}</span>
+                  </span>
+                </label>
+                <label className="choice">
+                  <input type="radio" name="depth" checked={depth === "thorough"} onChange={() => setDepth("thorough")} />
+                  <span className="choice-body">
+                    <span className="choice-title">{t("lead.depth.thorough")}</span>
+                    <span className="choice-desc">{t("lead.depth.hint.thorough")}</span>
+                  </span>
+                </label>
+              </div>
+              <div className="field">
+                <span>{t("newProject.docs.title")}</span>
+                <label className="choice">
+                  <input type="radio" checked={docsLocation === "project"} onChange={() => setDocsLocation("project")} />
+                  <span className="choice-body">
+                    <span className="choice-title">{t("newProject.docs.project.title")}</span>
+                    <span className="choice-desc">{t("newProject.docs.project.desc")}</span>
+                  </span>
+                </label>
+                <label className="choice">
+                  <input type="radio" checked={docsLocation === "private"} onChange={() => setDocsLocation("private")} />
+                  <span className="choice-body">
+                    <span className="choice-title">{t("newProject.docs.private.title")}</span>
+                    <span className="choice-desc">{t("newProject.docs.private.desc")}</span>
+                  </span>
+                </label>
+              </div>
+              <label className="choice">
+                <input type="checkbox" checked={rulesRegister} onChange={(e) => setRulesChoice(e.target.checked)} />
+                <span className="choice-body">
+                  <span className="choice-title">{t("newProject.rules.title")}</span>
+                  <span className="choice-desc">{t("newProject.rules.desc")}</span>
+                </span>
+              </label>
+              <div className="field">
+                <span>{t("newProject.connections.title")}</span>
+                <span className="hint">{t("newProject.connections.hint")}</span>
+                <ConnectionsPicker value={projectConnections} onChange={setProjectConnections} />
+              </div>
+            </div>
+          </details>
         </>
       )}
 

@@ -169,6 +169,7 @@ function General({ project, onChanged }: { project: Project; onChanged: (p: Proj
 function Lead({ project, onChanged }: { project: Project; onChanged: (p: Project) => void }) {
   const { t } = useI18n();
   const saved = {
+    depth: project.depth ?? "thorough",
     autonomy: project.autonomy ?? "ask",
     questionStyle: project.questionStyle ?? "briefing",
     standingPermissions: project.standingPermissions ?? "",
@@ -198,6 +199,18 @@ function Lead({ project, onChanged }: { project: Project; onChanged: (p: Project
         </div>
       </div>
       <div className="stack" style={{ padding: 16, gap: 14 }}>
+        <div className="field" data-testid="depth">
+          <span>{t("lead.depth.title")}</span>
+          <div className="seg">
+            <button className={value.depth === "light" ? "on" : ""} onClick={() => setValue({ ...value, depth: "light" })}>
+              {t("lead.depth.light")}
+            </button>
+            <button className={value.depth === "thorough" ? "on" : ""} onClick={() => setValue({ ...value, depth: "thorough" })}>
+              {t("lead.depth.thorough")}
+            </button>
+          </div>
+          <span className="hint">{value.depth === "light" ? t("lead.depth.hint.light") : t("lead.depth.hint.thorough")}</span>
+        </div>
         <div className="field">
           <span>{t("lead.autonomy.title")}</span>
           <div className="seg">
@@ -211,7 +224,7 @@ function Lead({ project, onChanged }: { project: Project; onChanged: (p: Project
           <span className="hint">{value.autonomy === "decide" ? t("lead.autonomy.hint.decide") : t("lead.autonomy.hint.ask")}</span>
         </div>
         <div className="field">
-          <span>{t("lead.style.title")}</span>
+          <span>{value.depth === "light" ? t("lead.style.title.light") : t("lead.style.title")}</span>
           <div className="seg">
             <button className={value.questionStyle === "briefing" ? "on" : ""} onClick={() => setValue({ ...value, questionStyle: "briefing" })}>
               {t("lead.style.briefing")}

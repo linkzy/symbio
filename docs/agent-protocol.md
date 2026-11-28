@@ -112,6 +112,18 @@ being merged (unless core forces the merge).
   told). *marked*: only the tasks marked for the human (`review: true` in `submit_plan` /
   `add_task`, which core sets when it proposes the plan; the human ticks or unticks them in the Plan
   tab, `POST …/plan/tasks/:id/mark`) wait; the others work as with *core*.
+- **How much process** (Project settings → General; `Project.depth`). *light* (new projects, from
+  0.39): core's brief has it understand the request, then call `offer_start` with a few lines (what
+  it understood, what it would do) and end its turn. Symbio keeps the offer on the project
+  (`Project.startOffer`) and shows it above core's chat box with four picks; the human's pick
+  (`POST /projects/:id/start-offer`) reaches core as their message ("The human chose: …"); writing to
+  core instead clears the offer; in a *decide* project nobody picking for five minutes
+  (`SYMBIO_START_OFFER_SECONDS`) makes Symbio tell core to go ahead (`team/start-offer.ts`). Light
+  briefs leave out the up-front glossary, documentation and spec (a spec follows a briefing or
+  grilling only), surface only the decisions the human would want to know, start reviewers only when
+  the human asks, and, in an existing folder, take a quick look without asking first. The rules
+  register starts off. *thorough* (unset: every project created before) works as described in the
+  rest of this document.
 - **How core runs the project** (Project settings; `Project.autonomy`, `questionStyle`,
   `standingPermissions`, `allowInstalls`). *decide* (new projects): `submit_plan` is approved as it's
   made (the human is told and can ask for changes); `ask_human` needs `decided` (what the asker does
@@ -255,6 +267,7 @@ core only:
 |---|---|
 | `submit_plan` | Propose (or revise) the plan; each task with its `done_when` and optionally its `spec`. It waits for the human's approval, or is approved as made when the project lets core decide |
 | `add_task` | Add a task to the plan, with its `done_when` (and `spec`) |
+| `offer_start` | Light projects: what core understood and would do, in a few lines; the human picks how to start (go ahead, brainstorm, briefing, grilling) |
 | `start_briefing` | The questions about one feature together (feature, why, questions with context and options); answered, they become its spec |
 | `assign_task` | Give a task to an existing helper |
 | `spawn_agent` | Create a helper with a name, purpose, first task, and optionally a model (and `pin_model` to keep it on that model), where it works (`workspace`: own / shared) and, in a folder of several repositories, which one (`repo`); its `skills`. Refused past the project's helpers-at-a-time limit |

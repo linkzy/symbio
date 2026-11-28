@@ -20,6 +20,7 @@ All optional, set as environment variables:
 | `SYMBIO_OVERLOAD_CPU` | `90` | The computer counts as overloaded when CPU use averages this (%) or more… |
 | `SYMBIO_OVERLOAD_SECONDS` | `180` | …over this many seconds (or free memory stays under 10% of it, at least 600 MB) |
 | `SYMBIO_OVERLOAD_FREE_MB` | | A different free-memory floor, in MB |
+| `SYMBIO_START_OFFER_SECONDS` | `300` | In a light project that lets core decide, how long core's offer of how to start waits for the human's pick before core goes ahead |
 | `SYMBIO_VAULT` | auto | Set to `file` to keep the key to saved passwords and tokens in `~/.symbio/secrets.key` (readable only by you) instead of the OS credential store; Symbio does this by itself on a Linux without a Secret Service |
 | `SYMBIO_BACKUP_DAYS` | `7` | How many daily backups of Symbio's state to keep |
 | `SYMBIO_BUILD_ALERT_GB` | `2` | Build outputs in a helper's folder above this size are reported by the daily check |
